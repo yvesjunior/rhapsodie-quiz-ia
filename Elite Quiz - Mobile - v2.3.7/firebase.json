@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"rhapsodie-quizz","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"rhapsodie-quizz","uploadDebugSymbols":true,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"rhapsodie-quizz"}}}}}

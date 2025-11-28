@@ -1,0 +1,47 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Firebase credentials
+Admin Panel/src/web/public/assets/firebase_config.json
+**/firebase_config.json
+
+# Database files
+Admin Panel/src/database/
+Admin Panel/src/database-backups/
+
+# Logs
+*.log
+Admin Panel/src/web/public/application/logs/*
+!Admin Panel/src/web/public/application/logs/index.html
+
+# Cache
+Admin Panel/src/web/public/application/cache/*
+!Admin Panel/src/web/public/application/cache/index.html
+
+# Uploads (if they contain sensitive data)
+# Admin Panel/src/web/public/upload/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Composer
+/vendor/
+composer.phar
+
+# Node modules (if any)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+

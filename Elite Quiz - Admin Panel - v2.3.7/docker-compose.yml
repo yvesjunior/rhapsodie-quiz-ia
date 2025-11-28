@@ -1,0 +1,64 @@
+services:
+  web:
+    build:
+      context: ./Admin Panel
+      dockerfile: infra/Dockerfile
+    working_dir: /var/www/html
+    container_name: elite-quiz-admin-web
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./Admin Panel/src/web/public:/var/www/html
+      - ./Admin Panel/src/web/public/application/logs:/var/www/html/application/logs
+      - ./Admin Panel/src/web/public/application/cache:/var/www/html/application/cache
+      - ./Admin Panel/src/web/public/upload:/var/www/html/upload
+    environment:
+      - CI_ENV=${CI_ENV:-development}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-elite_quiz_237}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REST_API_USERNAME=${REST_API_USERNAME:-admin}
+      - REST_API_PASSWORD=${REST_API_PASSWORD}
+    depends_on:
+      - db
+    networks:
+      - elite-quiz-network
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: elite-quiz-admin-db
+    ports:
+      - "${DB_PORT:-3310}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME:-elite_quiz_237}
+    volumes:
+      - ./Admin Panel/src/database:/var/lib/mysql
+    networks:
+      - elite-quiz-network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: elite-quiz-admin-phpmyadmin
+    ports:
+      - "${PHPMYADMIN_PORT:-8090}:80"
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=${DB_USER:-root}
+      - PMA_PASSWORD=${DB_PASSWORD}
+      - UPLOAD_LIMIT=300M
+    depends_on:
+      - db
+    networks:
+      - elite-quiz-network
+    restart: unless-stopped
+
+networks:
+  elite-quiz-network:
+    driver: bridge
+
