@@ -6,3 +6,18 @@
 src/database
 **/src/database
 
+# Secrets and sensitive files
+.env
+.env.*
+*.env
+**/firebase_config.json
+**/google-services.json
+**/GoogleService-Info.plist
+*.pem
+*.key
+*secret*
+*private*
+**/assets/firebase_config.json
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+
