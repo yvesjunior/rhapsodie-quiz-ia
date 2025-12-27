@@ -1,0 +1,273 @@
+services:
+  # ============================================
+  # DATABASE - MySQL (Shared)
+  # ============================================
+  rhapsody-db:
+    image: mysql:8.0
+    container_name: rhapsody-db
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3310}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-elite_quiz_237}
+    volumes:
+      - ./src/database/data:/var/lib/mysql
+    networks:
+      - rhapsody-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=200
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # CACHE - Redis
+  # ============================================
+  rhapsody-redis:
+    image: redis:7-alpine
+    container_name: rhapsody-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rhapsody-network
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================
+  # ADMIN PANEL - CodeIgniter
+  # ============================================
+  rhapsody-web:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    container_name: rhapsody-web
+    restart: unless-stopped
+    working_dir: /var/www/html
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./src/admin/public:/var/www/html
+      - ./src/admin/public/application/logs:/var/www/html/application/logs
+      - ./src/admin/public/application/cache:/var/www/html/application/cache
+      - ./src/admin/public/upload:/var/www/html/upload
+    environment:
+      - CI_ENV=${CI_ENV:-development}
+      - DB_HOST=${DB_HOST:-rhapsody-db}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-elite_quiz_237}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REST_API_USERNAME=${REST_API_USERNAME:-admin}
+      - REST_API_PASSWORD=${REST_API_PASSWORD}
+      - REDIS_HOST=rhapsody-redis
+      - REDIS_PORT=6379
+    depends_on:
+      rhapsody-db:
+        condition: service_healthy
+      rhapsody-redis:
+        condition: service_healthy
+    networks:
+      - rhapsody-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # ADMIN PANEL - Queue Workers
+  # ============================================
+  rhapsody-queue:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    container_name: rhapsody-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    # TODO: Implement CodeIgniter queue worker command
+    # command: php artisan queue:work --tries=3 --timeout=300
+    command: tail -f /dev/null  # Keep container running for now
+    volumes:
+      - ./src/admin/public:/var/www/html
+    environment:
+      - CI_ENV=${CI_ENV:-development}
+      - DB_HOST=${DB_HOST:-rhapsody-db}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-elite_quiz_237}
+      - REDIS_HOST=rhapsody-redis
+      - REDIS_PORT=6379
+    depends_on:
+      rhapsody-db:
+        condition: service_healthy
+      rhapsody-redis:
+        condition: service_healthy
+      rhapsody-web:
+        condition: service_healthy
+    networks:
+      - rhapsody-network
+
+  # ============================================
+  # PHPMyAdmin - Database Management
+  # ============================================
+  rhapsody-phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: rhapsody-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8090}:80"
+    environment:
+      - PMA_HOST=rhapsody-db
+      - PMA_USER=${DB_USER:-root}
+      - PMA_PASSWORD=${DB_PASSWORD}
+      - UPLOAD_LIMIT=300M
+      - MAX_EXECUTION_TIME=300
+    depends_on:
+      rhapsody-db:
+        condition: service_healthy
+    networks:
+      - rhapsody-network
+
+  # ============================================
+  # LARAVEL AI API (Optional - Phase 6)
+  # COMMENTED OUT - To be enabled when AI services are ready
+  # ============================================
+  # ai-api:
+  #   build:
+  #     context: ./ai-qcm/laravel-api
+  #     dockerfile: Dockerfile
+  #   container_name: rhapsody-ai-api
+  #   restart: unless-stopped
+  #   working_dir: /var/www/html
+  #   ports:
+  #     - "${AI_API_PORT:-8000}:80"
+  #   volumes:
+  #     - ./ai-qcm/laravel-api:/var/www/html
+  #     - ./ai-qcm/laravel-api/docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+  #     - ai_api_storage:/var/www/html/storage
+  #   environment:
+  #     - APP_ENV=${APP_ENV:-local}
+  #     - APP_DEBUG=${APP_DEBUG:-true}
+  #     - DB_CONNECTION=mysql
+  #     - DB_HOST=db
+  #     - DB_PORT=3306
+  #     - DB_DATABASE=${AI_DB_NAME:-qcm_db}
+  #     - DB_USERNAME=${DB_USER:-root}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - CACHE_DRIVER=redis
+  #     - SESSION_DRIVER=redis
+  #     - QUEUE_CONNECTION=redis
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - rhapsody-network
+  #   profiles:
+  #     - ai-services  # Only start with --profile ai-services
+
+  # # ============================================
+  # # LARAVEL AI API - Nginx
+  # # ============================================
+  # ai-api-nginx:
+  #   image: nginx:alpine
+  #   container_name: rhapsody-ai-api-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${AI_API_NGINX_PORT:-8001}:80"
+  #   volumes:
+  #     - ./ai-qcm/laravel-api:/var/www/html
+  #     - ./ai-qcm/laravel-api/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+  #   depends_on:
+  #     - ai-api
+  #   networks:
+  #     - rhapsody-network
+  #   profiles:
+  #     - ai-services
+
+  # # ============================================
+  # # LARAVEL AI API - Queue Worker
+  # # ============================================
+  # ai-api-queue:
+  #   build:
+  #     context: ./ai-qcm/laravel-api
+  #     dockerfile: Dockerfile
+  #   container_name: rhapsody-ai-api-queue
+  #   restart: unless-stopped
+  #   working_dir: /var/www/html
+  #   command: php artisan queue:work --tries=3 --timeout=300
+  #   volumes:
+  #     - ./ai-qcm/laravel-api:/var/www/html
+  #     - ai_api_storage:/var/www/html/storage
+  #   environment:
+  #     - APP_ENV=${APP_ENV:-local}
+  #     - DB_CONNECTION=mysql
+  #     - DB_HOST=db
+  #     - DB_DATABASE=${AI_DB_NAME:-qcm_db}
+  #     - DB_USERNAME=${DB_USER:-root}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - QUEUE_CONNECTION=redis
+  #   depends_on:
+  #     - db
+  #     - redis
+  #     - ai-api
+  #   networks:
+  #     - rhapsody-network
+  #   profiles:
+  #     - ai-services
+
+  # ============================================
+  # REDIS COMMANDER - Redis Management UI
+  # ============================================
+  rhapsody-redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: rhapsody-redis-commander
+    restart: unless-stopped
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
+    environment:
+      - REDIS_HOSTS=local:rhapsody-redis:6379
+    depends_on:
+      - rhapsody-redis
+    networks:
+      - rhapsody-network
+    profiles:
+      - tools  # Only start with --profile tools
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  rhapsody-network:
+    driver: bridge
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  redis_data:
+    driver: local
+    name: rhapsody-redis-data
+  # ai_api_storage:
+  #   driver: local
+  #   name: rhapsody-ai-api-storage
+  # Commented out - AI services disabled until Phase 6
+
