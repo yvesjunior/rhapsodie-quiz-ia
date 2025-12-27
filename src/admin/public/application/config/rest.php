@@ -210,10 +210,7 @@ $config['auth_library_function'] = '';
 | Array of usernames and passwords for login, if ldap is configured this is ignored
 |
 */
-// REST API credentials - use environment variables for security
-$rest_username = getenv('REST_API_USERNAME') ?: 'admin';
-$rest_password = getenv('REST_API_PASSWORD') ?: '1234';
-$config['rest_valid_logins'] = [$rest_username => $rest_password];
+$config['rest_valid_logins'] = ['admin' => '1234'];
 
 /*
 |--------------------------------------------------------------------------

@@ -26,13 +26,8 @@ class Api extends REST_Controller
         $this->twoDayOldDateTime = date('Y-m-d H:i:s', strtotime('-2 days'));
         $this->toContestDateTime = date('Y-m-d H:i:00');
         $this->load->library('JWT');
-        // Try to get JWT secret from environment variable first, then fallback to database
-        $jwtKey = getenv('JWT_SECRET_KEY');
-        if (empty($jwtKey)) {
-            // Fallback to database if environment variable not set
-            $jwtKey = $this->db->where('type', 'jwt_key')->get('tbl_settings')->row_array();
-            $jwtKey = !empty($jwtKey) ? $jwtKey['message'] : '';
-        }
+        $jwtKey = $this->db->where('type', 'jwt_key')->get('tbl_settings')->row_array();
+        $jwtKey = $jwtKey['message'];
         $this->JWT_SECRET_KEY = "$jwtKey";
 
         $this->systemTimezoneGMT = is_settings('system_timezone_gmt') ? is_settings('system_timezone_gmt') : 'Asia/Kolkata';
@@ -78,10 +73,10 @@ class Api extends REST_Controller
             $firebase_id = $this->post('firebase_id');
 
             // ------- Should be Enabled for server  ----------
-            // $is_verify = $this->verify_user($firebase_id);
+            $is_verify = $this->verify_user($firebase_id);
             // ---------------------------------------------------
             // ------- Should be Disable for server  ----------
-            $is_verify = true; // Disabled for local development - re-enable for production
+            // $is_verify=true;
             // ---------------------------------------------------
             if ($is_verify) {
                 $type = $this->post('type');

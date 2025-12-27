@@ -52,7 +52,6 @@ const getStatisticUrl = '$_api/get_users_statistics';
 // Daily Features & Ads
 const getQuestionForDailyQuizUrl = '$_api/get_daily_quiz';
 const watchedDailyAdUrl = '$_api/update_daily_ads_counter';
-const checkDailyAdsStatusUrl = '$_api/check_daily_ads_status';
 
 // Bookmarks & Badges
 const getBookmarkUrl = '$_api/get_bookmark';
@@ -62,8 +61,6 @@ const getUserBadgesUrl = '$_api/get_user_badges';
 // Payment & Coins
 const getCoinStoreData = '$_api/get_coin_store_data';
 const getCoinHistoryUrl = '$_api/get_tracker_data';
-const setTrackerDataUrl = '$_api/set_tracker_data';
-const getUserCoinScoreUrl = '$_api/get_user_coin_score';
 const updateUserCoinsAndScoreUrl = '$_api/set_user_coin_score';
 const makePaymentRequestUrl = '$_api/set_payment_request';
 const cancelPaymentRequestUrl = '$_api/delete_pending_payment_request';
@@ -84,6 +81,4 @@ const getMultiMatchLevelDataUrl = '$_api/get_multi_match_level_data';
 const getMultiMatchQuestionsUrl = '$_api/get_multi_match_questions';
 const getMultiMatchQuestionsByLevelUrl =
     '$_api/get_multi_match_questions_by_level';
-const getMultiMatchQuestionsByTypeUrl =
-    '$_api/get_multi_match_questions_by_type';
 const multiMatchReportQuestionUrl = '$_api/multi_match_report_question';

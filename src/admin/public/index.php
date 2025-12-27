@@ -93,19 +93,6 @@ switch (ENVIRONMENT)
 
 /*
  *---------------------------------------------------------------
- * LOAD ENVIRONMENT VARIABLES
- *---------------------------------------------------------------
- *
- * Load .env file for local development
- * In production, use system environment variables or Docker environment variables
- */
-if (file_exists(__DIR__ . '/../../.env')) {
-    require_once(__DIR__ . '/application/helpers/env_helper.php');
-    load_env_file(__DIR__ . '/../../.env');
-}
-
-/*
- *---------------------------------------------------------------
  * SYSTEM DIRECTORY NAME
  *---------------------------------------------------------------
  *

@@ -11,16 +11,10 @@ const packageName = 'com.wrteam.flutterquiz';
 /// Add your panel url here
 // NOTE: make sure to not add '/' at the end of url
 // NOTE: make sure to check if admin panel is http or https
-// 
-// Mac Development:
-// - iOS Simulator: use 'http://localhost:8080' (works on Mac, simulator shares network)
-// - Physical iOS device: use your Mac's IP address (currently: http://192.168.2.15:8080)
-// - Android Emulator: use 'http://10.0.2.2:8080' (special Android emulator IP)
-// - Physical Android device: use your Mac's IP address (currently: http://192.168.2.15:8080)
-// 
-// Current IP: 192.168.2.15
-// For iOS Simulator, localhost works because simulator shares Mac's network
-const panelUrl = 'http://localhost:8080';
+// const panelUrl = 'https://elitequiz.wrteam.me';  // Production
+
+// For local development, use your Mac's IP address:
+const panelUrl = 'http://192.168.2.15:8080';  // Local dev - your Mac's IP
 
 /// === Branding ===
 ///

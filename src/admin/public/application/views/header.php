@@ -157,8 +157,7 @@
                     </ul>
                 </li>
             <?php } ?>
-            <?php /* Hidden: Fun 'N' Learn
-            if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'fun_n_learn')) { ?>
+            <?php if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'fun_n_learn')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-book-open"></em><span><?= lang('fun_n_learn'); ?></span></a>
                     <ul class="dropdown-menu">
@@ -176,7 +175,7 @@
                         <?php } ?>
                     </ul>
                 </li>
-            <?php } */ ?>
+            <?php } ?>
             <?php if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'guess_the_word')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-atom"></em><span><?= lang('guess_the_word'); ?></span></a>
@@ -196,8 +195,7 @@
                     </ul>
                 </li>
             <?php } ?>
-            <?php /* Hidden: Audio Questions
-            if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'audio_question')) { ?>
+            <?php if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'audio_question')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-microphone-alt"></em><span><?= lang('audio_questions'); ?></span></a>
                     <ul class="dropdown-menu">
@@ -215,9 +213,8 @@
                         <?php } ?>
                     </ul>
                 </li>
-            <?php } */ ?>
-            <?php /* Hidden: Maths Questions
-            if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'maths_questions')) { ?>
+            <?php } ?>
+            <?php if (has_permissions('read', 'categories') || has_permissions('read', 'subcategories') || has_permissions('read', 'category_order') || has_permissions('read', 'maths_questions')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-book-open"></em><span><?= lang('maths_quiz'); ?></span></a>
                     <ul class="dropdown-menu">
@@ -238,7 +235,7 @@
                         <?php } ?>
                     </ul>
                 </li>
-            <?php } */ ?>
+            <?php } ?>
             <?php if (has_permissions('read', 'exam_module')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-book"></em><span><?= lang('exam_module'); ?></span></a>
@@ -254,24 +251,21 @@
                     <a class="nav-link" href="<?= base_url() ?>users"><em class="fas fa-users"></em> <span><?= lang('users'); ?></span></a>
                 </li>
             <?php } ?>
-            <?php /* Hidden: In App Users
-            if (has_permissions('read', 'in_app_users')) { ?>
+            <?php if (has_permissions('read', 'in_app_users')) { ?>
                 <li>
                     <a class="nav-link" href="<?= base_url() ?>in-app-users"><em class="fas fa-users"></em> <span><?= lang('in_app_users'); ?></span></a>
                 </li>
-            <?php } */ ?>
-            <?php /* Hidden: Activity Tracker
-            if (has_permissions('read', 'activity_tracker')) { ?>
+            <?php } ?>
+            <?php if (has_permissions('read', 'activity_tracker')) { ?>
                 <li>
                     <a class="nav-link" href="<?= base_url() ?>activity-tracker"><em class="fas fa-chart-bar"></em> <span><?= lang('activity_tracker'); ?></span></a>
                 </li>
-            <?php } */ ?>
-            <?php /* Hidden: Payment Requests
-            if (has_permissions('read', 'payment_requests')) { ?>
+            <?php } ?>
+            <?php if (has_permissions('read', 'payment_requests')) { ?>
                 <li>
                     <a class="nav-link" href="<?= base_url() ?>payment-requests"><em class="fas fa-rupee-sign"></em> <span><?= lang('payment_requests'); ?></span></a>
                 </li>
-            <?php } */ ?>
+            <?php } ?>
             <?php if (has_permissions('read', 'leaderboard')) { ?>
                 <li class="nav-item dropdown">
                     <a href="javascript:void(0)" class="nav-link has-dropdown"><em class="fas fa-th"></em><span><?= lang('leaderboard'); ?></span></a>
@@ -282,9 +276,16 @@
                     </ul>
                 </li>
             <?php } ?>
-            <?php if ((is_language_mode_enabled() && has_permissions('read', 'languages')) || has_permissions('read', 'system_languages')) { ?>
+            <?php if (is_language_mode_enabled()) { ?>
+                <?php if (has_permissions('read', 'languages')) { ?>
+                    <li>
+                        <a class="nav-link" href="<?= base_url() ?>languages"><em class="fas fa-language"></em> <span><?= lang('languages'); ?></span></a>
+                    </li>
+                <?php } ?>
+            <?php } ?>
+            <?php if (has_permissions('read', 'system_languages')) { ?>
                 <li>
-                    <a class="nav-link" href="<?= base_url() ?>languages"><em class="fas fa-language"></em> <span><?= lang('languages'); ?></span></a>
+                    <a class="nav-link" href="<?= base_url() ?>system-languages"><em class="fas fa-language"></em> <span><?= lang('system_languages') ?></span></a>
                 </li>
             <?php } ?>
             <?php if (has_permissions('read', 'in_app_settings') || has_permissions('read', 'coin_store_settings') || has_permissions('read', 'badges_settings') || has_permissions('read', 'ads_settings') || has_permissions('read', 'payment_settings') || has_permissions('read', 'firebase_configurations') || has_permissions('read', 'system_configuration') || has_permissions('read', 'system_utilities') || has_permissions('read', 'authentication_settings') || has_permissions('read', 'ai_settings')) { ?>
@@ -360,12 +361,11 @@
                     </ul>
                 </li>
             <?php } ?>
-            <?php /* Hidden: System Update
-            if (has_permissions('read', 'system_update')) { ?>
+            <?php if (has_permissions('read', 'system_update')) { ?>
                 <li>
                     <a class="nav-link" href="<?= base_url(); ?>system-updates"><em class="fas fa-cloud-download-alt"></em> <span>System Update</span></a>
                 </li>
-            <?php } */ ?>
+            <?php } ?>
         </ul>
     </aside>
 </div>

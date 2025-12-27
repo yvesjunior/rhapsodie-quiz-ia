@@ -210,7 +210,6 @@ $route['coin-store-settings'] = 'CoinStore';
 $route['delete-coin-store-data'] = 'CoinStore/deleteCoinStoreData';
 
 $route['system-languages'] = 'System_Languages';
-$route['system-languages/content'] = 'System_Languages/content';
 $route['delete-system-languages'] = 'System_Languages/delete_language_data';
 $route['new-labels/(:any)'] = 'System_Languages/new_language_data';
 $route['delete-app-system-languages'] = 'System_Languages/delete_app_language_data';

@@ -9,44 +9,19 @@ import 'package:http/http.dart' as http;
 final class SystemConfigRemoteDataSource {
   Future<Map<String, dynamic>> getSystemConfig() async {
     try {
-      final url = getSystemConfigUrl;
-      print('🔗 Calling API: $url');
-      
-      final response = await http.post(
-        Uri.parse(url),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw ApiException('Request timeout: Unable to connect to server');
-        },
-      );
-      
-      print('📡 Response status: ${response.statusCode}');
-      print('📄 Response body length: ${response.body.length}');
-      
-      if (response.statusCode != 200) {
-        throw ApiException('HTTP ${response.statusCode}: ${response.reasonPhrase}');
-      }
-      
+      final response = await http.post(Uri.parse(getSystemConfigUrl));
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (responseJson['error'] as bool) {
         throw ApiException(responseJson['message'].toString());
       }
-      
-      print('✅ System config loaded successfully');
       return responseJson['data'] as Map<String, dynamic>;
-    } on SocketException catch (e) {
-      print('❌ SocketException: ${e.message}');
-      throw ApiException('${errorCodeNoInternet}: ${e.message}');
-    } on FormatException catch (e) {
-      print('❌ FormatException: ${e.message}');
-      throw ApiException('JSON Parse Error: ${e.message}');
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
     } on ApiException {
       rethrow;
-    } on Exception catch (e) {
-      print('❌ Exception: ${e.toString()}');
-      throw ApiException('${errorCodeDefaultMessage}: ${e.toString()}');
+    } on Exception {
+      throw const ApiException(errorCodeDefaultMessage);
     }
   }
 
@@ -56,24 +31,18 @@ final class SystemConfigRemoteDataSource {
         Uri.parse(getSupportedQuestionLanguageUrl),
       );
 
-      if (response.statusCode != 200) {
-        throw ApiException('HTTP ${response.statusCode}: ${response.reasonPhrase}');
-      }
-
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (responseJson['error'] as bool) {
         throw ApiException(responseJson['message'].toString());
       }
       return (responseJson['data'] as List).cast<Map<String, dynamic>>();
-    } on SocketException catch (e) {
-      throw ApiException('${errorCodeNoInternet}: ${e.message}');
-    } on FormatException catch (e) {
-      throw ApiException('JSON Parse Error: ${e.message}');
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
     } on ApiException {
       rethrow;
-    } on Exception catch (e) {
-      throw ApiException('${errorCodeDefaultMessage}: ${e.toString()}');
+    } on Exception {
+      throw const ApiException(errorCodeDefaultMessage);
     }
   }
 
@@ -85,24 +54,18 @@ final class SystemConfigRemoteDataSource {
         body: {'from': '1'},
       );
 
-      if (response.statusCode != 200) {
-        throw ApiException('HTTP ${response.statusCode}: ${response.reasonPhrase}');
-      }
-
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (responseJson['error'] as bool) {
         throw ApiException(responseJson['message'].toString());
       }
       return (responseJson['data'] as List).cast<Map<String, dynamic>>();
-    } on SocketException catch (e) {
-      throw ApiException('${errorCodeNoInternet}: ${e.message}');
-    } on FormatException catch (e) {
-      throw ApiException('JSON Parse Error: ${e.message}');
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
     } on ApiException {
       rethrow;
-    } on Exception catch (e) {
-      throw ApiException('${errorCodeDefaultMessage}: ${e.toString()}');
+    } on Exception {
+      throw const ApiException(errorCodeDefaultMessage);
     }
   }
 
@@ -123,7 +86,7 @@ final class SystemConfigRemoteDataSource {
       );
 
       if (response.statusCode != 200) {
-        throw ApiException('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        throw ApiException(response.reasonPhrase.toString());
       }
 
       final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -144,14 +107,12 @@ final class SystemConfigRemoteDataSource {
         'app_default': jsonData['default'] as String,
         'translations': translations,
       };
-    } on SocketException catch (e) {
-      throw ApiException('${errorCodeNoInternet}: ${e.message}');
-    } on FormatException catch (e) {
-      throw ApiException('JSON Parse Error: ${e.message}');
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
     } on ApiException {
       rethrow;
-    } on Exception catch (e) {
-      throw ApiException('${errorCodeDefaultMessage}: ${e.toString()}');
+    } on Exception {
+      throw const ApiException(errorCodeDefaultMessage);
     }
   }
 
