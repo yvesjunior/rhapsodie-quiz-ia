@@ -128,3 +128,12 @@ const wonKey = 'won';
 const wrongDetailsKey = 'wrongDetails';
 const youLeftTheExamKey = 'youLeftTheExam';
 const youWillGetKey = 'youWillGet';
+
+// New home screen labels
+const soloModeLbl = 'soloModeLbl';
+const multiplayerModeLbl = 'multiplayerModeLbl';
+const oneVsOneModeLbl = 'oneVsOneModeLbl';
+const rewardPointLbl = 'rewardPointLbl';
+const searchQuizCategoriesLbl = 'searchQuizCategoriesLbl';
+const exploreCategoriesLbl = 'exploreCategoriesLbl';
+const randomQuizLbl = 'randomQuizLbl';

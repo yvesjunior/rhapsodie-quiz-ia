@@ -70,6 +70,9 @@ class HomeScreenState extends State<HomeScreen>
     ),
   ];
 
+  /// Purple header color
+  static const _headerColor = Color(0xFF7B68EE);
+
   // Screen dimensions
   double get scrWidth => context.width;
 
@@ -460,6 +463,56 @@ class HomeScreenState extends State<HomeScreen>
 
   late String _userName = context.tr('guest')!;
   String _userProfileImg = '';
+
+  Widget _buildGameModes() {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: hzMargin,
+        right: hzMargin,
+        top: 16,
+      ),
+      child: Row(
+        children: [
+          // Solo Mode (Self Challenge)
+          if (_sysConfigCubit.isSelfChallengeQuizEnabled)
+            Expanded(
+              child: GameModeCard(
+                title: context.tr('soloModeLbl') ?? 'Solo\nMode',
+                backgroundColor: GameModeColors.soloMode,
+                imagePath: 'assets/images/solo_mode.png',
+                onTap: () => _onPressedSelfExam('selfChallenge'),
+              ),
+            ),
+          if (_sysConfigCubit.isSelfChallengeQuizEnabled)
+            const SizedBox(width: 12),
+          
+          // Multiplayer Mode (Group Battle)
+          if (_sysConfigCubit.isGroupBattleEnabled)
+            Expanded(
+              child: GameModeCard(
+                title: context.tr('multiplayerModeLbl') ?? 'Multiplayer\nMode',
+                backgroundColor: GameModeColors.multiplayerMode,
+                imagePath: 'assets/images/multiplayer_mode.png',
+                onTap: () => _onPressedBattle('groupPlay'),
+              ),
+            ),
+          if (_sysConfigCubit.isGroupBattleEnabled)
+            const SizedBox(width: 12),
+          
+          // 1 Vs. 1 Mode (Battle Quiz)
+          if (_sysConfigCubit.isOneVsOneBattleEnabled || _sysConfigCubit.isRandomBattleEnabled)
+            Expanded(
+              child: GameModeCard(
+                title: context.tr('oneVsOneModeLbl') ?? '1 Vs. 1\nMode',
+                backgroundColor: GameModeColors.oneVsOneMode,
+                imagePath: 'assets/images/one_vs_one_mode.png',
+                onTap: () => _onPressedBattle('battleQuiz'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBattle() {
     return battleZones.isNotEmpty
@@ -977,64 +1030,234 @@ class HomeScreenState extends State<HomeScreen>
       builder: (context, state) {
         return Stack(
           children: [
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Column(
-                children: [
-                  SizedBox(height: context.height * .12),
-                  Expanded(
-                    child: RefreshIndicator(
-                      key: refreshKey,
-                      color: context.primaryColor,
-                      backgroundColor: context.scaffoldBackgroundColor,
-                      onRefresh: () async {
-                        _currLangId = UiUtils.getCurrentQuizLanguageId(context);
-
-                        if (!_isGuest) {
-                          fetchUserDetails();
-
-                          await context.read<ContestCubit>().getContest(
-                            languageId: _currLangId,
-                          );
-                        }
-                        setState(() {});
-                      },
-                      child: ListView(
-                        controller: _scrollController,
-                        children: [
-                          const SizedBox(height: 24),
-                          UserAchievements(
-                            userRank: _userRank,
-                            userCoins: _userCoins,
-                            userScore: _userScore,
-                          ),
-                          const SizedBox(height: 16),
-                          if (!_isGuest &&
-                              _sysConfigCubit.isAdsEnable &&
-                              _sysConfigCubit.isDailyAdsEnabled) ...[
-                            _buildDailyAds(),
-                          ],
-                          if (!_isGuest &&
-                              _sysConfigCubit.isContestEnabled) ...[
-                            _buildLiveContestSection(),
-                          ],
-                          _buildBattle(),
-                          _buildExamSelf(),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            // Purple header background
+            Container(
+              height: context.height * 0.28,
+              decoration: const BoxDecoration(
+                color: _headerColor,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
               ),
             ),
-            Align(
-              alignment: Alignment.topCenter,
-              child: _buildUserProfileHeader(),
+            
+            // Content
+            SafeArea(
+              child: RefreshIndicator(
+                key: refreshKey,
+                color: Colors.white,
+                backgroundColor: _headerColor,
+                onRefresh: () async {
+                  _currLangId = UiUtils.getCurrentQuizLanguageId(context);
+
+                  if (!_isGuest) {
+                    fetchUserDetails();
+
+                    await context.read<ContestCubit>().getContest(
+                      languageId: _currLangId,
+                    );
+                  }
+                  setState(() {});
+                },
+                child: ListView(
+                  controller: _scrollController,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // Header with avatar, app name, notification
+                    _buildPurpleHeader(),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Stats bar (Rank & Reward Points)
+                    UserAchievements(
+                      userRank: _userRank,
+                      userCoins: _userCoins,
+                      userScore: _userScore,
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Game Mode Cards (Solo, Multiplayer, 1v1)
+                    _buildGameModes(),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Search Bar
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: hzMargin),
+                      child: CategorySearchBar(
+                        onTap: () {
+                          // Navigate to category search/list
+                          Navigator.of(context).pushNamed(
+                            Routes.category,
+                            arguments: CategoryScreenArgs(
+                              quizType: QuizTypes.quizZone,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Explore Categories Section
+                    ExploreCategoriesSection(
+                      categories: _buildCategoryItems(),
+                      onViewAll: () {
+                        Navigator.of(context).pushNamed(
+                          Routes.category,
+                          arguments: CategoryScreenArgs(
+                            quizType: QuizTypes.quizZone,
+                          ),
+                        );
+                      },
+                      onCategoryTap: (category) {
+                        // Handle category tap
+                        Navigator.of(context).pushNamed(
+                          Routes.category,
+                          arguments: CategoryScreenArgs(
+                            quizType: QuizTypes.quizZone,
+                          ),
+                        );
+                      },
+                      onRandomQuizTap: () {
+                        if (_isGuest) {
+                          showLoginRequiredDialog(context);
+                          return;
+                        }
+                        context.read<QuizCategoryCubit>().reset();
+                        context.read<SubCategoryCubit>().reset();
+                        globalCtx.pushNamed(Routes.selfChallenge);
+                      },
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Daily Ads
+                    if (!_isGuest &&
+                        _sysConfigCubit.isAdsEnable &&
+                        _sysConfigCubit.isDailyAdsEnabled) ...[
+                      _buildDailyAds(),
+                    ],
+                    
+                    // Live Contest Section
+                    if (!_isGuest &&
+                        _sysConfigCubit.isContestEnabled) ...[
+                      _buildLiveContestSection(),
+                    ],
+                    
+                    const SizedBox(height: 100), // Bottom padding for nav bar
+                  ],
+                ),
+              ),
             ),
           ],
         );
       },
+    );
+  }
+
+  List<CategoryItem> _buildCategoryItems() {
+    // Return sample categories - these would typically come from your category cubit
+    return [
+      CategoryItem(
+        id: '1',
+        name: 'Space',
+        color: CategoryColors.space,
+        icon: Icons.rocket_launch_rounded,
+      ),
+      CategoryItem(
+        id: '2',
+        name: 'Sports',
+        color: CategoryColors.sports,
+        icon: Icons.sports_soccer_rounded,
+      ),
+      CategoryItem(
+        id: '3',
+        name: 'History',
+        color: CategoryColors.history,
+        icon: Icons.shield_rounded,
+      ),
+      CategoryItem(
+        id: '4',
+        name: 'Maths',
+        color: CategoryColors.maths,
+        icon: Icons.calculate_rounded,
+      ),
+    ];
+  }
+
+  Widget _buildPurpleHeader() {
+    void onTapNotification() {
+      if (_isGuest) {
+        globalCtx.pushNamed(Routes.login);
+      } else {
+        globalCtx.pushNamed(Routes.notification);
+      }
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: hzMargin, vertical: 8),
+      child: Row(
+        children: [
+          // User Avatar
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 2,
+              ),
+            ),
+            child: ClipOval(
+              child: _userProfileImg.isNotEmpty
+                  ? QImage(imageUrl: _userProfileImg)
+                  : Container(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+            ),
+          ),
+          
+          // App Name (centered)
+          Expanded(
+            child: Text(
+              kAppName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeights.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          
+          // Notification Bell
+          GestureDetector(
+            onTap: onTapNotification,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isGuest ? Icons.login_rounded : Icons.notifications_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
