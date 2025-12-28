@@ -46,6 +46,7 @@ class QuestionsContainer extends StatefulWidget {
     this.audioQuestionContainerKeys,
     this.level,
     this.topPadding,
+    this.showCoins = true,
   });
 
   final List<GlobalKey> guessTheWordQuestionContainerKeys;
@@ -69,6 +70,7 @@ class QuestionsContainer extends StatefulWidget {
   final AnswerMode answerMode;
   final AnimationController timerAnimationController;
   final bool? showGuessTheWordHint;
+  final bool showCoins; // Hide coins for Foundation School
 
   @override
   State<QuestionsContainer> createState() => _QuestionsContainerState();
@@ -169,6 +171,11 @@ class _QuestionsContainerState extends State<QuestionsContainer> {
   }
 
   Widget _buildCurrentCoins() {
+    // Hide coins for Foundation School quizzes
+    if (!widget.showCoins) {
+      return const SizedBox();
+    }
+    
     return BlocBuilder<UserDetailsCubit, UserDetailsState>(
       bloc: context.read<UserDetailsCubit>(),
       builder: (context, state) {

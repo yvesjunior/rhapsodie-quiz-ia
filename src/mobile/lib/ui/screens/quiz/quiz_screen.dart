@@ -45,6 +45,7 @@ class QuizScreen extends StatefulWidget {
     required this.isPremiumCategory,
     super.key,
     this.showRetryButton = true,
+    this.showCoins = true,
   });
 
   final QuizTypes quizType;
@@ -63,6 +64,7 @@ class QuizScreen extends StatefulWidget {
   // and showing retry button doesn't make any sense i guess.
   final bool showRetryButton;
   final bool isPremiumCategory;
+  final bool showCoins; // Hide coins display for Foundation School
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -100,6 +102,7 @@ class QuizScreen extends StatefulWidget {
               Comprehension.empty,
           showRetryButton: arguments['showRetryButton'] as bool? ?? true,
           isPremiumCategory: arguments['isPremiumCategory'] as bool? ?? false,
+          showCoins: arguments['showCoins'] as bool? ?? true,
         ),
       ),
     );
@@ -903,6 +906,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       guessTheWordQuestions: const [],
                       guessTheWordQuestionContainerKeys: const [],
                       level: widget.level,
+                      showCoins: widget.showCoins,
                     ),
                   ),
                   _buildLifeLines(),

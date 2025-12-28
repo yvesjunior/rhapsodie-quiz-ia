@@ -193,39 +193,40 @@ class _ClassCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 80,
-              height: 100,
-              decoration: BoxDecoration(
-                color: _cardColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 80,
+                decoration: BoxDecoration(
+                  color: _cardColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _classIcon,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      foundationClass.classNumber,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _classIcon,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    foundationClass.classNumber,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
+              Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -339,6 +340,7 @@ class _ClassCard extends StatelessWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

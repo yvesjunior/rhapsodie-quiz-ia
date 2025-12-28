@@ -35,29 +35,15 @@ class GameModeCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // "START" label at top
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Text(
-                'START',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeights.semiBold,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
             // Title
             Positioned(
-              top: 28,
+              top: 16,
               left: 12,
               right: 12,
               child: Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeights.bold,
                   color: Colors.white,
                   height: 1.2,

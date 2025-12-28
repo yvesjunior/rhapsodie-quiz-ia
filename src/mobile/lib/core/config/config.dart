@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 export 'colors.dart';
 
 /// === Config ===
-const appName = 'Elite Quiz';
+const appName = 'Rhapsody Quiz';
 const packageName = 'com.wrteam.flutterquiz';
 
 /// Add your panel url here

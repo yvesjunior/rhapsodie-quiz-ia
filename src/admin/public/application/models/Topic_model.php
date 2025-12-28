@@ -120,6 +120,30 @@ class Topic_model extends CI_Model
     }
 
     /**
+     * Check if a category belongs to Foundation School topic
+     * Foundation School quizzes don't award coins
+     */
+    public function is_foundation_school_category($category_id)
+    {
+        $topic = $this->get_topic_by_slug('foundation_school');
+        if (!$topic) {
+            return false;
+        }
+
+        // Check if category belongs to Foundation School
+        $category = $this->db
+            ->where('id', $category_id)
+            ->get('tbl_category')
+            ->row_array();
+
+        if (!$category) {
+            return false;
+        }
+
+        return $category['topic_id'] == $topic['id'];
+    }
+
+    /**
      * Add a new topic
      */
     public function add_topic($data)

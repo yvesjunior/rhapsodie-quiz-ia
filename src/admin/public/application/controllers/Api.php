@@ -5100,6 +5100,14 @@ class Api extends REST_Controller
 
                     $updateLevel = $currentLevel + 1;
                     $earnCoin = floor($earnCoin);
+                    
+                    // Foundation School quizzes don't award coins
+                    $this->load->model('Topic_model');
+                    $isFoundationSchool = $this->Topic_model->is_foundation_school_category($category);
+                    if ($isFoundationSchool) {
+                        $earnCoin = 0;
+                    }
+                    
                     if ($earnCoin && ($updateLevel > $nextUnlockLevel && $updateLevel != $nextUnlockLevel)) {
                         $this->set_quiz_level_data($user_id, 1, $updateLevel, $category, $subcategory);
                         $this->set_coins($user_id, $earnCoin);

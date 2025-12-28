@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
+import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
 import 'package:flutterquiz/core/core.dart';
+import 'package:flutterquiz/core/routes/routes.dart';
+import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/rhapsody/rhapsody.dart';
 import 'package:flutterquiz/ui/screens/home/widgets/explore_categories_section.dart';
+import 'package:flutterquiz/utils/extensions.dart';
 
 class RhapsodyScreen extends StatefulWidget {
   const RhapsodyScreen({super.key});
@@ -73,7 +78,7 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7B1FA2), // Rhapsody purple
+      backgroundColor: const Color(0xFF1565C0), // Primary blue
       body: BlocBuilder<RhapsodyCubit, RhapsodyState>(
         builder: (context, state) {
           if (state is RhapsodyLoading) {
@@ -137,6 +142,56 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
           return const SizedBox();
         },
       ),
+      bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: kBottomNavigationBarHeight + 26,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: const [
+          BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _navItem(context, Icons.home_rounded, 'Home', NavTabType.home),
+          _navItem(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItem(context, Icons.sports_esports_rounded, 'Play Zone', NavTabType.playZone),
+          _navItem(context, Icons.person_rounded, 'Profile', NavTabType.profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.6);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          // Pop back to dashboard and switch to the selected tab
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -188,18 +243,24 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
   Widget _buildYearTabs(List<RhapsodyYear> years) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white, // White outer bar
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
         controller: _tabController,
         isScrollable: years.length > 3,
-        indicatorColor: Colors.white,
-        indicatorWeight: 3,
+        indicator: BoxDecoration(
+          color: const Color(0xFF1565C0), // Primary blue for selected
+          borderRadius: BorderRadius.circular(8), // Less rounded, matching outer bar
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: Colors.white60,
+        unselectedLabelColor: const Color(0xFF1565C0),
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
         tabs: years.map((year) => Tab(text: year.name)).toList(),
       ),
     );
@@ -276,11 +337,13 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
   }
 
   void _onMonthTap(RhapsodyMonth month) {
+    // Create a new cubit for the month screen to avoid state conflicts
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: context.read<RhapsodyCubit>()..loadDays(month.year, month.month, month.name),
+        builder: (_) => BlocProvider(
+          create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+            ..loadDays(month.year, month.month, month.name),
           child: RhapsodyMonthScreen(
             year: month.year,
             month: month.month,
@@ -369,7 +432,7 @@ class RhapsodyMonthScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7B1FA2),
+      backgroundColor: const Color(0xFF1565C0), // Primary blue
       body: SafeArea(
         child: Column(
           children: [
@@ -402,6 +465,55 @@ class RhapsodyMonthScreen extends StatelessWidget {
                   },
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: kBottomNavigationBarHeight + 26,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: const [
+          BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _navItem(context, Icons.home_rounded, 'Home', NavTabType.home),
+          _navItem(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItem(context, Icons.sports_esports_rounded, 'Play Zone', NavTabType.playZone),
+          _navItem(context, Icons.person_rounded, 'Profile', NavTabType.profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.6);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -496,10 +608,10 @@ class _DayCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF7B1FA2).withOpacity(0.08),
+          color: const Color(0xFF1565C0).withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: const Color(0xFF7B1FA2).withOpacity(0.15),
+            color: const Color(0xFF1565C0).withOpacity(0.15),
           ),
         ),
         child: Column(
@@ -509,7 +621,7 @@ class _DayCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: const BoxDecoration(
-                color: Color(0xFF7B1FA2),
+                color: Color(0xFF1565C0),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(13),
                   bottomRight: Radius.circular(10),
@@ -582,59 +694,61 @@ class _RhapsodyDayScreen extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context, RhapsodyDayDetail detail) {
-    return CustomScrollView(
-      slivers: [
-        // App Bar
-        SliverAppBar(
-          expandedHeight: 180,
-          pinned: true,
-          backgroundColor: const Color(0xFF7B1FA2),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+    return Column(
+      children: [
+        // Fixed Header
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF42A5F5), Color(0xFF1565C0)],
+            ),
           ),
-          flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
-                ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(56, 16, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Back button row
+                  Row(
                     children: [
-                      Text(
-                        '${_getMonthName(detail.month)} ${detail.day}, ${detail.year}',
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        detail.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      const Spacer(),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${_getMonthName(detail.month)} ${detail.day}, ${detail.year}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    detail.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ),
         ),
 
-        // Content
-        SliverToBoxAdapter(
-          child: Padding(
+        // Scrollable Content
+        Expanded(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,10 +757,10 @@ class _RhapsodyDayScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B1FA2).withOpacity(0.1),
+                    color: const Color(0xFF1565C0).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF7B1FA2).withOpacity(0.2),
+                      color: const Color(0xFF1565C0).withOpacity(0.2),
                     ),
                   ),
                   child: Column(
@@ -655,13 +769,13 @@ class _RhapsodyDayScreen extends StatelessWidget {
                       Row(
                         children: [
                           const Icon(Icons.menu_book, 
-                            color: Color(0xFF7B1FA2), size: 20),
+                            color: Color(0xFF1565C0), size: 20),
                           const SizedBox(width: 8),
                           Text(
                             detail.scriptureRef,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF7B1FA2),
+                              color: Color(0xFF1565C0),
                             ),
                           ),
                         ],
@@ -758,22 +872,70 @@ class _RhapsodyDayScreen extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // Start Quiz Button
+                // Test Your Knowledge Section (like Foundation School)
                 if (detail.questionsCount > 0)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _startQuiz(context, detail),
-                      icon: const Icon(Icons.quiz),
-                      label: Text('START QUIZ (${detail.questionsCount} Questions)'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7B1FA2),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1565C0).withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.quiz_rounded,
+                          color: Colors.white,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Test Your Knowledge',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${detail.questionsCount} questions available',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => _startQuiz(context, detail),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF1565C0),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Start Quiz',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -795,9 +957,17 @@ class _RhapsodyDayScreen extends StatelessWidget {
   }
 
   void _startQuiz(BuildContext context, RhapsodyDayDetail detail) {
-    // TODO: Navigate to quiz screen with category ID = detail.id
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Starting quiz for ${detail.title}...')),
+    Navigator.of(context).pushNamed(
+      Routes.quiz,
+      arguments: {
+        'numberOfPlayer': 1,
+        'quizType': QuizTypes.quizZone,
+        'categoryId': detail.id,
+        'subcategoryId': '',
+        'level': '0',
+        'isPlayed': false,
+        'isPremiumCategory': false,
+      },
     );
   }
 }

@@ -477,7 +477,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isSelfChallengeQuizEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.trWithFallback('soloModeLbl', 'Solo\nMode'),
+                title: context.trWithFallback('soloModeLbl', 'Solo'),
                 backgroundColor: GameModeColors.soloMode,
                 imagePath: 'assets/images/solo_mode.png',
                 onTap: () => _onPressedSelfExam('selfChallenge'),
@@ -490,7 +490,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isGroupBattleEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.trWithFallback('multiplayerModeLbl', 'Multiplayer\nMode'),
+                title: context.trWithFallback('multiplayerModeLbl', 'Multiplayer'),
                 backgroundColor: GameModeColors.multiplayerMode,
                 imagePath: 'assets/images/multiplayer_mode.png',
                 onTap: () => _onPressedBattle('groupPlay'),
@@ -499,11 +499,11 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isGroupBattleEnabled)
             const SizedBox(width: 12),
           
-          // 1 Vs. 1 Mode (Battle Quiz)
+          // 1 Vs 1 Mode (Battle Quiz)
           if (_sysConfigCubit.isOneVsOneBattleEnabled || _sysConfigCubit.isRandomBattleEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.trWithFallback('oneVsOneModeLbl', '1 Vs. 1\nMode'),
+                title: context.trWithFallback('oneVsOneModeLbl', '1 Vs 1'),
                 backgroundColor: GameModeColors.oneVsOneMode,
                 imagePath: 'assets/images/one_vs_one_mode.png',
                 onTap: () => _onPressedBattle('battleQuiz'),
@@ -1028,178 +1028,182 @@ class HomeScreenState extends State<HomeScreen>
         }
       },
       builder: (context, state) {
-        return Stack(
-          children: [
-            // Blue header background - extended to be covered by game mode cards
-            Container(
-              height: context.height * 0.33,
-              decoration: const BoxDecoration(
-                color: _headerColor,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
+        return RefreshIndicator(
+          key: refreshKey,
+          color: Colors.white,
+          backgroundColor: _headerColor,
+          onRefresh: () async {
+            _currLangId = UiUtils.getCurrentQuizLanguageId(context);
+
+            if (!_isGuest) {
+              fetchUserDetails();
+
+              await context.read<ContestCubit>().getContest(
+                languageId: _currLangId,
+              );
+            }
+            setState(() {});
+          },
+          child: ListView(
+            controller: _scrollController,
+            padding: EdgeInsets.zero,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-            
-            // Content
-            SafeArea(
-              child: RefreshIndicator(
-                key: refreshKey,
-                color: Colors.white,
-                backgroundColor: _headerColor,
-                onRefresh: () async {
-                  _currLangId = UiUtils.getCurrentQuizLanguageId(context);
-
-                  if (!_isGuest) {
-                    fetchUserDetails();
-
-                    await context.read<ContestCubit>().getContest(
-                      languageId: _currLangId,
-                    );
-                  }
-                  setState(() {});
-                },
-                child: ListView(
-                  controller: _scrollController,
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // Header with avatar, app name, notification
-                    _buildPurpleHeader(),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Stats bar (Rank & Reward Points) - on the header
-                    UserAchievements(
-                      userRank: _userRank,
-                      userCoins: _userCoins,
-                      userScore: _userScore,
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Game Mode Cards (Solo, Multiplayer, 1v1) - overlapping the header
-                    _buildGameModes(),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Search Bar
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: hzMargin),
-                      child: CategorySearchBar(
-                        onTap: () {
-                          // Navigate to category search/list
-                          Navigator.of(context).pushNamed(
-                            Routes.category,
-                            arguments: CategoryScreenArgs(
-                              quizType: QuizTypes.quizZone,
-                            ),
-                          );
-                        },
+            children: [
+              // Blue header section
+              Container(
+                decoration: const BoxDecoration(
+                  color: _headerColor,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      // Header with avatar, app name, notification
+                      _buildPurpleHeader(),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Stats bar (Rank & Reward Points)
+                      UserAchievements(
+                        userRank: _userRank,
+                        userCoins: _userCoins,
+                        userScore: _userScore,
                       ),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Rhapsody Section
-                    RhapsodySection(
-                      months: _buildRhapsodyMonths(),
-                      onViewAll: () {
-                        // Navigate to Rhapsody screen with year tabs
-                        Navigator.pushNamed(context, Routes.rhapsody);
-                      },
-                      onMonthTap: (month) {
-                        // Navigate directly to the month screen
-                        Navigator.pushNamed(
-                          context,
-                          Routes.rhapsodyMonth,
-                          arguments: {
-                            'year': month.year,
-                            'month': month.month,
-                            'monthName': month.name,
-                          },
-                        );
-                      },
-                      onCurrentMonthTap: () {
-                        if (_isGuest) {
-                          showLoginRequiredDialog(context);
-                          return;
-                        }
-                        // Navigate to current month's devotional
-                        final now = DateTime.now();
-                        final monthNames = [
-                          'January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'
-                        ];
-                        Navigator.pushNamed(
-                          context,
-                          Routes.rhapsodyMonth,
-                          arguments: {
-                            'year': now.year,
-                            'month': now.month,
-                            'monthName': monthNames[now.month - 1],
-                          },
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Starting current month quiz...')),
-                        );
-                      },
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Explore Categories Section
-                    ExploreCategoriesSection(
-                      categories: _buildCategoryItems(),
-                      onViewAll: () {
-                        Navigator.of(context).pushNamed(
-                          Routes.category,
-                          arguments: CategoryScreenArgs(
-                            quizType: QuizTypes.quizZone,
-                          ),
-                        );
-                      },
-                      onCategoryTap: (category) {
-                        // Handle category tap
-                        Navigator.of(context).pushNamed(
-                          Routes.category,
-                          arguments: CategoryScreenArgs(
-                            quizType: QuizTypes.quizZone,
-                          ),
-                        );
-                      },
-                      onRandomQuizTap: () {
-                        if (_isGuest) {
-                          showLoginRequiredDialog(context);
-                          return;
-                        }
-                        context.read<QuizCategoryCubit>().reset();
-                        context.read<SubCategoryCubit>().reset();
-                        globalCtx.pushNamed(Routes.selfChallenge);
-                      },
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Daily Ads
-                    if (!_isGuest &&
-                        _sysConfigCubit.isAdsEnable &&
-                        _sysConfigCubit.isDailyAdsEnabled) ...[
-                      _buildDailyAds(),
+                      
+                      // Extra space for game modes to overlap into
+                      const SizedBox(height: 100),
                     ],
-                    
-                    // Live Contest Section
-                    if (!_isGuest &&
-                        _sysConfigCubit.isContestEnabled) ...[
-                      _buildLiveContestSection(),
-                    ],
-                    
-                    const SizedBox(height: 100), // Bottom padding for nav bar
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              
+              // Game Mode Cards - pulled up with negative margin to overlap header
+              Transform.translate(
+                offset: const Offset(0, -80),
+                child: _buildGameModes(),
+              ),
+              
+              // Search Bar - moved up to reduce gap (40% less)
+              Transform.translate(
+                offset: const Offset(0, -50),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: hzMargin),
+                  child: CategorySearchBar(
+                    onTap: () {
+                      // Navigate to category search/list
+                      Navigator.of(context).pushNamed(
+                        Routes.category,
+                        arguments: CategoryScreenArgs(
+                          quizType: QuizTypes.quizZone,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              
+              // Rhapsody Section
+              RhapsodySection(
+                months: _buildRhapsodyMonths(),
+                onViewAll: () {
+                  // Navigate to Rhapsody screen with year tabs
+                  Navigator.pushNamed(context, Routes.rhapsody);
+                },
+                onMonthTap: (month) {
+                  // Navigate directly to the month screen
+                  Navigator.pushNamed(
+                    context,
+                    Routes.rhapsodyMonth,
+                    arguments: {
+                      'year': month.year,
+                      'month': month.month,
+                      'monthName': month.name,
+                    },
+                  );
+                },
+                onCurrentMonthTap: () {
+                  if (_isGuest) {
+                    showLoginRequiredDialog(context);
+                    return;
+                  }
+                  // Navigate to current month's devotional
+                  final now = DateTime.now();
+                  final monthNames = [
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ];
+                  Navigator.pushNamed(
+                    context,
+                    Routes.rhapsodyMonth,
+                    arguments: {
+                      'year': now.year,
+                      'month': now.month,
+                      'monthName': monthNames[now.month - 1],
+                    },
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Starting current month quiz...')),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Explore Categories Section
+              ExploreCategoriesSection(
+                categories: _buildCategoryItems(),
+                onViewAll: () {
+                  Navigator.of(context).pushNamed(
+                    Routes.category,
+                    arguments: CategoryScreenArgs(
+                      quizType: QuizTypes.quizZone,
+                    ),
+                  );
+                },
+                onCategoryTap: (category) {
+                  // Handle category tap
+                  Navigator.of(context).pushNamed(
+                    Routes.category,
+                    arguments: CategoryScreenArgs(
+                      quizType: QuizTypes.quizZone,
+                    ),
+                  );
+                },
+                onRandomQuizTap: () {
+                  if (_isGuest) {
+                    showLoginRequiredDialog(context);
+                    return;
+                  }
+                  context.read<QuizCategoryCubit>().reset();
+                  context.read<SubCategoryCubit>().reset();
+                  globalCtx.pushNamed(Routes.selfChallenge);
+                },
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Daily Ads
+              if (!_isGuest &&
+                  _sysConfigCubit.isAdsEnable &&
+                  _sysConfigCubit.isDailyAdsEnabled) ...[
+                _buildDailyAds(),
+              ],
+              
+              // Live Contest Section
+              if (!_isGuest &&
+                  _sysConfigCubit.isContestEnabled) ...[
+                _buildLiveContestSection(),
+              ],
+              
+              const SizedBox(height: 100), // Bottom padding for nav bar
+            ],
+          ),
         );
       },
     );
@@ -1288,28 +1292,40 @@ class HomeScreenState extends State<HomeScreen>
       padding: EdgeInsets.symmetric(horizontal: hzMargin, vertical: 8),
       child: Row(
         children: [
-          // User Avatar
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 2,
+          // User Avatar - Circle (clickable -> Edit Profile)
+          GestureDetector(
+            onTap: () {
+              if (_isGuest) {
+                showLoginRequiredDialog(context);
+              } else {
+                globalCtx.pushNamed(
+                  Routes.selectProfile,
+                  arguments: const CreateOrEditProfileScreenArgs(isNewUser: false),
+                );
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 2,
+                ),
               ),
-            ),
-            child: ClipOval(
-              child: _userProfileImg.isNotEmpty
-                  ? QImage(imageUrl: _userProfileImg)
-                  : Container(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.white,
-                        size: 24,
+              child: ClipOval(
+                child: _userProfileImg.isNotEmpty
+                    ? QImage(imageUrl: _userProfileImg)
+                    : Container(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
           

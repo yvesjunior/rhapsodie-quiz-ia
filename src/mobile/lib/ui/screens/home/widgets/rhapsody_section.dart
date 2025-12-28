@@ -55,7 +55,7 @@ class RhapsodySection extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeights.semiBold,
-                    color: RhapsodyColors.primary.withValues(alpha: 0.7),
+                    color: context.primaryTextColor.withValues(alpha: 0.4),
                     letterSpacing: 0.5,
                   ),
                 ),
