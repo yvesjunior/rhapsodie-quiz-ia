@@ -3270,6 +3270,46 @@ class Api extends REST_Controller
                 $this->db->where('user_id1', $user_id)->delete('tbl_battle_statistics');
                 $this->db->where('user_id2', $user_id)->delete('tbl_battle_statistics');
                 $this->db->query("UPDATE tbl_notifications SET user_id = TRIM(BOTH ',' FROM REPLACE(CONCAT(',', user_id, ','), '," . $user_id . ",', ',')) WHERE type = 'selected' AND FIND_IN_SET('$user_id', user_id) > 0");
+
+                // Delete groups owned by this user and their related data
+                if ($this->db->table_exists('tbl_group')) {
+                    // Get all groups owned by this user
+                    $owned_groups = $this->db->where('owner_id', $user_id)->get('tbl_group')->result_array();
+                    foreach ($owned_groups as $group) {
+                        // Delete group battle entries for battles in this group
+                        if ($this->db->table_exists('tbl_group_battle')) {
+                            $battles = $this->db->where('group_id', $group['id'])->get('tbl_group_battle')->result_array();
+                            foreach ($battles as $battle) {
+                                if ($this->db->table_exists('tbl_group_battle_entry')) {
+                                    $this->db->where('battle_id', $battle['id'])->delete('tbl_group_battle_entry');
+                                }
+                            }
+                            $this->db->where('group_id', $group['id'])->delete('tbl_group_battle');
+                        }
+                        // Delete group members
+                        if ($this->db->table_exists('tbl_group_member')) {
+                            $this->db->where('group_id', $group['id'])->delete('tbl_group_member');
+                        }
+                    }
+                    // Delete the groups
+                    $this->db->where('owner_id', $user_id)->delete('tbl_group');
+                }
+
+                // Also remove user from any groups they are a member of (not owner)
+                if ($this->db->table_exists('tbl_group_member')) {
+                    $this->db->where('user_id', $user_id)->delete('tbl_group_member');
+                }
+
+                // Delete 1v1 battle entries
+                if ($this->db->table_exists('tbl_battle_1v1')) {
+                    $this->db->where('challenger_id', $user_id)->or_where('opponent_id', $user_id)->delete('tbl_battle_1v1');
+                }
+
+                // Delete user progress
+                if ($this->db->table_exists('tbl_user_progress')) {
+                    $this->db->where('user_id', $user_id)->delete('tbl_user_progress');
+                }
+
                 $this->db->where('id', $user_id)->delete('tbl_users');
 
                 $response['error'] = false;
@@ -6698,5 +6738,1468 @@ class Api extends REST_Controller
         $my_rank_sql = $this->db->get();
         $my_rank = $my_rank_sql->row_array();
         return  $my_rank;
+    }
+
+    // ============================================
+    // TOPICS API ENDPOINTS
+    // Added: 2025-12-27
+    // ============================================
+
+    /**
+     * Get all available topics (Rhapsody, Foundation School)
+     * POST /Api/get_topics
+     */
+    public function get_topics_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+            $topics = $this->Topic_model->get_all_topics();
+
+            if (!empty($topics)) {
+                // Add image URLs
+                for ($i = 0; $i < count($topics); $i++) {
+                    $topics[$i]['image'] = $topics[$i]['image'] 
+                        ? base_url() . 'images/topics/' . $topics[$i]['image'] 
+                        : '';
+                }
+                $response['error'] = false;
+                $response['data'] = $topics;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No topics found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get topic details by ID or slug
+     * POST /Api/get_topic
+     * @param id or slug
+     */
+    public function get_topic_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+            $topic = null;
+
+            if ($this->post('id')) {
+                $topic = $this->Topic_model->get_topic_by_id($this->post('id'));
+            } else if ($this->post('slug')) {
+                $topic = $this->Topic_model->get_topic_by_slug($this->post('slug'));
+            }
+
+            if ($topic) {
+                $topic['image'] = $topic['image'] 
+                    ? base_url() . 'images/topics/' . $topic['image'] 
+                    : '';
+                $response['error'] = false;
+                $response['data'] = $topic;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Topic not found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get categories for a specific topic
+     * POST /Api/get_topic_categories
+     * @param topic_id or topic_slug
+     * @param parent_id (optional) - for hierarchical navigation
+     * @param age_group (optional) - kids, teens, adults, all
+     */
+    public function get_topic_categories_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+            
+            $topic_id = null;
+            if ($this->post('topic_id')) {
+                $topic_id = $this->post('topic_id');
+            } else if ($this->post('topic_slug')) {
+                $topic = $this->Topic_model->get_topic_by_slug($this->post('topic_slug'));
+                $topic_id = $topic ? $topic['id'] : null;
+            }
+
+            if (!$topic_id) {
+                $response['error'] = true;
+                $response['message'] = 'Topic ID or slug required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $parent_id = $this->post('parent_id') ?: null;
+            $age_group = $this->post('age_group') ?: 'all';
+
+            $categories = $this->Topic_model->get_topic_categories($topic_id, $parent_id, $age_group);
+
+            if (!empty($categories)) {
+                for ($i = 0; $i < count($categories); $i++) {
+                    $categories[$i]['image'] = $categories[$i]['image'] 
+                        ? base_url() . CATEGORY_IMG_PATH . $categories[$i]['image'] 
+                        : '';
+                    
+                    // Count questions in this category
+                    $que_count = $this->db
+                        ->where('category', $categories[$i]['id'])
+                        ->count_all_results('tbl_question');
+                    $categories[$i]['question_count'] = $que_count;
+
+                    // Check if has children
+                    $child_count = $this->db
+                        ->where('parent_id', $categories[$i]['id'])
+                        ->count_all_results('tbl_category');
+                    $categories[$i]['has_children'] = $child_count > 0 ? '1' : '0';
+                }
+                $response['error'] = false;
+                $response['data'] = $categories;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No categories found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Rhapsody content for a specific date
+     * POST /Api/get_rhapsody_daily
+     * @param year (required)
+     * @param month (optional)
+     * @param day (optional)
+     * @param age_group (optional) - kids, teens, adults
+     */
+    public function get_rhapsody_daily_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+
+            if (!$this->post('year')) {
+                $response['error'] = true;
+                $response['message'] = 'Year is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $year = $this->post('year');
+            $month = $this->post('month') ?: null;
+            $day = $this->post('day') ?: null;
+
+            $categories = $this->Topic_model->get_rhapsody_by_date($year, $month, $day);
+
+            // Filter by age group if specified
+            $age_group = $this->post('age_group');
+            if ($age_group && $age_group !== 'all') {
+                $categories = array_filter($categories, function($cat) use ($age_group) {
+                    return $cat['age_group'] === $age_group || $cat['age_group'] === 'all';
+                });
+                $categories = array_values($categories);
+            }
+
+            if (!empty($categories)) {
+                for ($i = 0; $i < count($categories); $i++) {
+                    $categories[$i]['image'] = $categories[$i]['image'] 
+                        ? base_url() . CATEGORY_IMG_PATH . $categories[$i]['image'] 
+                        : '';
+                    
+                    // Count questions
+                    $que_count = $this->db
+                        ->where('category', $categories[$i]['id'])
+                        ->count_all_results('tbl_question');
+                    $categories[$i]['question_count'] = $que_count;
+                }
+                $response['error'] = false;
+                $response['data'] = $categories;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No content found for this date';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get all Rhapsody years
+     * POST /Api/get_rhapsody_years
+     */
+    public function get_rhapsody_years_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+            $years = $this->Topic_model->get_rhapsody_years();
+
+            $response['error'] = false;
+            $response['data'] = $years;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Rhapsody months for a year
+     * POST /Api/get_rhapsody_months
+     * @param year (required)
+     */
+    public function get_rhapsody_months_post()
+    {
+        try {
+            if (!$this->post('year')) {
+                $response['error'] = true;
+                $response['message'] = 'Year is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            $year = $this->post('year');
+            $months = $this->Topic_model->get_rhapsody_months($year);
+
+            $response['error'] = false;
+            $response['data'] = $months;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Rhapsody days for a month
+     * POST /Api/get_rhapsody_days
+     * @param year (required)
+     * @param month (required)
+     */
+    public function get_rhapsody_days_post()
+    {
+        try {
+            if (!$this->post('year') || !$this->post('month')) {
+                $response['error'] = true;
+                $response['message'] = 'Year and month are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            $year = $this->post('year');
+            $month = $this->post('month');
+            $days = $this->Topic_model->get_rhapsody_days($year, $month);
+
+            $response['error'] = false;
+            $response['data'] = $days;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Rhapsody day detail (full content)
+     * POST /Api/get_rhapsody_day_detail
+     * @param year (required)
+     * @param month (required)
+     * @param day (required)
+     */
+    public function get_rhapsody_day_detail_post()
+    {
+        try {
+            if (!$this->post('year') || !$this->post('month') || !$this->post('day')) {
+                $response['error'] = true;
+                $response['message'] = 'Year, month, and day are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            $year = $this->post('year');
+            $month = $this->post('month');
+            $day = $this->post('day');
+            
+            $detail = $this->Topic_model->get_rhapsody_day_detail($year, $month, $day);
+
+            if ($detail) {
+                $response['error'] = false;
+                $response['data'] = $detail;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No content found for this date';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Foundation School modules
+     * POST /Api/get_foundation_school_modules
+     */
+    public function get_foundation_school_modules_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            $user_id = !$is_user['error'] ? $is_user['user_id'] : 0;
+
+            $this->load->model('Topic_model');
+            $modules = $this->Topic_model->get_foundation_school_modules();
+
+            if (!empty($modules)) {
+                for ($i = 0; $i < count($modules); $i++) {
+                    $modules[$i]['image'] = $modules[$i]['image'] 
+                        ? base_url() . CATEGORY_IMG_PATH . $modules[$i]['image'] 
+                        : '';
+                    
+                    // Count questions
+                    $que_count = $this->db
+                        ->where('category', $modules[$i]['id'])
+                        ->count_all_results('tbl_question');
+                    $modules[$i]['question_count'] = $que_count;
+
+                    // Get user progress if logged in
+                    if ($user_id) {
+                        $progress = $this->db
+                            ->where('user_id', $user_id)
+                            ->where('category_id', $modules[$i]['id'])
+                            ->get('tbl_user_progress')
+                            ->row_array();
+                        
+                        $modules[$i]['user_progress'] = $progress ? [
+                            'status' => $progress['status'],
+                            'progress_percent' => $progress['progress_percent'],
+                            'score' => $progress['score'],
+                            'completed_at' => $progress['completed_at']
+                        ] : null;
+                    }
+                }
+                $response['error'] = false;
+                $response['data'] = $modules;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No modules found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Foundation School classes
+     * POST /Api/get_foundation_classes
+     */
+    public function get_foundation_classes_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            $user_id = !$is_user['error'] ? $is_user['user_id'] : 0;
+
+            $this->load->model('Topic_model');
+            $classes = $this->Topic_model->get_foundation_classes();
+
+            if (!empty($classes)) {
+                for ($i = 0; $i < count($classes); $i++) {
+                    // Get user progress if logged in
+                    if ($user_id) {
+                        $progress = $this->db
+                            ->where('user_id', $user_id)
+                            ->where('category_id', $classes[$i]['id'])
+                            ->get('tbl_user_progress')
+                            ->row_array();
+                        
+                        $classes[$i]['user_progress'] = $progress ? [
+                            'status' => $progress['status'],
+                            'progress_percent' => $progress['progress_percent'],
+                            'score' => $progress['score'],
+                            'completed_at' => $progress['completed_at']
+                        ] : null;
+                    }
+                }
+                $response['error'] = false;
+                $response['data'] = $classes;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'No classes found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get Foundation School class detail
+     * POST /Api/get_foundation_class_detail
+     * @param class_id (required)
+     */
+    public function get_foundation_class_detail_post()
+    {
+        try {
+            if (!$this->post('class_id')) {
+                $response['error'] = true;
+                $response['message'] = 'Class ID is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            $class_id = $this->post('class_id');
+            
+            $detail = $this->Topic_model->get_foundation_class_detail($class_id);
+
+            if ($detail) {
+                // Get user progress if logged in
+                $is_user = $this->verify_token();
+                if (!$is_user['error']) {
+                    $user_id = $is_user['user_id'];
+                    $progress = $this->db
+                        ->where('user_id', $user_id)
+                        ->where('category_id', $class_id)
+                        ->get('tbl_user_progress')
+                        ->row_array();
+                    
+                    $detail['user_progress'] = $progress ? [
+                        'status' => $progress['status'],
+                        'progress_percent' => $progress['progress_percent'],
+                        'score' => $progress['score'],
+                        'completed_at' => $progress['completed_at']
+                    ] : null;
+                }
+
+                $response['error'] = false;
+                $response['data'] = $detail;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Class not found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get latest Rhapsody months for home screen
+     * POST /Api/get_latest_rhapsody_months
+     */
+    public function get_latest_rhapsody_months_post()
+    {
+        try {
+            $this->load->model('Topic_model');
+            $limit = $this->post('limit') ? intval($this->post('limit')) : 4;
+            
+            $months = $this->Topic_model->get_latest_rhapsody_months($limit);
+
+            $response['error'] = false;
+            $response['data'] = $months;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get user progress for a topic/category
+     * POST /Api/get_user_progress
+     * @param topic_id or category_id
+     */
+    public function get_user_progress_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            $this->db->where('user_id', $user_id);
+
+            if ($this->post('topic_id')) {
+                $this->db->where('topic_id', $this->post('topic_id'));
+            }
+            if ($this->post('category_id')) {
+                $this->db->where('category_id', $this->post('category_id'));
+            }
+
+            $progress = $this->db->get('tbl_user_progress')->result_array();
+
+            $response['error'] = false;
+            $response['data'] = $progress;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Update user progress
+     * POST /Api/update_user_progress
+     */
+    public function update_user_progress_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('topic_id') || !$this->post('category_id')) {
+                $response['error'] = true;
+                $response['message'] = 'topic_id and category_id are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $topic_id = $this->post('topic_id');
+            $category_id = $this->post('category_id');
+            $quiz_date = $this->post('quiz_date') ?: null;
+
+            // Check if progress exists
+            $this->db->where('user_id', $user_id);
+            $this->db->where('category_id', $category_id);
+            if ($quiz_date) {
+                $this->db->where('quiz_date', $quiz_date);
+            } else {
+                $this->db->where('quiz_date IS NULL', null, false);
+            }
+            $existing = $this->db->get('tbl_user_progress')->row_array();
+
+            $data = [
+                'status' => $this->post('status') ?: 'in_progress',
+                'progress_percent' => $this->post('progress_percent') ?: 0,
+                'questions_total' => $this->post('questions_total') ?: 0,
+                'questions_answered' => $this->post('questions_answered') ?: 0,
+                'questions_correct' => $this->post('questions_correct') ?: 0,
+                'score' => $this->post('score') ?: 0,
+                'last_activity_at' => date('Y-m-d H:i:s')
+            ];
+
+            if ($this->post('status') === 'completed' && !isset($existing['completed_at'])) {
+                $data['completed_at'] = date('Y-m-d H:i:s');
+            }
+
+            if ($existing) {
+                // Update
+                $this->db->where('id', $existing['id']);
+                $this->db->update('tbl_user_progress', $data);
+                $response['action'] = 'updated';
+            } else {
+                // Insert
+                $data['user_id'] = $user_id;
+                $data['topic_id'] = $topic_id;
+                $data['category_id'] = $category_id;
+                $data['quiz_date'] = $quiz_date;
+                $data['started_at'] = date('Y-m-d H:i:s');
+                $this->db->insert('tbl_user_progress', $data);
+                $response['action'] = 'created';
+            }
+
+            $response['error'] = false;
+            $response['message'] = 'Progress updated successfully';
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    // ============================================
+    // GROUP API ENDPOINTS
+    // Added: 2025-12-27
+    // ============================================
+
+    /**
+     * Create a new group
+     * POST /Api/create_group
+     */
+    public function create_group_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('name')) {
+                $response['error'] = true;
+                $response['message'] = 'Group name is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            
+            $group_id = $this->Group_model->create_group(
+                $user_id,
+                $this->post('name'),
+                $this->post('description'),
+                $this->post('image'),
+                $this->post('is_public') ?: 0,
+                $this->post('max_members') ?: 50
+            );
+
+            $group = $this->Group_model->get_group($group_id);
+            
+            $response['error'] = false;
+            $response['message'] = 'Group created successfully';
+            $response['data'] = $group;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get user's groups
+     * POST /Api/get_my_groups
+     */
+    public function get_my_groups_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            $this->load->model('Group_model');
+            $groups = $this->Group_model->get_user_groups($user_id);
+
+            $response['error'] = false;
+            $response['data'] = $groups;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get group details
+     * POST /Api/get_group
+     */
+    public function get_group_post()
+    {
+        try {
+            $this->load->model('Group_model');
+            $group = null;
+
+            if ($this->post('group_id')) {
+                $group = $this->Group_model->get_group($this->post('group_id'));
+            } else if ($this->post('invite_code')) {
+                $group = $this->Group_model->get_group_by_code($this->post('invite_code'));
+            }
+
+            if ($group) {
+                $group['members'] = $this->Group_model->get_members($group['id']);
+                
+                // Add user's role if authenticated
+                $is_user = $this->verify_token();
+                if (!$is_user['error']) {
+                    $group['role'] = $this->Group_model->get_user_role($group['id'], $is_user['user_id']);
+                    $group['is_member'] = $group['role'] !== null;
+                } else {
+                    $group['role'] = null;
+                    $group['is_member'] = false;
+                }
+                
+                $response['error'] = false;
+                $response['data'] = $group;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Group not found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Join a group by invite code
+     * POST /Api/join_group
+     */
+    public function join_group_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('invite_code')) {
+                $response['error'] = true;
+                $response['message'] = 'Invite code is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            $group = $this->Group_model->get_group_by_code($this->post('invite_code'));
+
+            if (!$group) {
+                $response['error'] = true;
+                $response['message'] = 'Invalid invite code';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            if ($group['member_count'] >= $group['max_members']) {
+                $response['error'] = true;
+                $response['message'] = 'Group is full';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $joined = $this->Group_model->add_member($group['id'], $user_id);
+
+            if ($joined) {
+                $response['error'] = false;
+                $response['message'] = 'Joined group successfully';
+                $response['data'] = $this->Group_model->get_group($group['id']);
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Already a member of this group';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Leave a group
+     * POST /Api/leave_group
+     */
+    public function leave_group_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('group_id')) {
+                $response['error'] = true;
+                $response['message'] = 'Group ID is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            $left = $this->Group_model->leave_group($this->post('group_id'), $user_id);
+
+            if ($left) {
+                $response['error'] = false;
+                $response['message'] = 'Left group successfully';
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Owner cannot leave the group. Delete the group instead.';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Delete a group (owner only)
+     * POST /Api/delete_group
+     */
+    public function delete_group_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('group_id')) {
+                $response['error'] = true;
+                $response['message'] = 'Group ID is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            $group = $this->Group_model->get_group($this->post('group_id'));
+
+            if (!$group) {
+                $response['error'] = true;
+                $response['message'] = 'Group not found';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Only owner can delete the group
+            if ($group['owner_id'] != $user_id) {
+                $response['error'] = true;
+                $response['message'] = 'Only the group owner can delete this group';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Delete the group and all related data
+            $this->Group_model->delete_group_cascade($this->post('group_id'));
+
+            $response['error'] = false;
+            $response['message'] = 'Group deleted successfully';
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Search public groups
+     * POST /Api/search_groups
+     */
+    public function search_groups_post()
+    {
+        try {
+            if (!$this->post('query')) {
+                $response['error'] = true;
+                $response['message'] = 'Search query is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            $groups = $this->Group_model->search_groups($this->post('query'));
+
+            $response['error'] = false;
+            $response['data'] = $groups;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get public groups for discovery
+     * Shows all public groups that user is not already a member of
+     */
+    public function get_public_groups_post()
+    {
+        try {
+            $user_id = null;
+            
+            // Optional: exclude groups user is already in
+            $is_user = $this->verify_token();
+            if (!$is_user['error']) {
+                $user_id = $is_user['user_id'];
+            }
+
+            $limit = $this->post('limit') ? intval($this->post('limit')) : 50;
+            $offset = $this->post('offset') ? intval($this->post('offset')) : 0;
+
+            $this->load->model('Group_model');
+            $groups = $this->Group_model->get_public_groups($user_id, $limit, $offset);
+
+            $response['error'] = false;
+            $response['data'] = $groups;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Join a public group directly (no invite code needed)
+     */
+    public function join_public_group_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('group_id')) {
+                $response['error'] = true;
+                $response['message'] = 'Group ID is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Group_model');
+            $result = $this->Group_model->join_public_group($this->post('group_id'), $user_id);
+
+            if ($result['success']) {
+                $group = $result['group'];
+                $group['members'] = $this->Group_model->get_members($group['id']);
+                $group['role'] = 'member';
+                
+                $response['error'] = false;
+                $response['message'] = 'Successfully joined the group';
+                $response['data'] = $group;
+            } else {
+                $response['error'] = true;
+                $response['message'] = $result['message'];
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    // ============================================
+    // 1v1 BATTLE API ENDPOINTS
+    // ============================================
+
+    /**
+     * Create a 1v1 battle
+     * POST /Api/create_1v1_battle
+     */
+    public function create_1v1_battle_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('topic_id') || !$this->post('category_id')) {
+                $response['error'] = true;
+                $response['message'] = 'topic_id and category_id are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            
+            $config = [
+                'question_count' => $this->post('question_count') ?: 10,
+                'time_per_question' => $this->post('time_per_question') ?: 15,
+                'entry_coins' => $this->post('entry_coins') ?: 0,
+                'prize_coins' => $this->post('prize_coins') ?: 0
+            ];
+
+            $result = $this->Battle_model->create_1v1_battle(
+                $user_id,
+                $this->post('topic_id'),
+                $this->post('category_id'),
+                $config
+            );
+
+            $response['error'] = false;
+            $response['message'] = 'Battle created. Share the match code!';
+            $response['data'] = [
+                'battle_id' => $result['battle_id'],
+                'match_code' => $result['match_code']
+            ];
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Join a 1v1 battle
+     * POST /Api/join_1v1_battle
+     */
+    public function join_1v1_battle_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('match_code')) {
+                $response['error'] = true;
+                $response['message'] = 'Match code is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            $result = $this->Battle_model->join_1v1_battle($this->post('match_code'), $user_id);
+
+            if ($result['error']) {
+                $response['error'] = true;
+                $response['message'] = $result['message'];
+            } else {
+                $response['error'] = false;
+                $response['message'] = 'Joined battle successfully';
+                $response['data'] = $result['battle'];
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get 1v1 battle details
+     * POST /Api/get_1v1_battle
+     */
+    public function get_1v1_battle_post()
+    {
+        try {
+            $this->load->model('Battle_model');
+            $battle = null;
+
+            if ($this->post('battle_id')) {
+                $battle = $this->Battle_model->get_1v1_battle($this->post('battle_id'));
+            } else if ($this->post('match_code')) {
+                $battle = $this->Battle_model->get_1v1_by_code($this->post('match_code'));
+            }
+
+            if ($battle) {
+                $battle['questions'] = json_decode($battle['questions'], true);
+                
+                // Get player info
+                $battle['challenger'] = $this->db
+                    ->select('id, name, profile')
+                    ->where('id', $battle['challenger_id'])
+                    ->get('tbl_users')
+                    ->row_array();
+                
+                if ($battle['opponent_id']) {
+                    $battle['opponent'] = $this->db
+                        ->select('id, name, profile')
+                        ->where('id', $battle['opponent_id'])
+                        ->get('tbl_users')
+                        ->row_array();
+                }
+                
+                $response['error'] = false;
+                $response['data'] = $battle;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Battle not found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Submit 1v1 battle answers
+     * POST /Api/submit_1v1_answers
+     */
+    public function submit_1v1_answers_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('battle_id')) {
+                $response['error'] = true;
+                $response['message'] = 'battle_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            
+            $answers = $this->post('answers') ? json_decode($this->post('answers'), true) : [];
+            
+            $result = $this->Battle_model->submit_1v1_answers(
+                $this->post('battle_id'),
+                $user_id,
+                $answers,
+                $this->post('score') ?: 0,
+                $this->post('correct') ?: 0,
+                $this->post('time_ms') ?: 0
+            );
+
+            $response['error'] = $result['error'];
+            $response['message'] = $result['message'];
+            
+            // Get updated battle
+            $response['data'] = $this->Battle_model->get_1v1_battle($this->post('battle_id'));
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get 1v1 battle history
+     * POST /Api/get_1v1_history
+     */
+    public function get_1v1_history_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            $this->load->model('Battle_model');
+            $history = $this->Battle_model->get_user_1v1_history($user_id);
+
+            $response['error'] = false;
+            $response['data'] = $history;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    // ============================================
+    // GROUP BATTLE API ENDPOINTS
+    // ============================================
+
+    /**
+     * Create a group battle
+     * POST /Api/create_group_battle
+     */
+    public function create_group_battle_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('group_id') || !$this->post('topic_id') || !$this->post('category_id')) {
+                $response['error'] = true;
+                $response['message'] = 'group_id, topic_id, and category_id are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if user is admin of group
+            $this->load->model('Group_model');
+            if (!$this->Group_model->is_admin($this->post('group_id'), $user_id)) {
+                $response['error'] = true;
+                $response['message'] = 'Only group admins can create battles';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            
+            $config = [
+                'title' => $this->post('title'),
+                'question_count' => $this->post('question_count') ?: 10,
+                'time_per_question' => $this->post('time_per_question') ?: 15,
+                'entry_coins' => $this->post('entry_coins') ?: 0,
+                'prize_coins' => $this->post('prize_coins') ?: 0,
+                'min_players' => $this->post('min_players') ?: 2,
+                'max_players' => $this->post('max_players') ?: 10,
+                'scheduled_start' => $this->post('scheduled_start')
+            ];
+
+            $battle_id = $this->Battle_model->create_group_battle(
+                $this->post('group_id'),
+                $user_id,
+                $this->post('topic_id'),
+                $this->post('category_id'),
+                $config
+            );
+
+            $battle = $this->Battle_model->get_group_battle($battle_id);
+
+            $response['error'] = false;
+            $response['message'] = 'Group battle created';
+            $response['data'] = $battle;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Join a group battle
+     * POST /Api/join_group_battle
+     */
+    public function join_group_battle_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('battle_id')) {
+                $response['error'] = true;
+                $response['message'] = 'battle_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            $battle = $this->Battle_model->get_group_battle($this->post('battle_id'));
+            
+            if (!$battle) {
+                $response['error'] = true;
+                $response['message'] = 'Battle not found';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if user is member of group
+            $this->load->model('Group_model');
+            if (!$this->Group_model->is_member($battle['group_id'], $user_id)) {
+                $response['error'] = true;
+                $response['message'] = 'You must be a group member to join';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $joined = $this->Battle_model->join_group_battle($this->post('battle_id'), $user_id);
+
+            if ($joined) {
+                $response['error'] = false;
+                $response['message'] = 'Joined battle successfully';
+                $response['data'] = $this->Battle_model->get_group_battle($this->post('battle_id'));
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Already joined this battle';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Start a group battle
+     * POST /Api/start_group_battle
+     */
+    public function start_group_battle_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('battle_id')) {
+                $response['error'] = true;
+                $response['message'] = 'battle_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            $battle = $this->Battle_model->get_group_battle($this->post('battle_id'));
+            
+            if ($battle['created_by'] != $user_id) {
+                $response['error'] = true;
+                $response['message'] = 'Only the battle creator can start it';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $result = $this->Battle_model->start_group_battle($this->post('battle_id'));
+            
+            $response['error'] = $result['error'];
+            $response['message'] = $result['message'];
+            $response['data'] = $this->Battle_model->get_group_battle($this->post('battle_id'));
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Submit group battle answers
+     * POST /Api/submit_group_battle_answers
+     */
+    public function submit_group_battle_answers_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $response['error'] = true;
+                $response['message'] = 'Authentication required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            if (!$this->post('battle_id')) {
+                $response['error'] = true;
+                $response['message'] = 'battle_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            
+            $answers = $this->post('answers') ? json_decode($this->post('answers'), true) : [];
+            
+            $this->Battle_model->submit_group_battle_answers(
+                $this->post('battle_id'),
+                $user_id,
+                $answers,
+                $this->post('score') ?: 0,
+                $this->post('correct') ?: 0,
+                $this->post('wrong') ?: 0,
+                $this->post('time_ms') ?: 0
+            );
+
+            $response['error'] = false;
+            $response['message'] = 'Answers submitted';
+            $response['data'] = $this->Battle_model->get_group_battle($this->post('battle_id'));
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get group battle details and leaderboard
+     * POST /Api/get_group_battle
+     */
+    public function get_group_battle_post()
+    {
+        try {
+            if (!$this->post('battle_id')) {
+                $response['error'] = true;
+                $response['message'] = 'battle_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            $battle = $this->Battle_model->get_group_battle($this->post('battle_id'));
+
+            if ($battle) {
+                $battle['questions'] = json_decode($battle['questions'], true);
+                $battle['entries'] = $this->Battle_model->get_group_battle_entries($battle['id']);
+                
+                $response['error'] = false;
+                $response['data'] = $battle;
+            } else {
+                $response['error'] = true;
+                $response['message'] = 'Battle not found';
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get group's battle list
+     * POST /Api/get_group_battles
+     */
+    public function get_group_battles_post()
+    {
+        try {
+            if (!$this->post('group_id')) {
+                $response['error'] = true;
+                $response['message'] = 'group_id is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Battle_model');
+            $status = $this->post('status'); // null = all, 'pending', 'active', 'completed'
+            $battles = $this->Battle_model->get_group_battles($this->post('group_id'), $status);
+
+            $response['error'] = false;
+            $response['data'] = $battles;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
     }
 }

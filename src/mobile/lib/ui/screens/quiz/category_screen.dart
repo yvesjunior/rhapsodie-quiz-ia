@@ -17,12 +17,27 @@ import 'package:flutterquiz/ui/screens/quiz/subcategory_and_level_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/subcategory_screen.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
-import 'package:flutterquiz/ui/widgets/custom_appbar.dart';
 import 'package:flutterquiz/ui/widgets/error_container.dart';
 import 'package:flutterquiz/ui/widgets/premium_category_access_badge.dart';
 import 'package:flutterquiz/ui/widgets/unlock_premium_category_dialog.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 import 'package:flutterquiz/utils/ui_utils.dart';
+
+/// Purple header color - consistent across all screens
+const _headerColor = Color(0xFF7B68EE);
+
+/// Category card colors
+const _categoryColors = [
+  Color(0xFF6BD5A0), // Green
+  Color(0xFFF5C26B), // Orange/Yellow
+  Color(0xFF6BD5A0), // Green
+  Color(0xFFF8B5D4), // Pink
+  Color(0xFF87CEEB), // Light Blue
+  Color(0xFFF8B5D4), // Pink
+  Color(0xFFF5C26B), // Orange/Yellow
+  Color(0xFFB8A5F0), // Purple/Lavender
+  Color(0xFF6BD5A0), // Green
+];
 
 final class CategoryScreenArgs extends RouteArgs {
   const CategoryScreenArgs({required this.quizType});
@@ -47,6 +62,8 @@ class CategoryScreen extends StatefulWidget {
 
 class _CategoryScreen extends State<CategoryScreen> {
   final ScrollController scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -62,13 +79,19 @@ class _CategoryScreen extends State<CategoryScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   String getCategoryTitle(QuizTypes quizType) => context.tr(switch (quizType) {
     QuizTypes.mathMania => 'mathMania',
     QuizTypes.audioQuestions => 'audioQuestions',
     QuizTypes.guessTheWord => 'guessTheWord',
     QuizTypes.funAndLearn => 'funAndLearn',
     QuizTypes.multiMatch => 'multiMatch',
-    _ => 'quizZone',
+    _ => 'exploreCategoriesLbl',
   })!;
 
   @override
@@ -76,17 +99,94 @@ class _CategoryScreen extends State<CategoryScreen> {
     final bannerAdLoaded =
         context.watch<BannerAdCubit>().bannerAdLoaded &&
         !context.read<UserDetailsCubit>().removeAds();
+    
     return Scaffold(
-      appBar: QAppBar(title: Text(getCategoryTitle(widget.args.quizType))),
+      backgroundColor: _headerColor,
       body: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: bannerAdLoaded ? 60 : 0),
-            child: showCategory(),
+          // Purple background
+          Container(
+            height: context.height * 0.2,
+            color: _headerColor,
           ),
-          const Align(
-            alignment: Alignment.bottomCenter,
-            child: BannerAdContainer(),
+          
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 16),
+                
+                // Main content area with white background
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: context.scaffoldBackgroundColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(bottom: bannerAdLoaded ? 60 : 0),
+                          child: showCategory(),
+                        ),
+                        const Align(
+                          alignment: Alignment.bottomCenter,
+                          child: BannerAdContainer(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          // Back button placeholder for symmetry
+          const SizedBox(width: 44),
+          
+          // Title
+          Expanded(
+            child: Text(
+              getCategoryTitle(widget.args.quizType),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeights.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          
+          // Search button
+          GestureDetector(
+            onTap: () {
+              // Toggle search focus
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.search_rounded,
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -223,6 +323,14 @@ class _CategoryScreen extends State<CategoryScreen> {
     }
   }
 
+  void _startRandomQuiz(List<Category> categories) {
+    if (categories.isEmpty) return;
+    
+    // Pick a random category
+    final random = categories[(DateTime.now().millisecondsSinceEpoch % categories.length)];
+    _handleOnTapCategory(context, random);
+  }
+
   Widget showCategory() {
     return BlocConsumer<QuizCategoryCubit, QuizCategoryState>(
       bloc: context.read<QuizCategoryCubit>(),
@@ -253,161 +361,239 @@ class _CategoryScreen extends State<CategoryScreen> {
             },
           );
         }
+        
         final categoryList = (state as QuizCategorySuccess).categories;
-        return ListView.separated(
-          padding: EdgeInsets.symmetric(
-            vertical: context.height * UiUtils.vtMarginPct,
-            horizontal: context.width * UiUtils.hzMarginPct,
-          ),
-          controller: scrollController,
-          shrinkWrap: true,
-          itemCount: categoryList.length,
-          physics: const AlwaysScrollableScrollPhysics(),
-          separatorBuilder: (_, i) =>
-              const SizedBox(height: UiUtils.listTileGap),
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () => _handleOnTapCategory(context, categoryList[index]),
-              child: LayoutBuilder(
-                builder: (context, boxConstraints) {
-                  final colorScheme = Theme.of(context).colorScheme;
-
-                  final imageUrl = categoryList[index].image!.isEmpty
-                      ? Assets.placeholder
-                      : categoryList[index].image!;
-
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(
-                        top: 0,
-                        left: boxConstraints.maxWidth * 0.1,
-                        right: boxConstraints.maxWidth * 0.1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            boxShadow: const [
-                              BoxShadow(
-                                offset: Offset(0, 25),
-                                blurRadius: 5,
-                                spreadRadius: 2,
-                                color: Color(0x40808080),
-                              ),
-                            ],
-                            borderRadius: BorderRadius.vertical(
-                              bottom: Radius.circular(
-                                boxConstraints.maxWidth * .525,
-                              ),
-                            ),
-                          ),
-                          width: boxConstraints.maxWidth,
-                          height: 50,
-                        ),
-                      ),
-                      Positioned(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.all(12),
-                          width: boxConstraints.maxWidth,
-                          child: Row(
-                            children: [
-                              /// Leading Image
-                              Align(
-                                child: Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: colorScheme.onTertiary.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.all(5),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(1),
-                                    child: QImage(
-                                      imageUrl: imageUrl,
-                                      fit: BoxFit.fill,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              /// title
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      categoryList[index].categoryName!,
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: colorScheme.onTertiary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeights.semiBold,
-                                      ),
-                                    ),
-                                    Text(
-                                      !categoryList[index].hasSubcategories
-                                          ? "${context.tr(widget.args.quizType == QuizTypes.funAndLearn ? "comprehensiveLbl" : "questions")!}: ${categoryList[index].questionsCount}"
-                                          : "${context.tr("subCategoriesLbl")!}: ${categoryList[index].subcategoriesCount}",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: colorScheme.onTertiary
-                                            .withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              /// right arrow
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  PremiumCategoryAccessBadge(
-                                    hasUnlocked:
-                                        categoryList[index].hasUnlocked,
-                                    isPremium: categoryList[index].isPremium,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                      border: Border.all(
-                                        color: colorScheme.onTertiary
-                                            .withValues(alpha: 0.1),
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      context.isRTL
-                                          ? Icons.keyboard_arrow_left_rounded
-                                          : Icons.keyboard_arrow_right_rounded,
-                                      size: 30,
-                                      color: colorScheme.onTertiary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            );
-          },
-        );
+        
+        // Filter categories based on search
+        final filteredList = _searchQuery.isEmpty
+            ? categoryList
+            : categoryList.where((c) => 
+                c.categoryName!.toLowerCase().contains(_searchQuery.toLowerCase())
+              ).toList();
+        
+        return _buildCategoryGrid(filteredList, categoryList);
       },
+    );
+  }
+
+  Widget _buildCategoryGrid(List<Category> filteredList, List<Category> allCategories) {
+    // Calculate grid layout
+    // First 3 rows: 3 items each
+    // Then: Random Quiz card spanning 2 columns
+    // Continue with more categories
+    
+    return CustomScrollView(
+      controller: scrollController,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.9,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                // Insert Random Quiz card at position 7 (after 2 rows of 3)
+                if (index == 6) {
+                  return null; // Skip, handled separately
+                }
+                
+                final actualIndex = index > 6 ? index - 1 : index;
+                
+                if (actualIndex >= filteredList.length) return null;
+                
+                return _buildCategoryCard(filteredList[actualIndex], actualIndex);
+              },
+              childCount: filteredList.length + 1, // +1 for random quiz placeholder
+            ),
+          ),
+        ),
+        
+        // Random Quiz Card (wider)
+        if (filteredList.length >= 6)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(
+              child: _buildRandomQuizCard(allCategories),
+            ),
+          ),
+        
+        // More categories after Random Quiz
+        if (filteredList.length > 6)
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.9,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final actualIndex = index + 6;
+                  if (actualIndex >= filteredList.length) return null;
+                  return _buildCategoryCard(filteredList[actualIndex], actualIndex);
+                },
+                childCount: filteredList.length - 6,
+              ),
+            ),
+          ),
+        
+        // Bottom padding
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 100),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(Category category, int index) {
+    final color = _categoryColors[index % _categoryColors.length];
+    final imageUrl = category.image!.isEmpty ? Assets.placeholder : category.image!;
+    
+    return GestureDetector(
+      onTap: () => _handleOnTapCategory(context, category),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
+            // Category content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Category name
+                  Text(
+                    category.categoryName!.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeights.bold,
+                      color: Colors.white,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                  const Spacer(),
+                  
+                  // Category image
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: QImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Premium badge
+            if (category.isPremium && !category.hasUnlocked)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: PremiumCategoryAccessBadge(
+                  hasUnlocked: category.hasUnlocked,
+                  isPremium: category.isPremium,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRandomQuizCard(List<Category> categories) {
+    return GestureDetector(
+      onTap: () => _startRandomQuiz(categories),
+      child: Container(
+        height: 140,
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFB8A5F0),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    context.trWithFallback('startLbl', 'START').toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeights.semiBold,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  Text(
+                    context.trWithFallback('randomQuizLbl', 'RANDOM QUIZ').toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeights.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Arrow button
+            Positioned(
+              top: 20,
+              right: 20,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            
+            // Character/mascot placeholder
+            Positioned(
+              bottom: 0,
+              right: 60,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.quiz_rounded,
+                  size: 50,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

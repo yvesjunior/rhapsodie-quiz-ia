@@ -37,7 +37,7 @@ class CategorySearchBar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              context.tr('searchQuizCategoriesLbl') ?? 'Search Quiz Categories',
+              context.trWithFallback('searchQuizCategoriesLbl', 'Search Quiz Categories'),
               style: TextStyle(
                 fontSize: 14,
                 color: context.primaryTextColor.withValues(alpha: 0.4),

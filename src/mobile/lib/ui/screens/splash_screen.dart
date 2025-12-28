@@ -113,8 +113,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _fetchSystemConfig() async {
     await context.read<SystemConfigCubit>().getSystemConfig();
-    await GdprHelper.initialize();
-    await AppTrackingTransparencyHelper.requestTrackingPermission();
+    // Disabled: GDPR consent dialog
+    // await GdprHelper.initialize();
+    // Disabled: App Tracking Transparency dialog
+    // await AppTrackingTransparencyHelper.requestTrackingPermission();
   }
 
   Future<void> _initIronSource() async {

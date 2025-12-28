@@ -46,6 +46,13 @@ import 'package:flutterquiz/ui/screens/refer_and_earn_screen.dart';
 import 'package:flutterquiz/ui/screens/rewards/rewards_screen.dart';
 import 'package:flutterquiz/ui/screens/splash_screen.dart';
 import 'package:flutterquiz/ui/screens/statistics_screen.dart';
+import 'package:flutterquiz/ui/screens/groups/groups_screen.dart';
+import 'package:flutterquiz/ui/screens/battles/battle_mode_screen.dart';
+import 'package:flutterquiz/ui/screens/battles/battle_1v1_screen.dart';
+import 'package:flutterquiz/ui/screens/topics/topics_screen.dart';
+import 'package:flutterquiz/ui/screens/rhapsody/rhapsody_screen.dart';
+import 'package:flutterquiz/ui/screens/foundation/foundation_screen.dart';
+import 'package:flutterquiz/ui/screens/foundation/foundation_class_screen.dart';
 
 final globalNavigator = GlobalKey<NavigatorState>();
 final BuildContext globalCtx = globalNavigator.currentContext!;
@@ -103,6 +110,16 @@ class Routes {
   static const wallet = '/wallet';
   static const randomBattle = '/randomBattle';
   static const languageSelect = '/language-select';
+
+  // New: Topics, Groups, Battles
+  static const topics = '/topics';
+  static const groups = '/groups';
+  static const battleMode = '/battleMode';
+  static const battle1v1 = '/battle1v1';
+  static const rhapsody = '/rhapsody';
+  static const rhapsodyMonth = '/rhapsodyMonth';
+  static const foundation = '/foundation';
+  static const foundationClass = '/foundationClass';
 
   static String currentRoute = splash;
 
@@ -206,6 +223,35 @@ class Routes {
         return RandomBattleScreen.route(rs);
       case languageSelect:
         return InitialLanguageSelectionScreen.route();
+      case topics:
+        return TopicsScreen.route(rs);
+      case groups:
+        return GroupsScreen.route();
+      case battleMode:
+        return BattleModeScreen.route();
+      case battle1v1:
+        final args = rs.arguments as Map<String, dynamic>?;
+        return Battle1v1Screen.route(
+          topicId: args?['topicId'] as String?,
+          categoryId: args?['categoryId'] as String?,
+          matchCode: args?['matchCode'] as String?,
+        );
+      case rhapsody:
+        return RhapsodyScreen.route();
+      case rhapsodyMonth:
+        final args = rs.arguments as Map<String, dynamic>;
+        return RhapsodyScreen.monthRoute(
+          year: args['year'] as int,
+          month: args['month'] as int,
+          monthName: args['monthName'] as String,
+        );
+      case foundation:
+        return FoundationScreen.route();
+      case foundationClass:
+        final args = rs.arguments as Map<String, dynamic>;
+        return FoundationClassScreen.route(
+          classId: args['classId'] as String,
+        );
       default:
         return CupertinoPageRoute(builder: (_) => const Scaffold());
     }

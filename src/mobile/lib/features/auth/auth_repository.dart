@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutterquiz/core/constants/api_exception.dart';
 import 'package:flutterquiz/core/constants/constants.dart';
@@ -30,17 +32,20 @@ class AuthRepository {
     };
   }
 
-  void setLocalAuthDetails({
+  Future<void> setLocalAuthDetails({
     String? jwtToken,
     String? firebaseId,
     String? authType,
     bool? authStatus,
     bool? isNewUser,
-  }) {
-    _authLocalDataSource
-      ..changeAuthStatus(authStatus: authStatus)
-      ..setUserFirebaseId(firebaseId)
-      ..setAuthType(authType);
+  }) async {
+    // Clear JWT token if provided (important for logout)
+    if (jwtToken != null) {
+      await AuthLocalDataSource.setJwtToken(jwtToken);
+    }
+    await _authLocalDataSource.changeAuthStatus(authStatus: authStatus);
+    await _authLocalDataSource.setUserFirebaseId(firebaseId);
+    await _authLocalDataSource.setAuthType(authType);
   }
 
   //First we signing user with given provider then add user details
@@ -122,8 +127,14 @@ class AuthRepository {
       }
 
       return (user: user, isNewUser: isNewUser);
-    } catch (e) {
-      await signOut(authProvider);
+    } catch (e, stackTrace) {
+      dev.log('SignIn Error: $e', name: 'AuthRepository', error: e, stackTrace: stackTrace);
+      // Try to sign out but don't fail if signOut itself fails
+      try {
+        await signOut(authProvider);
+      } catch (_) {
+        // Ignore signOut errors
+      }
       throw ApiException(e.toString());
     }
   }
@@ -148,7 +159,7 @@ class AuthRepository {
         userLoggingOut: true,
       );
       await _authRemoteDataSource.signOut(authProvider);
-      setLocalAuthDetails(
+      await setLocalAuthDetails(
         authStatus: false,
         authType: '',
         jwtToken: '',

@@ -70,8 +70,8 @@ class HomeScreenState extends State<HomeScreen>
     ),
   ];
 
-  /// Purple header color
-  static const _headerColor = Color(0xFF7B68EE);
+  /// Blue header color (matching Foundation School)
+  static const _headerColor = Color(0xFF1565C0);
 
   // Screen dimensions
   double get scrWidth => context.width;
@@ -477,7 +477,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isSelfChallengeQuizEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.tr('soloModeLbl') ?? 'Solo\nMode',
+                title: context.trWithFallback('soloModeLbl', 'Solo\nMode'),
                 backgroundColor: GameModeColors.soloMode,
                 imagePath: 'assets/images/solo_mode.png',
                 onTap: () => _onPressedSelfExam('selfChallenge'),
@@ -490,7 +490,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isGroupBattleEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.tr('multiplayerModeLbl') ?? 'Multiplayer\nMode',
+                title: context.trWithFallback('multiplayerModeLbl', 'Multiplayer\nMode'),
                 backgroundColor: GameModeColors.multiplayerMode,
                 imagePath: 'assets/images/multiplayer_mode.png',
                 onTap: () => _onPressedBattle('groupPlay'),
@@ -503,7 +503,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isOneVsOneBattleEnabled || _sysConfigCubit.isRandomBattleEnabled)
             Expanded(
               child: GameModeCard(
-                title: context.tr('oneVsOneModeLbl') ?? '1 Vs. 1\nMode',
+                title: context.trWithFallback('oneVsOneModeLbl', '1 Vs. 1\nMode'),
                 backgroundColor: GameModeColors.oneVsOneMode,
                 imagePath: 'assets/images/one_vs_one_mode.png',
                 onTap: () => _onPressedBattle('battleQuiz'),
@@ -1030,9 +1030,9 @@ class HomeScreenState extends State<HomeScreen>
       builder: (context, state) {
         return Stack(
           children: [
-            // Purple header background
+            // Blue header background - extended to be covered by game mode cards
             Container(
-              height: context.height * 0.28,
+              height: context.height * 0.33,
               decoration: const BoxDecoration(
                 color: _headerColor,
                 borderRadius: BorderRadius.only(
@@ -1069,16 +1069,16 @@ class HomeScreenState extends State<HomeScreen>
                     
                     const SizedBox(height: 16),
                     
-                    // Stats bar (Rank & Reward Points)
+                    // Stats bar (Rank & Reward Points) - on the header
                     UserAchievements(
                       userRank: _userRank,
                       userCoins: _userCoins,
                       userScore: _userScore,
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
-                    // Game Mode Cards (Solo, Multiplayer, 1v1)
+                    // Game Mode Cards (Solo, Multiplayer, 1v1) - overlapping the header
                     _buildGameModes(),
                     
                     const SizedBox(height: 24),
@@ -1097,6 +1097,53 @@ class HomeScreenState extends State<HomeScreen>
                           );
                         },
                       ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Rhapsody Section
+                    RhapsodySection(
+                      months: _buildRhapsodyMonths(),
+                      onViewAll: () {
+                        // Navigate to Rhapsody screen with year tabs
+                        Navigator.pushNamed(context, Routes.rhapsody);
+                      },
+                      onMonthTap: (month) {
+                        // Navigate directly to the month screen
+                        Navigator.pushNamed(
+                          context,
+                          Routes.rhapsodyMonth,
+                          arguments: {
+                            'year': month.year,
+                            'month': month.month,
+                            'monthName': month.name,
+                          },
+                        );
+                      },
+                      onCurrentMonthTap: () {
+                        if (_isGuest) {
+                          showLoginRequiredDialog(context);
+                          return;
+                        }
+                        // Navigate to current month's devotional
+                        final now = DateTime.now();
+                        final monthNames = [
+                          'January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'
+                        ];
+                        Navigator.pushNamed(
+                          context,
+                          Routes.rhapsodyMonth,
+                          arguments: {
+                            'year': now.year,
+                            'month': now.month,
+                            'monthName': monthNames[now.month - 1],
+                          },
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Starting current month quiz...')),
+                        );
+                      },
                     ),
                     
                     const SizedBox(height: 24),
@@ -1188,6 +1235,46 @@ class HomeScreenState extends State<HomeScreen>
     ];
   }
 
+  List<RhapsodyMonth> _buildRhapsodyMonths() {
+    // Generate the 4 most recent months for Rhapsody
+    // These would typically come from the API, but for now we show placeholders
+    final now = DateTime.now();
+    final monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final colors = [
+      CategoryColors.space,    // Orange
+      CategoryColors.sports,   // Pink
+      CategoryColors.history,  // Green
+      CategoryColors.maths,    // Purple
+    ];
+
+    return List.generate(4, (index) {
+      // Start from previous month (current month is shown separately)
+      final targetMonth = now.month - index - 1;
+      final targetYear = now.year;
+      
+      // Adjust for year boundaries
+      DateTime date;
+      if (targetMonth <= 0) {
+        date = DateTime(targetYear - 1, 12 + targetMonth);
+      } else {
+        date = DateTime(targetYear, targetMonth);
+      }
+
+      return RhapsodyMonth(
+        id: '${date.year}-${date.month}',
+        name: monthNames[date.month - 1],
+        year: date.year,
+        month: date.month,
+        color: colors[index % colors.length],
+        questionCount: 0, // Would come from API
+        categoryId: null, // Would come from API
+      );
+    });
+  }
+
   Widget _buildPurpleHeader() {
     void onTapNotification() {
       if (_isGuest) {
@@ -1239,6 +1326,30 @@ class HomeScreenState extends State<HomeScreen>
             ),
           ),
           
+          // Groups Button
+          GestureDetector(
+            onTap: () {
+              if (_isGuest) {
+                showLoginRequiredDialog(context);
+              } else {
+                globalCtx.pushNamed(Routes.groups);
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.groups_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Notification Bell
           GestureDetector(
             onTap: onTapNotification,

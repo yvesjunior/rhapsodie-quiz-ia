@@ -34,6 +34,9 @@ import 'package:flutterquiz/features/statistic/cubits/statistics_cubit.dart';
 import 'package:flutterquiz/features/statistic/statistic_repository.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/features/system_config/system_config_repository.dart';
+import 'package:flutterquiz/features/topics/topics.dart';
+import 'package:flutterquiz/features/groups/groups.dart';
+import 'package:flutterquiz/features/battles/battles.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 Future<Widget> initializeApp() async {
@@ -138,6 +141,24 @@ class MyApp extends StatelessWidget {
           create: (_) => UnlockPremiumCategoryCubit(QuizRepository()),
         ),
         BlocProvider<BannerAdCubit>(create: (_) => BannerAdCubit()),
+        // New: Topics (Rhapsody, Foundation School)
+        BlocProvider<TopicsCubit>(
+          create: (_) => TopicsCubit(TopicsRemoteDataSource()),
+        ),
+        // New: Groups
+        BlocProvider<GroupsCubit>(
+          create: (_) => GroupsCubit(GroupsRemoteDataSource()),
+        ),
+        BlocProvider<GroupDetailCubit>(
+          create: (_) => GroupDetailCubit(GroupsRemoteDataSource()),
+        ),
+        // New: 1v1 Battles
+        BlocProvider<Battle1v1Cubit>(
+          create: (_) => Battle1v1Cubit(BattlesRemoteDataSource()),
+        ),
+        BlocProvider<Battle1v1HistoryCubit>(
+          create: (_) => Battle1v1HistoryCubit(BattlesRemoteDataSource()),
+        ),
       ],
       child: Builder(
         builder: (context) {

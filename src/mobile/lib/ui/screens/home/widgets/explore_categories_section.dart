@@ -29,7 +29,7 @@ class ExploreCategoriesSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                context.tr('exploreCategoriesLbl') ?? 'Explore Categories',
+                context.trWithFallback('exploreCategoriesLbl', 'Explore Categories'),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeights.bold,
@@ -39,7 +39,7 @@ class ExploreCategoriesSection extends StatelessWidget {
               GestureDetector(
                 onTap: onViewAll,
                 child: Text(
-                  context.tr('viewAllKey') ?? 'VIEW ALL',
+                  context.trWithFallback('viewAllKey', 'VIEW ALL'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeights.semiBold,
@@ -124,7 +124,7 @@ class _RandomQuizCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    context.tr('randomQuizLbl') ?? 'RANDOM QUIZ',
+                    context.trWithFallback('randomQuizLbl', 'RANDOM QUIZ'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeights.bold,

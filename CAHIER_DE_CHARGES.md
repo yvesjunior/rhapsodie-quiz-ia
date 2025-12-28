@@ -1,21 +1,22 @@
 # Cahier de Charges - Plateforme Rhapsodie Quiz IA
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** Décembre 2024  
-**Projet:** Plateforme de Quiz Mobile avec Génération IA de Questions
+**Projet:** Plateforme de Quiz Mobile - Rhapsody of Realities & Foundation School
 
 ---
 
 ## Table des Matières
 
 1. [Vue d'ensemble du Projet](#1-vue-densemble-du-projet)
-2. [Architecture du Système](#2-architecture-du-système)
-3. [Cas d'Usage](#3-cas-dusage)
-4. [Modèles de Données](#4-modèles-de-données)
-5. [Fonctionnalités Détaillées](#5-fonctionnalités-détaillées)
-6. [Workflows Principaux](#6-workflows-principaux)
-7. [Exigences Techniques](#7-exigences-techniques)
-8. [Plan de Développement](#8-plan-de-développement)
+2. [Topics Principaux](#2-topics-principaux)
+3. [Architecture du Système](#3-architecture-du-système)
+4. [Cas d'Usage](#4-cas-dusage)
+5. [Modèles de Données](#5-modèles-de-données)
+6. [Fonctionnalités Détaillées](#6-fonctionnalités-détaillées)
+7. [Workflows Principaux](#7-workflows-principaux)
+8. [Exigences Techniques](#8-exigences-techniques)
+9. [Plan de Développement](#9-plan-de-développement)
 
 ---
 
@@ -23,44 +24,272 @@
 
 ### 1.1 Objectif
 
-Créer une plateforme mobile de quiz/gaming centrée sur le contenu religieux, principalement "Rhapsody of Realities" (Rhapsodie des Réalités), avec génération automatique de questions à partir de PDFs via l'IA, système de récompenses, classements hiérarchiques et gestion de groupes.
+Créer une plateforme mobile de quiz/gaming éducative centrée sur deux piliers principaux :
+1. **Rhapsody of Realities** - Contenu dévotionnel quotidien
+2. **Foundation School** - Programme de formation ministérielle
+
+La plateforme offre des quiz interactifs, un système de récompenses, des classements hiérarchiques et la gestion de groupes (églises, cellules, régions).
 
 ### 1.2 Contexte Métier
 
-**Rhapsody of Realities** est un livre mensuel publié en trois versions :
-- **Kids** (Enfants)
-- **Teens** (Adolescents)
-- **Adult** (Adultes)
+#### 1.2.1 Rhapsody of Realities (Rhapsodie des Réalités)
+
+Livre dévotionnel mensuel publié en trois versions :
+- **Kids** (Enfants) - 5-12 ans
+- **Teens** (Adolescents) - 13-19 ans  
+- **Adult** (Adultes) - 20+ ans
 
 Chaque édition mensuelle contient :
-- Un texte biblique quotidien
+- Un texte biblique quotidien avec méditation
+- Une confession de foi quotidienne
 - Une prière quotidienne
-- 30 jours de contenu (un par jour du mois)
+- 30-31 jours de contenu (un par jour du mois)
+
+#### 1.2.2 Foundation School
+
+Programme de **formation/training** pour les nouveaux membres de l'église. C'est un parcours d'apprentissage **auto-rythmé** (self-paced), sans contrainte de temps.
+
+**Niveaux de Foundation School :**
+- **Foundation Class 1** - Introduction à la foi chrétienne
+- **Foundation Class 2** - Fondements bibliques approfondis
+- **Foundation Class 3** - Ministère et service
+- **Foundation Class 4** - Leadership et multiplication
+
+**Caractéristiques du Training :**
+- Progression **auto-rythmée** (pas de notion de semaine/temps)
+- Leçons vidéo/audio du pasteur
+- Manuel d'étude avec questions de compréhension
+- Quiz de validation des connaissances (pas d'examen chronométré)
+- Certificat de complétion par niveau (optionnel)
 
 ### 1.3 Portée du Projet
 
-**Phase 1 (Focus Initial):**
-- Support du topic "Rhapsody of Realities"
-- **Questions manuelles/factices** (génération IA repoussée à Phase 6)
-- Quiz quotidiens avec récompenses
-- Système de groupes hiérarchiques
-- Classements multi-niveaux
+**Phase 1 (Focus Initial) - Rhapsody Quiz:**
+- Topic "Rhapsody of Realities" (Kids, Teens, Adult)
+- Quiz quotidiens basés sur les textes du jour
+- Système de points et récompenses
+- Classements par groupe (Worldwide, Country, Custom)
+- Battles 1v1 entre membres du même groupe
 
-**Phase 2 (Extension):**
-- Support de multiples topics (Bible, Love World News, Heroes of Faith, etc.)
-- Gestion de groupes personnalisés par topic
-- Fonctionnalités avancées de gamification
+**Phase 2 (Extension) - Foundation School:**
+- Topic "Foundation School" (Classes 1-4)
+- Quiz par module/chapitre
+- Progression par niveau (débloquage séquentiel)
+- Examens de certification
+- Suivi de progression pour les pasteurs/leaders
 
-**Phase 6 (Optionnel - Plus tard):**
+**Phase 3 (Gamification Avancée):**
+- Badges et récompenses visuelles
+- Défis hebdomadaires/mensuels
+- Tournois inter-groupes
+- Récompenses réelles (optionnel)
+
+**Phase 4 (IA - Optionnel):**
 - Génération automatique de QCM via IA (Ollama)
-- Traitement PDF automatique
-- Workflow de validation des questions générées par IA
+- Traitement PDF/vidéo automatique
+- Questions adaptatives selon le niveau de l'utilisateur
 
 ---
 
-## 2. Architecture du Système
+## 2. Topics Principaux
 
-### 2.1 Architecture Générale
+### 2.1 Structure Hiérarchique
+
+```
+TOPICS
+├── Foundation School
+│   └── Categories (Modules)
+│       ├── Module 1: Contenu + Quiz
+│       ├── Module 2: Contenu + Quiz
+│       ├── Module 3: Contenu + Quiz
+│       └── ...
+│
+└── Rhapsody
+    └── Categories (Années)
+        └── Year (2024, 2025, ...)
+            └── Month (January, February, ...)
+                └── Day (1, 2, 3, ... 31)
+                    └── Texte + Quiz
+
+FEATURE GLOBALE
+└── Contest (Daily Text + Quiz)
+    └── Disponible pour TOUS les utilisateurs
+```
+
+### 2.2 Rhapsody of Realities
+
+| Attribut | Valeur |
+|----------|--------|
+| **ID Topic** | `rhapsody` |
+| **Nom** | Rhapsody of Realities |
+| **Type** | Quotidien |
+| **Versions** | Kids, Teens, Adult |
+| **Structure** | Year → Month → Day |
+| **Contenu/Jour** | Texte + Quiz |
+| **Questions/Quiz** | 10 questions |
+| **Points Max/Jour** | 10 pts (2 lecture + 8 quiz) |
+
+**Hiérarchie des Catégories Rhapsody :**
+```
+Rhapsody (Topic)
+├── 2024 (Year)
+│   ├── January
+│   │   ├── Day 1: Texte + Quiz
+│   │   ├── Day 2: Texte + Quiz
+│   │   └── ...
+│   ├── February
+│   └── ...
+├── 2025 (Year)
+│   ├── January
+│   └── ...
+└── ...
+```
+
+### 2.3 Foundation School
+
+| Attribut | Valeur |
+|----------|--------|
+| **ID Topic** | `foundation_school` |
+| **Nom** | Foundation School |
+| **Type** | Training / Formation auto-rythmée |
+| **Structure** | Modules (= Categories) |
+| **Contenu/Module** | Texte/Vidéo/Audio + Quiz |
+| **Questions/Module** | 10-15 questions de compréhension |
+| **Contrainte temps** | ❌ Aucune (self-paced) |
+
+**Hiérarchie des Catégories Foundation School :**
+```
+Foundation School (Topic)
+├── Module 1: L'assurance du salut
+│   └── Contenu + Quiz
+├── Module 2: La nouvelle création
+│   └── Contenu + Quiz
+├── Module 3: La vie de prière
+│   └── Contenu + Quiz
+├── Module 4: L'étude de la Parole
+│   └── Contenu + Quiz
+├── Module 5: Le Saint-Esprit
+│   └── Contenu + Quiz
+├── Module 6: L'eau du baptême
+│   └── Contenu + Quiz
+├── Module 7: La communion fraternelle
+│   └── Contenu + Quiz
+├── Module 8: Donner et recevoir
+│   └── Contenu + Quiz
+├── Module 9: Le témoignage
+│   └── Contenu + Quiz
+└── ... (autres modules)
+```
+
+**Note:** 
+- Chaque Module = 1 Category dans le système
+- L'utilisateur progresse à son rythme (self-paced)
+- Pas de notion de "classe" ou "niveau" - juste des modules séquentiels
+
+### 2.4 Modes de Jeu
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           MODES DE JEU                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. SOLO MODE                                                           │
+│     └── Utilisateur joue seul                                           │
+│         ├── Choisit Topic: Foundation School OU Rhapsody                │
+│         ├── Choisit Category:                                           │
+│         │   ├── FS: Module 1, Module 2, ...                            │
+│         │   └── Rhapsody: Year → Month → Day                           │
+│         └── Répond au quiz                                              │
+│                                                                          │
+│  2. 1v1 MODE                                                            │
+│     └── Défi entre 2 utilisateurs                                       │
+│         ├── Challenger choisit Topic + Category                        │
+│         ├── Envoie invitation à l'adversaire                           │
+│         ├── Les deux répondent aux mêmes questions                     │
+│         └── Le meilleur score gagne                                     │
+│                                                                          │
+│  3. MULTIPLAYER MODE (Group Battle)                                     │
+│     └── Battle en groupe                                                │
+│         ├── Group Owner crée le groupe                                 │
+│         ├── Invite des utilisateurs à rejoindre                        │
+│         ├── Choisit Topic + Category pour la battle                    │
+│         ├── Tous les membres répondent aux mêmes questions             │
+│         └── Classement du groupe                                        │
+│                                                                          │
+│  4. CONTEST (Daily Challenge)                                           │
+│     └── Challenge quotidien pour TOUS                                   │
+│         ├── Basé sur Rhapsody du jour                                  │
+│         ├── Disponible pour tous les utilisateurs                      │
+│         └── Classement global                                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Solo Mode
+
+| Attribut | Valeur |
+|----------|--------|
+| **Joueurs** | 1 |
+| **Sélection** | Topic → Category |
+| **Topics** | Foundation School, Rhapsody |
+| **Categories FS** | Module 1, Module 2, ... |
+| **Categories Rhapsody** | Year → Month → Day |
+
+#### 1v1 Mode
+
+| Attribut | Valeur |
+|----------|--------|
+| **Joueurs** | 2 |
+| **Initiation** | Challenger envoie invitation |
+| **Questions** | Mêmes questions pour les 2 |
+| **Gagnant** | Meilleur score |
+| **Reward** | Points bonus pour le gagnant |
+
+#### Multiplayer Mode (Group Battle)
+
+| Attribut | Valeur |
+|----------|--------|
+| **Joueurs** | 2+ (groupe) |
+| **Création** | Group Owner crée le groupe |
+| **Invitation** | Owner invite des membres |
+| **Battle** | Tous répondent aux mêmes questions |
+| **Classement** | Ranking dans le groupe |
+
+#### Contest (Daily Challenge)
+
+| Attribut | Valeur |
+|----------|--------|
+| **Joueurs** | Tous les utilisateurs |
+| **Fréquence** | Quotidien |
+| **Contenu** | Rhapsody du jour |
+| **Classement** | Global |
+
+### 2.5 Comparaison des Topics
+
+| Caractéristique | Rhapsody | Foundation School |
+|----------------|----------|-------------------|
+| **Type** | Quiz quotidien | Training / Formation |
+| **Structure Categories** | Year → Month → Day | Modules |
+| **Contenu** | Texte + Quiz par jour | Contenu + Quiz par module |
+| **Progression** | Quotidienne | Auto-rythmée (self-paced) |
+| **Accès** | Tous les utilisateurs | Tous les utilisateurs |
+| **Répétition** | Non (1 quiz/jour) | Oui (réviser les modules) |
+| **Contrainte temps** | Oui (quotidien) | ❌ Non |
+| **Objectif** | Engagement quotidien | Apprentissage |
+
+### 2.6 Topics Futurs (Post-MVP)
+
+Les topics suivants seront ajoutés dans les versions ultérieures :
+- **Bible** - Quiz sur les livres bibliques
+- **Heroes of Faith** - Personnages bibliques et historiques
+- **Love World News** - Actualités du ministère
+- **History** - Histoire de l'église
+
+---
+
+## 3. Architecture du Système
+
+### 3.1 Architecture Générale
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -101,33 +330,33 @@ Chaque édition mensuelle contient :
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Composants Principaux
+### 3.2 Composants Principaux
 
-#### 2.2.1 Application Mobile (Flutter)
+#### 3.2.1 Application Mobile (Flutter)
 - **Framework:** Flutter 3.10+
 - **Architecture:** BLoC/Cubit Pattern
 - **Authentification:** Firebase Auth (Google, Apple)
 - **Base de données locale:** Hive
 - **API Client:** HTTP avec gestion d'erreurs
 
-#### 2.2.2 Panel d'Administration (CodeIgniter)
+#### 3.2.2 Panel d'Administration (CodeIgniter)
 - **Framework:** CodeIgniter 3.x
 - **Infrastructure:** Docker (MySQL, PHP, Nginx)
 - **Base de données:** MySQL (`elite_quiz_237`)
 - **Port:** 8080 (configurable)
 
-#### 2.2.3 API de Génération IA (Laravel)
+#### 3.2.3 API de Génération IA (Laravel) - Phase 4
 - **Framework:** Laravel 12
 - **Authentification:** Laravel Sanctum
 - **Base de données:** SQLite/MySQL
 - **IA:** Ollama (local LLM)
 
-#### 2.2.4 Processeur PDF (Python)
+#### 3.2.4 Processeur PDF (Python) - Phase 4
 - **Bibliothèques:** PyPDF, Ollama
 - **Interface:** Streamlit/Tkinter/CLI
 - **Sortie:** JSON/YAML
 
-### 2.3 Base de Données
+### 3.3 Base de Données
 
 #### Tables Principales Existantes (à étendre)
 - `tbl_user` - Utilisateurs
@@ -150,9 +379,9 @@ Chaque édition mensuelle contient :
 
 ---
 
-## 3. Cas d'Usage
+## 4. Cas d'Usage
 
-### 3.1 Utilisateur Final (Mobile App)
+### 4.1 Utilisateur Final (Mobile App) - Rhapsody
 
 #### UC-1: Inscription et Connexion
 **Acteur:** Utilisateur  
@@ -252,9 +481,70 @@ Chaque édition mensuelle contient :
 3. Affichage du classement avec position de l'utilisateur
 4. Possibilité de voir le profil des autres utilisateurs
 
-### 3.2 Administrateur
+### 4.2 Utilisateur Final (Mobile App) - Foundation School
 
-#### UC-8: Uploader un PDF Mensuel
+#### UC-7: Accéder à Foundation School
+**Acteur:** Utilisateur inscrit à Foundation School  
+**Préconditions:** Utilisateur connecté, inscrit par son pasteur/leader  
+**Scénario principal:**
+1. L'utilisateur accède à l'onglet "Foundation School"
+2. Affichage de sa classe actuelle (ex: Foundation Class 1)
+3. Liste des modules visibles:
+   - Modules complétés (vert, badge checkmark)
+   - Module actuel (jaune, accessible)
+   - Modules verrouillés (gris, cadenas)
+4. L'utilisateur sélectionne le module actuel
+5. Affichage du contenu pédagogique (texte, vidéo, audio)
+
+#### UC-8: Compléter un Module Foundation School
+**Acteur:** Utilisateur  
+**Préconditions:** Module débloqué  
+**Scénario principal:**
+1. L'utilisateur accède au module (contenu: texte, vidéo, audio)
+2. L'utilisateur étudie le contenu à son rythme
+3. Une fois le contenu étudié, le quiz de compréhension est disponible
+4. L'utilisateur répond aux 10-15 questions
+5. Si réponses correctes suffisantes:
+   - Module marqué comme "Complété"
+   - Module suivant débloqué
+   - Points attribués
+6. Sinon:
+   - Affichage des réponses correctes avec explications
+   - Possibilité de réessayer immédiatement
+   - Possibilité de revoir le contenu
+
+**Caractéristiques:**
+- ❌ Pas de limite de tentatives
+- ❌ Pas de contrainte de temps
+- ✅ L'utilisateur avance à son propre rythme
+- ✅ Peut réviser les modules déjà complétés
+
+#### UC-9: Terminer une Classe Foundation School
+**Acteur:** Utilisateur  
+**Préconditions:** Tous les modules de la classe complétés  
+**Scénario principal:**
+1. L'utilisateur complète le dernier module
+2. Notification de félicitations "Classe terminée!"
+3. Classe suivante automatiquement débloquée
+4. Certificat de complétion disponible (optionnel, téléchargeable)
+5. Notification au pasteur/leader (optionnel)
+
+**Note:** Pas d'examen final chronométré. La validation se fait par la complétion de tous les modules.
+
+#### UC-10: Consulter sa Progression Foundation School
+**Acteur:** Utilisateur  
+**Scénario principal:**
+1. L'utilisateur accède à "Ma Progression"
+2. Vue d'ensemble:
+   - Classe actuelle et progression (ex: FC1 - 70%)
+   - Modules complétés vs restants
+   - Temps total d'apprentissage (optionnel)
+3. Historique des modules complétés
+4. Certificats obtenus
+
+### 4.3 Administrateur (Admin Panel)
+
+#### UC-11: Uploader un PDF Rhapsody Mensuel
 **Acteur:** Admin  
 **Préconditions:** Admin connecté, PDF disponible  
 **Scénario principal:**
@@ -265,7 +555,7 @@ Chaque édition mensuelle contient :
 5. Génération automatique des QCM via l'API IA
 6. Questions créées avec statut "Pending Validation"
 
-#### UC-9: Valider/Éditer les Questions Générées
+#### UC-12: Valider/Éditer les Questions Générées
 **Acteur:** Admin  
 **Préconditions:** Questions générées, statut "Pending"  
 **Scénario principal:**
@@ -289,7 +579,7 @@ Chaque édition mensuelle contient :
 - Maximum 15 questions par jour
 - Toutes les questions doivent avoir une explication
 
-#### UC-10: Gérer les Topics
+#### UC-13: Gérer les Topics (Rhapsody & Foundation School)
 **Acteur:** Admin  
 **Scénario principal:**
 1. Admin crée/édite/supprime un topic
@@ -300,7 +590,7 @@ Chaque édition mensuelle contient :
    - Actif/Inactif
 3. Les groupes peuvent s'abonner aux topics actifs
 
-#### UC-11: Gérer les Groupes
+#### UC-14: Gérer les Groupes
 **Acteur:** Admin  
 **Scénario principal:**
 1. Admin visualise tous les groupes
@@ -308,9 +598,35 @@ Chaque édition mensuelle contient :
 3. Peut supprimer un groupe si nécessaire
 4. Peut voir les statistiques par groupe
 
-### 3.3 Manager de Groupe
+#### UC-15: Gérer le Contenu Foundation School
+**Acteur:** Admin  
+**Scénario principal:**
+1. Admin accède à "Foundation School" → "Manage Classes"
+2. Pour chaque classe (FC1, FC2, FC3, FC4):
+   - Créer/éditer les modules
+   - Ajouter le contenu pédagogique (texte, liens vidéo, audio)
+   - Créer les questions du quiz du module
+   - Définir le seuil de réussite
+3. Créer l'examen final de la classe:
+   - Sélectionner les questions parmi les modules
+   - Définir le temps limite
+   - Définir le seuil de réussite (75% par défaut)
+4. Publier la classe (active/inactive)
 
-#### UC-12: Gérer les Membres du Groupe
+#### UC-16: Inscrire des Utilisateurs à Foundation School
+**Acteur:** Admin ou Pasteur/Leader  
+**Scénario principal:**
+1. Admin/Pasteur accède à "Foundation School" → "Inscriptions"
+2. Recherche un utilisateur (nom, email, téléphone)
+3. Inscrit l'utilisateur à Foundation School:
+   - Sélectionne la classe de départ (généralement FC1)
+   - Assigne un groupe/église
+4. L'utilisateur reçoit une notification
+5. L'accès Foundation School est activé sur son compte
+
+### 4.4 Pasteur/Leader de Groupe
+
+#### UC-17: Gérer les Membres du Groupe
 **Acteur:** Manager  
 **Préconditions:** Utilisateur est manager d'un groupe  
 **Scénario principal:**
@@ -323,7 +639,7 @@ Chaque édition mensuelle contient :
 4. Gère les demandes d'adhésion:
    - Approuve/Rejette les demandes en attente
 
-#### UC-13: Gérer les Topics du Groupe
+#### UC-18: Gérer les Topics du Groupe
 **Acteur:** Manager  
 **Scénario principal:**
 1. Manager accède à "Group Settings" → "Topics"
@@ -331,25 +647,312 @@ Chaque édition mensuelle contient :
 3. Active/Désactive les topics pour son groupe
 4. Les membres du groupe ne voient que les quiz des topics actifs
 
+#### UC-19: Suivre la Progression Foundation School du Groupe
+**Acteur:** Pasteur/Leader  
+**Préconditions:** Pasteur assigné à un groupe  
+**Scénario principal:**
+1. Pasteur accède à "Foundation School" → "Suivi Groupe"
+2. Vue tableau de bord:
+   - Nombre d'inscrits par classe (FC1, FC2, FC3, FC4)
+   - Progression moyenne par classe
+   - Membres en retard (pas d'activité depuis X jours)
+   - Membres prêts pour l'examen final
+3. Sélectionne un membre pour voir son détail
+4. Actions possibles:
+   - Envoyer un rappel/encouragement
+   - Autoriser une nouvelle tentative d'examen
+   - Valider manuellement un module (cas exceptionnel)
+
+#### UC-20: Générer un Rapport Foundation School
+**Acteur:** Pasteur/Leader ou Admin  
+**Scénario principal:**
+1. Accède à "Foundation School" → "Rapports"
+2. Sélectionne les filtres:
+   - Période (mois, trimestre, année)
+   - Groupe/Église
+   - Classe (FC1-FC4)
+3. Génère le rapport avec:
+   - Nombre de diplômés
+   - Taux de complétion par module
+   - Score moyen par module
+   - Temps moyen de complétion
+   - Liste des diplômés avec dates
+4. Export en PDF ou Excel
+
 ---
 
-## 4. Modèles de Données
+## 5. Modèles de Données
 
-### 4.1 Topic
+### 5.1 Topics
 
 ```sql
 CREATE TABLE tbl_topic (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,              -- "Rhapsody of Realities", "Bible", etc.
+    slug VARCHAR(50) UNIQUE NOT NULL,        -- "rhapsody", "foundation_school"
+    name VARCHAR(255) NOT NULL,              -- "Rhapsody of Realities", "Foundation School"
     description TEXT,
     image VARCHAR(255),
+    topic_type ENUM('daily', 'training') NOT NULL,
+    -- 'daily' = Rhapsody (Year → Month → Day structure)
+    -- 'training' = Foundation School (Modules séquentiels)
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Seed data
+INSERT INTO tbl_topic (slug, name, topic_type, description) VALUES
+('rhapsody', 'Rhapsody of Realities', 'daily', 'Quiz quotidiens basés sur Rhapsody'),
+('foundation_school', 'Foundation School', 'training', 'Formation ministérielle');
 ```
 
-### 4.2 Group
+### 5.2 Categories (Structure Unifiée)
+
+```sql
+-- Categories = Modules pour Foundation School, Year/Month pour Rhapsody
+CREATE TABLE tbl_category (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    topic_id INT NOT NULL,
+    parent_id INT NULL,                      -- Pour hiérarchie (Year → Month → Day)
+    slug VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    image VARCHAR(255),
+    order_index INT DEFAULT 0,               -- Ordre d'affichage
+    
+    -- Pour Foundation School (Training)
+    content_text TEXT,                       -- Contenu pédagogique
+    content_video_url VARCHAR(500),          -- Lien vidéo
+    content_audio_url VARCHAR(500),          -- Lien audio
+    
+    -- Pour Rhapsody (Daily)
+    year INT NULL,                           -- 2024, 2025, ...
+    month INT NULL,                          -- 1-12
+    day INT NULL,                            -- 1-31
+    daily_text TEXT,                         -- Texte du jour
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (topic_id) REFERENCES tbl_topic(id),
+    FOREIGN KEY (parent_id) REFERENCES tbl_category(id),
+    INDEX idx_topic (topic_id),
+    INDEX idx_parent (parent_id),
+    INDEX idx_date (year, month, day)
+);
+
+-- Exemples Foundation School (Modules = Categories)
+INSERT INTO tbl_category (topic_id, slug, name, order_index) VALUES
+(2, 'module-1', 'L''assurance du salut', 1),
+(2, 'module-2', 'La nouvelle création', 2),
+(2, 'module-3', 'La vie de prière', 3);
+
+-- Exemples Rhapsody (Year → Month → Day)
+-- Year
+INSERT INTO tbl_category (topic_id, slug, name, year) VALUES
+(1, '2025', '2025', 2025);
+-- Month (parent = Year)
+INSERT INTO tbl_category (topic_id, parent_id, slug, name, year, month) VALUES
+(1, 1, '2025-01', 'January 2025', 2025, 1);
+-- Day (parent = Month)
+INSERT INTO tbl_category (topic_id, parent_id, slug, name, year, month, day, daily_text) VALUES
+(1, 2, '2025-01-01', 'January 1, 2025', 2025, 1, 1, 'Texte du jour...');
+```
+
+### 5.3 Questions (Unifiées pour tous les Topics)
+
+```sql
+-- Questions liées à une Category (Module ou Day)
+CREATE TABLE tbl_question (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    category_id INT NOT NULL,                -- Lien vers tbl_category
+    question TEXT NOT NULL,
+    option_a VARCHAR(500) NOT NULL,
+    option_b VARCHAR(500) NOT NULL,
+    option_c VARCHAR(500),
+    option_d VARCHAR(500),
+    correct_answer ENUM('a', 'b', 'c', 'd') NOT NULL,
+    explanation TEXT,                        -- Explication de la réponse
+    order_index INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (category_id) REFERENCES tbl_category(id) ON DELETE CASCADE,
+    INDEX idx_category (category_id)
+);
+```
+
+### 5.4 Modes de Jeu - Tables
+
+```sql
+-- =====================================================
+-- SOLO MODE (pas de table spécifique, utilise tbl_user_progress)
+-- =====================================================
+
+-- =====================================================
+-- 1v1 MODE
+-- =====================================================
+CREATE TABLE tbl_battle_1v1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    challenger_id INT NOT NULL,              -- Utilisateur qui défie
+    opponent_id INT NOT NULL,                -- Utilisateur défié
+    topic_id INT NOT NULL,                   -- Topic choisi
+    category_id INT NOT NULL,                -- Category choisie
+    status ENUM('pending', 'accepted', 'in_progress', 'completed', 'declined', 'expired') DEFAULT 'pending',
+    challenger_score INT NULL,
+    opponent_score INT NULL,
+    winner_id INT NULL,                      -- NULL si égalité
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMP NULL,
+    completed_at TIMESTAMP NULL,
+    expires_at TIMESTAMP NULL,               -- Expiration de l'invitation
+    
+    FOREIGN KEY (challenger_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (opponent_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (topic_id) REFERENCES tbl_topic(id),
+    FOREIGN KEY (category_id) REFERENCES tbl_category(id),
+    FOREIGN KEY (winner_id) REFERENCES tbl_user(id) ON DELETE SET NULL,
+    INDEX idx_challenger (challenger_id),
+    INDEX idx_opponent (opponent_id),
+    INDEX idx_status (status)
+);
+
+-- =====================================================
+-- MULTIPLAYER MODE (Group Battle)
+-- =====================================================
+CREATE TABLE tbl_group (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    owner_id INT NOT NULL,                   -- Créateur du groupe
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    code VARCHAR(20) UNIQUE,                 -- Code d'invitation
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (owner_id) REFERENCES tbl_user(id) ON DELETE CASCADE
+);
+
+CREATE TABLE tbl_group_member (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    role ENUM('owner', 'admin', 'member') DEFAULT 'member',
+    status ENUM('invited', 'active', 'left') DEFAULT 'invited',
+    joined_at TIMESTAMP NULL,
+    
+    FOREIGN KEY (group_id) REFERENCES tbl_group(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_member (group_id, user_id)
+);
+
+CREATE TABLE tbl_group_battle (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    group_id INT NOT NULL,
+    topic_id INT NOT NULL,
+    category_id INT NOT NULL,
+    status ENUM('scheduled', 'in_progress', 'completed') DEFAULT 'scheduled',
+    start_time TIMESTAMP NULL,
+    end_time TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (group_id) REFERENCES tbl_group(id) ON DELETE CASCADE,
+    FOREIGN KEY (topic_id) REFERENCES tbl_topic(id),
+    FOREIGN KEY (category_id) REFERENCES tbl_category(id)
+);
+
+CREATE TABLE tbl_group_battle_entry (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    battle_id INT NOT NULL,
+    user_id INT NOT NULL,
+    score INT NOT NULL,
+    correct_answers INT NOT NULL,
+    total_questions INT NOT NULL,
+    rank INT NULL,                           -- Classement dans la battle
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (battle_id) REFERENCES tbl_group_battle(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_entry (battle_id, user_id)
+);
+
+-- =====================================================
+-- CONTEST (Daily Challenge)
+-- =====================================================
+CREATE TABLE tbl_contest (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    date DATE UNIQUE NOT NULL,               -- Date du contest
+    category_id INT NOT NULL,                -- Référence vers le Day Rhapsody
+    title VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (category_id) REFERENCES tbl_category(id),
+    INDEX idx_date (date)
+);
+
+CREATE TABLE tbl_contest_entry (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    contest_id INT NOT NULL,
+    user_id INT NOT NULL,
+    score INT NOT NULL,
+    correct_answers INT NOT NULL,
+    total_questions INT NOT NULL,
+    rank INT NULL,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (contest_id) REFERENCES tbl_contest(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_entry (contest_id, user_id),
+    INDEX idx_contest_score (contest_id, score DESC)
+);
+```
+
+### 5.5 Progression Utilisateur
+
+```sql
+-- Progression par Category (Module FS ou Day Rhapsody)
+CREATE TABLE tbl_user_progress (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
+    
+    -- Pour Foundation School (Training)
+    content_viewed BOOLEAN DEFAULT FALSE,
+    content_viewed_at TIMESTAMP NULL,
+    
+    -- Pour tous
+    quiz_completed BOOLEAN DEFAULT FALSE,
+    quiz_score INT NULL,
+    quiz_completed_at TIMESTAMP NULL,
+    quiz_attempts INT DEFAULT 0,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES tbl_category(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_progress (user_id, category_id),
+    INDEX idx_user (user_id)
+);
+
+-- Points utilisateur (pour Rhapsody et Contest)
+CREATE TABLE tbl_user_points (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    date DATE NOT NULL,
+    reading_points INT DEFAULT 0,            -- Points lecture texte
+    quiz_points INT DEFAULT 0,               -- Points quiz
+    contest_points INT DEFAULT 0,            -- Points contest
+    total_points INT DEFAULT 0,
+    
+    FOREIGN KEY (user_id) REFERENCES tbl_user(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_daily_points (user_id, date),
+    INDEX idx_user_date (user_id, date)
+);
+```
+
+### 5.4 Group
 
 ```sql
 CREATE TABLE tbl_group (
@@ -368,7 +971,7 @@ CREATE TABLE tbl_group (
 );
 ```
 
-### 4.3 Group Member
+### 5.5 Group Member
 
 ```sql
 CREATE TABLE tbl_group_member (
@@ -386,7 +989,7 @@ CREATE TABLE tbl_group_member (
 );
 ```
 
-### 4.4 Group Topic Subscription
+### 5.6 Group Topic Subscription
 
 ```sql
 CREATE TABLE tbl_group_topic (
@@ -401,7 +1004,7 @@ CREATE TABLE tbl_group_topic (
 );
 ```
 
-### 4.5 Daily Text (Rhapsody)
+### 5.7 Daily Text (Rhapsody)
 
 ```sql
 CREATE TABLE tbl_daily_text (
@@ -423,7 +1026,7 @@ CREATE TABLE tbl_daily_text (
 );
 ```
 
-### 4.6 Question Validation Workflow
+### 5.8 Question Validation Workflow
 
 ```sql
 CREATE TABLE tbl_question_validation (
@@ -443,7 +1046,7 @@ CREATE TABLE tbl_question_validation (
 );
 ```
 
-### 4.7 Daily Quiz (Étendu)
+### 5.9 Daily Quiz (Étendu)
 
 ```sql
 -- Table existante à étendre
@@ -454,7 +1057,7 @@ ALTER TABLE tbl_daily_quiz ADD FOREIGN KEY (topic_id) REFERENCES tbl_topic(id);
 ALTER TABLE tbl_daily_quiz ADD FOREIGN KEY (daily_text_id) REFERENCES tbl_daily_text(id);
 ```
 
-### 4.8 User Points (Scores Quotidiens)
+### 5.10 User Points (Scores Quotidiens)
 
 ```sql
 CREATE TABLE tbl_user_points (
@@ -478,7 +1081,7 @@ CREATE TABLE tbl_user_points (
 );
 ```
 
-### 4.9 Battle (1v1)
+### 5.11 Battle (1v1)
 
 ```sql
 CREATE TABLE tbl_battle (
@@ -508,7 +1111,7 @@ CREATE TABLE tbl_battle (
 );
 ```
 
-### 4.10 Leaderboard (Vues Matérialisées)
+### 5.12 Leaderboard (Vues Matérialisées)
 
 ```sql
 -- Vue pour classement quotidien par groupe/topic
@@ -559,9 +1162,9 @@ GROUP BY up.group_id, up.topic_id, YEAR(up.date), MONTH(up.date), up.user_id;
 
 ---
 
-## 5. Fonctionnalités Détaillées
+## 6. Fonctionnalités Détaillées
 
-### 5.1 Système de Points
+### 6.1 Système de Points - Rhapsody
 
 #### Points Quotidiens (10 points max)
 - **Lecture du texte:** 2 points (automatique après lecture)
@@ -579,7 +1182,25 @@ Max quotidien = 10 + 5 = 15 points (si battle gagnée)
 - **Mensuel:** Somme des points quotidiens du mois
 - **Annuel:** Somme des points quotidiens de l'année
 
-### 5.2 Système de Groupes Hiérarchiques
+### 6.2 Système de Points - Foundation School
+
+**Note:** Foundation School est axé sur l'apprentissage, pas la compétition. Les points sont optionnels et servent principalement à motiver l'utilisateur.
+
+#### Points par Module
+- **Complétion du contenu:** 5 points
+- **Quiz réussi:** 10 points (première réussite seulement)
+
+#### Points par Classe
+- **Complétion de la classe:** 25 points bonus
+
+#### Calcul Simple
+```
+Points totaux = (modules_completes × 15) + (classes_completees × 25)
+```
+
+**Note:** Pas de classement compétitif pour Foundation School. L'accent est mis sur la progression personnelle.
+
+### 6.3 Système de Groupes Hiérarchiques
 
 #### Groupes Par Défaut (Automatiques)
 1. **Worldwide** (`type='worldwide'`)
@@ -600,7 +1221,7 @@ Max quotidien = 10 + 5 = 15 points (si battle gagnée)
 - Gestion des membres par le manager
 - Abonnement aux topics configurable
 
-### 5.3 Workflow de Validation des Questions
+### 6.4 Workflow de Validation des Questions
 
 #### États des Questions
 1. **Pending** - Générées par IA, en attente de validation
@@ -623,7 +1244,7 @@ PDF Upload → Text Extraction → QCM Generation → Questions Created (Pending
                                     Available at 00:00 on Date
 ```
 
-### 5.4 Système de Battles 1v1
+### 6.5 Système de Battles 1v1
 
 #### Règles
 - Un utilisateur peut défier un autre membre du même groupe
@@ -638,7 +1259,7 @@ PDF Upload → Text Extraction → QCM Generation → Questions Created (Pending
 - Gagnant = Plus haut score (ou challenger si ignoré)
 - Points bonus: +5 pour le gagnant
 
-### 5.5 Classements Multi-Dimensionnels
+### 6.6 Classements Multi-Dimensionnels
 
 #### Dimensions
 - **Période:** Daily / Weekly / Monthly / Yearly / All-Time
@@ -646,17 +1267,24 @@ PDF Upload → Text Extraction → QCM Generation → Questions Created (Pending
 - **Topic:** Rhapsody / Bible / Love World News / etc.
 - **Version:** Kids / Teens / Adult (pour Rhapsody)
 
-#### Calcul des Classements
+#### Calcul des Classements - Rhapsody
 - Basé sur `tbl_user_points`
 - Agrégation par période (SUM des points)
 - Ranking avec ROW_NUMBER() ou DENSE_RANK()
 - Mise à jour quotidienne (cron job)
 
+#### Suivi Foundation School (Pas de classement compétitif)
+- **Progression individuelle:** % de modules complétés
+- **Vue groupe (pour pasteurs):** Membres actifs, progression moyenne
+- **Certificats:** Liste des membres ayant complété chaque classe
+
+**Note:** Foundation School n'a pas de classement compétitif. C'est un parcours d'apprentissage personnel.
+
 ---
 
-## 6. Workflows Principaux
+## 7. Workflows Principaux
 
-### 6.1 Workflow Mensuel: Préparation du Contenu
+### 7.1 Workflow Mensuel: Préparation du Contenu Rhapsody
 
 ```
 1. Début du mois (ex: 1er Décembre)
@@ -683,7 +1311,7 @@ PDF Upload → Text Extraction → QCM Generation → Questions Created (Pending
 10. Les utilisateurs peuvent lire le texte et répondre au quiz
 ```
 
-### 6.2 Workflow Quotidien: Expérience Utilisateur
+### 7.2 Workflow Quotidien: Expérience Utilisateur Rhapsody
 
 ```
 00:00 - Nouveau jour commence
@@ -707,7 +1335,47 @@ Battle acceptée → Questions du jour utilisées
 Gagnant reçoit +5 points bonus
 ```
 
-### 6.3 Workflow de Génération IA
+### 7.3 Workflow Foundation School: Progression Utilisateur (Self-Paced)
+
+```
+1. Utilisateur s'inscrit ou est inscrit à Foundation School
+   ↓
+2. Foundation Class 1 (FC1) débloquée
+   ↓
+3. Module 1 disponible (statut: available)
+   ↓
+4. Utilisateur étudie le contenu à son rythme:
+   - Lit le texte
+   - Regarde la vidéo
+   - Écoute l'audio
+   (Pas de contrainte de temps!)
+   ↓
+5. Contenu complété → Quiz de compréhension disponible
+   ↓
+6. Utilisateur passe le quiz (10-15 questions)
+   ↓
+7. Résultat:
+   - Réponses correctes affichées
+   - Explications pour chaque question
+   - Si quiz réussi → Module complété, suivant débloqué
+   - Sinon → Peut réessayer immédiatement (pas de limite)
+   ↓
+8. Répéter pour tous les modules de FC1
+   ↓
+9. Tous modules complétés:
+   - Notification "Félicitations!"
+   - Certificat FC1 disponible (optionnel)
+   - FC2 automatiquement débloquée
+   ↓
+10. Progression vers FC2, FC3, FC4 (même processus)
+
+Note: L'utilisateur peut:
+- Revenir sur les modules déjà complétés
+- Prendre le temps qu'il veut
+- Pas de deadline, pas de pression
+```
+
+### 7.4 Workflow de Génération IA (Phase 4)
 
 ```
 PDF Upload (via Admin Panel)
@@ -728,7 +1396,7 @@ Questions stored in database (status='pending')
 Admin notified (new questions to validate)
 ```
 
-### 6.4 Workflow de Gestion de Groupe
+### 7.5 Workflow de Gestion de Groupe
 
 ```
 Utilisateur crée un groupe
@@ -750,23 +1418,23 @@ Membres peuvent défier d'autres membres du groupe
 
 ---
 
-## 7. Exigences Techniques
+## 8. Exigences Techniques
 
-### 7.1 Performance
+### 8.1 Performance
 
 - **Temps de réponse API:** < 500ms (95th percentile)
 - **Génération de questions:** < 30s par jour (10-15 questions)
 - **Mise à jour des classements:** < 5s (cron job quotidien)
 - **Chargement de l'app mobile:** < 2s (écran principal)
 
-### 7.2 Scalabilité
+### 8.2 Scalabilité
 
 - **Utilisateurs simultanés:** 10,000+
 - **Questions par mois:** 30 jours × 3 versions × 15 questions = 1,350 questions
 - **Groupes:** Illimité (avec indexation appropriée)
 - **Battles simultanées:** 1,000+
 
-### 7.3 Sécurité
+### 8.3 Sécurité
 
 - **Authentification:** Firebase Auth (JWT tokens)
 - **API Security:** Laravel Sanctum (mobile), API keys (admin)
@@ -774,14 +1442,14 @@ Membres peuvent défier d'autres membres du groupe
 - **Permissions:** RBAC pour admins (full/partial access)
 - **Rate Limiting:** Protection contre abus (battles, quiz)
 
-### 7.4 Disponibilité
+### 8.4 Disponibilité
 
 - **Uptime cible:** 99.5%
 - **Backup base de données:** Quotidien (rétention 30 jours)
 - **Monitoring:** Logs d'erreurs, métriques de performance
 - **Alertes:** Notification en cas d'échec critique
 
-### 7.5 Compatibilité
+### 8.5 Compatibilité
 
 - **Mobile:** iOS 13+, Android 8+
 - **Navigateurs admin:** Chrome, Firefox, Safari (dernières versions)
@@ -789,283 +1457,209 @@ Membres peuvent défier d'autres membres du groupe
 
 ---
 
-## 8. Plan de Développement
+## 9. Plan de Développement
 
-### Phase 1: Fondations (Semaines 1-4)
+### Phase 1: Rhapsody Quiz - MVP (Semaines 1-6)
 
-#### Sprint 1: Modèles de Données
-- [ ] Créer les nouvelles tables (Topic, Group, GroupMember, etc.)
-- [ ] Migrations de base de données
-- [ ] Seeders pour données de test
-- [ ] Documentation des modèles
+**Objectif:** Lancer une version fonctionnelle du quiz Rhapsody.
 
-#### Sprint 2: API Backend - Groupes
-- [ ] Endpoints CRUD pour Groupes
-- [ ] Gestion des membres (join, leave, remove)
-- [ ] Gestion des topics par groupe
-- [ ] Tests unitaires
+#### Sprint 1-2: Backend Rhapsody
+- [ ] Créer les tables de base (Topic, DailyText, Questions)
+- [ ] API pour récupérer le texte du jour
+- [ ] API pour récupérer et soumettre les quiz
+- [ ] Système de points quotidiens
 
-#### Sprint 3: API Backend - Topics
-- [ ] Endpoints CRUD pour Topics
-- [ ] Intégration avec groupes
-- [ ] Tests unitaires
+#### Sprint 3-4: Mobile App Rhapsody
+- [ ] Écran d'accueil avec le texte du jour
+- [ ] Écran de quiz (10 questions)
+- [ ] Écran de résultats avec score
+- [ ] Profil utilisateur avec points
 
-#### Sprint 4: API Backend - Daily Texts
-- [ ] Endpoints pour Daily Texts
-- [ ] Upload manuel des textes quotidiens (sans extraction PDF pour l'instant)
-- [ ] Association texte → questions (questions manuelles)
-- [ ] Tests unitaires
+#### Sprint 5-6: Groupes et Classements
+- [ ] Système de groupes (Worldwide, Country, Custom)
+- [ ] Classements quotidiens/hebdomadaires/mensuels
+- [ ] Rejoindre un groupe via code
 
-**Note sur les données factices:**
-- Pour le développement initial, les questions seront créées manuellement via l'interface admin
-- Les textes quotidiens peuvent être saisis manuellement ou uploadés comme texte brut
-- Un système de templates de questions peut être créé pour faciliter la création manuelle
-- Les données de test incluront des questions factices pour tous les jours du mois
+### Phase 2: Foundation School - MVP (Semaines 7-12)
 
-### Phase 2: Mobile App - Groupes et Topics (Semaines 5-8)
+**Objectif:** Ajouter le topic Foundation School avec progression par modules.
 
-**Note:** La génération IA de QCM est repoussée à la Phase 5. Pour le développement initial, nous utiliserons des questions factices/manuelles.
+#### Sprint 7-8: Backend Foundation School
+- [ ] Créer les tables Foundation School
+- [ ] API pour les classes et modules
+- [ ] API pour la progression utilisateur
+- [ ] API pour les quiz de modules
 
-#### Sprint 5: UI Mobile - Groupes
-- [ ] Écran "My Groups"
-- [ ] Création de groupe
-- [ ] Rejoindre un groupe (code/demande)
-- [ ] Gestion des membres (manager)
+#### Sprint 9-10: Mobile App Foundation School
+- [ ] Onglet/Section Foundation School
+- [ ] Liste des modules par classe
+- [ ] Lecteur de contenu (texte, vidéo, audio)
+- [ ] Quiz de module avec progression
 
-#### Sprint 6: UI Mobile - Topics
-- [ ] Sélection de topics par groupe
-- [ ] Filtrage des quiz par topic
-- [ ] Affichage des topics actifs
+#### Sprint 11-12: Examens et Certificats
+- [ ] Examen final par classe
+- [ ] Génération de certificats (PDF)
+- [ ] Tableau de bord progression
 
-#### Sprint 7: UI Mobile - Daily Text
-- [ ] Écran de lecture du texte quotidien
-- [ ] Tracking de la lecture
-- [ ] Attribution des points de lecture
-- [ ] Déblocage du quiz
+### Phase 3: Fonctionnalités Avancées (Semaines 13-18)
 
-### Phase 3: Système de Points et Classements (Semaines 9-12)
+#### Sprint 13-14: Battles 1v1
+- [ ] Système de challenges entre utilisateurs
+- [ ] Notifications de bataille
+- [ ] Résultats et points bonus
 
-#### Sprint 8: UI Mobile - Groupes
-- [ ] Écran "My Groups"
-- [ ] Création de groupe
-- [ ] Rejoindre un groupe (code/demande)
-- [ ] Gestion des membres (manager)
+#### Sprint 15-16: Admin Panel Amélioré
+- [ ] Gestion des questions (CRUD)
+- [ ] Tableau de bord statistiques
+- [ ] Gestion des utilisateurs
 
-#### Sprint 9: UI Mobile - Topics
-- [ ] Sélection de topics par groupe
-- [ ] Filtrage des quiz par topic
-- [ ] Affichage des topics actifs
+#### Sprint 17-18: Suivi Pastoral Foundation School
+- [ ] Dashboard pasteur pour suivre les membres
+- [ ] Autorisation de retry examen
+- [ ] Rapports de progression groupe
 
-#### Sprint 10: UI Mobile - Daily Text
-- [ ] Écran de lecture du texte quotidien
-- [ ] Tracking de la lecture
-- [ ] Attribution des points de lecture
-- [ ] Déblocage du quiz
+### Phase 4: Génération IA de QCM (Optionnel - Semaines 19+)
 
-#### Sprint 8: Calcul des Points
-- [ ] Enregistrement des points quotidiens
-- [ ] Calcul automatique (lecture + quiz + battle)
-- [ ] Agrégation hebdomadaire/mensuelle/annuelle
-- [ ] Tests de calcul
+**Note:** Cette phase peut être développée après les fonctionnalités principales.
 
-#### Sprint 9: Classements
-- [ ] Vues matérialisées pour classements
-- [ ] API endpoints pour classements (multi-filtres)
-- [ ] UI Mobile - Leaderboards
-- [ ] Mise à jour quotidienne (cron)
+#### Sprint 19-20: Intégration IA
+- [ ] Processeur PDF pour extraction de texte
+- [ ] Intégration Ollama pour génération de questions
+- [ ] Workflow de validation des questions générées
 
-#### Sprint 10: Battles 1v1
-- [ ] Modèle de données Battle
-- [ ] API endpoints (challenge, accept, complete)
-- [ ] UI Mobile - Invitation et réponse
-- [ ] Calcul des scores et attribution des points bonus
-- [ ] Expiration automatique (48h)
-
-### Phase 4: Workflow de Validation Admin (Semaines 13-16)
-
-**Note:** Utilisation de questions manuelles/factices pour le développement initial.
-
-#### Sprint 11: Interface Admin - Gestion Questions
-- [ ] Interface admin pour créer/éditer des questions manuellement
-- [ ] Association questions → Daily Text
-- [ ] Édition des questions
-- [ ] Suppression
-- [ ] Bulk operations
-- [ ] Filtres et recherche
-
-#### Sprint 12: Workflow de Validation
-- [ ] Statut des questions (draft, pending, validated, active)
-- [ ] Logique de validation complète
-- [ ] Passage à "ready" quand toutes validées
-- [ ] Activation automatique à 00:00
-- [ ] Tests end-to-end
-
-### Phase 5: Optimisation et Tests (Semaines 17-18)
-
-#### Sprint 13: Performance
-- [ ] Optimisation des requêtes SQL
-- [ ] Cache des classements
-- [ ] Indexation des tables
-- [ ] Load testing
-
-#### Sprint 14: Tests et Documentation
-- [ ] Tests d'intégration complets
+#### Sprint 21-22: Optimisation et Déploiement
+- [ ] Optimisation des performances
 - [ ] Tests de charge
-- [ ] Documentation utilisateur
-- [ ] Documentation technique
-
-### Phase 6: Génération IA de QCM (Semaines 19-24) - OPTIONNEL
-
-**Note:** Cette phase peut être développée en parallèle ou après les phases précédentes. Pour le développement initial, utiliser des questions manuelles.
-
-#### Sprint 15: Intégration PDF → QCM (IA)
-- [ ] Améliorer le processeur PDF Python
-- [ ] API Laravel pour recevoir les questions générées
-- [ ] Intégration Ollama
-- [ ] Stockage dans la base de données
-- [ ] Statut "pending" par défaut
-
-#### Sprint 16: Workflow IA - Validation
-- [ ] Interface admin pour valider les questions générées par IA
-- [ ] Édition des questions IA
-- [ ] Rejet/Suppression avec régénération optionnelle
-- [ ] Bulk validation
-- [ ] Comparaison questions IA vs manuelles
-
-#### Sprint 14: Performance
-- [ ] Optimisation des requêtes SQL
-- [ ] Cache des classements
-- [ ] Indexation des tables
-- [ ] Load testing
-
-#### Sprint 15: Tests et Documentation
-- [ ] Tests d'intégration complets
-- [ ] Tests de charge
-- [ ] Documentation utilisateur
-- [ ] Documentation technique
-
-#### Sprint 17: Déploiement et Monitoring
-- [ ] Configuration production
+- [ ] Déploiement production
 - [ ] Monitoring et alertes
-- [ ] Backup automatique
-- [ ] Documentation de déploiement
 
 ---
 
-## 8.1 Données Factices pour le Développement Initial
+## 10. Données de Test pour le Développement
 
-### 8.1.1 Stratégie de Développement
-
-**Approche:** Utiliser des questions manuelles/factices pour permettre le développement et les tests sans dépendre de la génération IA.
-
-### 8.1.2 Création Manuelle de Questions
-
-**Via Interface Admin:**
-1. Admin accède à "Questions" → "Add Question"
-2. Sélectionne le Daily Text associé
-3. Crée manuellement:
-   - Question (texte)
-   - 4 options de réponse
-   - Réponse correcte
-   - Explication
-4. Associe la question à une date spécifique
-5. Statut initial: "draft" ou "pending"
-
-**Templates de Questions:**
-- Créer des templates réutilisables pour accélérer la création
-- Exemples de structures de questions par type de texte
-
-### 8.1.3 Données de Test
+### 10.1 Données Rhapsody
 
 **Seeders à créer:**
 - 30 Daily Texts (un par jour) pour un mois de test
-- 10-15 questions par jour (300-450 questions totales)
-- 3-5 groupes de test (Worldwide, Country, Custom)
-- 10-20 utilisateurs de test
-- Points et classements de test
+- 10 questions par jour (300 questions totales)
+- 3 versions: Kids, Teens, Adult
 
-**Format des données factices:**
+**Format des données:**
 ```json
 {
   "daily_text": {
     "date": "2024-12-21",
-    "bible_text": "Sample bible text...",
-    "prayer_text": "Sample prayer text...",
-    "version": "adult"
+    "version": "adult",
+    "title": "Living by Faith",
+    "bible_text": "For we walk by faith, not by sight. - 2 Corinthians 5:7",
+    "meditation": "Faith is the foundation of our Christian walk...",
+    "confession": "I declare that I walk by faith and not by sight...",
+    "prayer": "Dear Father, thank you for the gift of faith..."
   },
   "questions": [
     {
-      "question": "What is the main theme of today's text?",
-      "options": [
-        "Option A",
-        "Option B",
-        "Option C",
-        "Option D"
-      ],
-      "correct_answer": 0,
-      "explanation": "Explanation of the correct answer..."
+      "question": "According to today's text, how should we walk?",
+      "options": ["By sight", "By faith", "By feelings", "By logic"],
+      "correct_answer": 1,
+      "explanation": "2 Corinthians 5:7 tells us to walk by faith, not by sight."
     }
-    // ... 9 more questions
   ]
 }
 ```
 
-### 8.1.4 Migration vers IA (Phase 6)
+### 10.2 Données Foundation School
 
-**Quand l'IA sera implémentée:**
-- Les questions manuelles existantes resteront dans la base de données
-- Les nouvelles questions générées par IA auront un flag `source: 'ai'` vs `source: 'manual'`
-- Possibilité de remplacer progressivement les questions manuelles par des questions IA
-- Workflow de validation permettra de comparer questions manuelles vs IA
+**Seeders à créer:**
+- 4 classes (FC1, FC2, FC3, FC4)
+- 10 modules par classe (40 modules totaux)
+- 15 questions par module (600 questions totales)
+- Examens finaux (50 questions par classe)
 
-### 8.1.5 Avantages de cette Approche
-
-✅ **Développement parallèle:** L'équipe peut développer les autres fonctionnalités sans attendre l'IA  
-✅ **Tests complets:** Permet de tester tous les workflows avec des données réalistes  
-✅ **Flexibilité:** Les admins peuvent toujours créer des questions manuelles même après l'implémentation IA  
-✅ **Fallback:** Si l'IA échoue, possibilité de créer des questions manuelles rapidement  
+**Format des données:**
+```json
+{
+  "class": {
+    "code": "FC1",
+    "name": "Foundation Class 1",
+    "modules": [
+      {
+        "code": "FC1-M01",
+        "name": "L'assurance du salut",
+        "content": "Le salut est le don gratuit de Dieu...",
+        "video_url": "https://youtube.com/...",
+        "questions": [
+          {
+            "question": "Qu'est-ce que le salut selon la Bible?",
+            "options": ["Une récompense", "Un don gratuit", "Un mérite", "Une obligation"],
+            "correct_answer": 1
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ---
 
-## 9. Glossaire
+## 11. Glossaire
 
 - **QCM:** Question à Choix Multiples
-- **Topic:** Thème de quiz (Rhapsody, Bible, etc.)
-- **Group:** Groupe d'utilisateurs (Worldwide, Country, Custom)
-- **Manager:** Gestionnaire d'un groupe personnalisé
-- **Daily Text:** Texte biblique quotidien du livre Rhapsody
+- **Topic:** Thème de quiz (Rhapsody, Foundation School)
+- **Group:** Groupe d'utilisateurs (Worldwide, Country, Custom/Église)
+- **Manager/Pasteur:** Gestionnaire d'un groupe personnalisé
+- **Daily Text:** Texte dévotionnel quotidien Rhapsody
+- **Module:** Unité de formation dans Foundation School
+- **Classe:** Niveau dans Foundation School (FC1, FC2, FC3, FC4)
 - **Battle:** Défi 1v1 entre deux utilisateurs
 - **Points:** Système de récompense basé sur l'assiduité et la performance
+- **Certificat:** Document attestant la complétion d'une classe Foundation School
 
 ---
 
-## 10. Annexes
+## 12. Annexes
 
-### 10.1 Schémas de Base de Données
+### 12.1 Schémas de Base de Données
 
-Voir section 4 pour les schémas SQL complets.
+Voir section 5 pour les schémas SQL complets.
 
-### 10.2 API Endpoints
+### 12.2 API Endpoints - Rhapsody
 
-**À documenter:**
-- `/api/groups` - Gestion des groupes
-- `/api/topics` - Gestion des topics
-- `/api/daily-texts` - Textes quotidiens
-- `/api/questions/validate` - Validation des questions
-- `/api/battles` - Battles 1v1
-- `/api/leaderboard` - Classements
-- `/api/user-points` - Points utilisateur
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/daily-text/{date}` | GET | Récupérer le texte du jour |
+| `/api/daily-text/{date}/read` | POST | Marquer le texte comme lu |
+| `/api/daily-quiz/{date}` | GET | Récupérer le quiz du jour |
+| `/api/daily-quiz/{date}/submit` | POST | Soumettre les réponses |
+| `/api/leaderboard/{period}` | GET | Classements (daily/weekly/monthly) |
+| `/api/battles/challenge` | POST | Défier un utilisateur |
+| `/api/battles/{id}/accept` | POST | Accepter un défi |
 
-### 10.3 Diagrammes de Séquence
+### 12.3 API Endpoints - Foundation School
 
-**À créer:**
-- Workflow de validation des questions
-- Workflow de battle 1v1
-- Workflow quotidien utilisateur
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/fs/classes` | GET | Liste des classes |
+| `/api/fs/classes/{id}/modules` | GET | Modules d'une classe |
+| `/api/fs/modules/{id}` | GET | Détail d'un module |
+| `/api/fs/modules/{id}/quiz` | GET | Quiz du module |
+| `/api/fs/modules/{id}/submit` | POST | Soumettre le quiz |
+| `/api/fs/classes/{id}/exam` | GET | Examen final |
+| `/api/fs/classes/{id}/exam/submit` | POST | Soumettre l'examen |
+| `/api/fs/progress` | GET | Progression utilisateur |
+| `/api/fs/certificates` | GET | Certificats obtenus |
+
+### 12.4 Diagrammes de Séquence
+
+**Inclus dans ARCHITECTURE.md:**
+- Workflow Rhapsody quotidien
+- Workflow Foundation School progression
+- Workflow Battle 1v1
 
 ---
 
 **Document créé le:** Décembre 2024  
 **Dernière mise à jour:** Décembre 2024  
-**Version:** 1.0
+**Version:** 2.0  
+**Focus:** Rhapsody of Realities & Foundation School
 

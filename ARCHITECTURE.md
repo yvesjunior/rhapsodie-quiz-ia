@@ -1,25 +1,27 @@
 # Architecture Document - Rhapsodie Quiz IA Platform
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** Décembre 2024  
-**Status:** Design & Recommendations
+**Status:** Design & Recommendations  
+**Focus:** Rhapsody of Realities & Foundation School
 
 ---
 
 ## Table des Matières
 
 1. [Vue d'ensemble](#1-vue-densemble)
-2. [Architecture Actuelle](#2-architecture-actuelle)
-3. [Architecture Recommandée](#3-architecture-recommandée)
-4. [Diagrammes d'Architecture](#4-diagrammes-darchitecture)
-5. [Composants et Instances](#5-composants-et-instances)
-6. [Services et APIs](#6-services-et-apis)
-7. [Workflows et Flux d'Interaction](#7-workflows-et-flux-dinteraction)
-8. [Patterns de Communication](#8-patterns-de-communication)
-9. [Déploiement](#9-déploiement)
-10. [Scalabilité](#10-scalabilité)
-11. [Sécurité](#11-sécurité)
-12. [Monitoring et Observabilité](#12-monitoring-et-observabilité)
+2. [Topics et Leurs Spécificités](#2-topics-et-leurs-spécificités)
+3. [Architecture Actuelle](#3-architecture-actuelle)
+4. [Architecture Recommandée](#4-architecture-recommandée)
+5. [Diagrammes d'Architecture](#5-diagrammes-darchitecture)
+6. [Composants et Instances](#6-composants-et-instances)
+7. [Services et APIs](#7-services-et-apis)
+8. [Workflows et Flux d'Interaction](#8-workflows-et-flux-dinteraction)
+9. [Patterns de Communication](#9-patterns-de-communication)
+10. [Déploiement](#10-déploiement)
+11. [Scalabilité](#11-scalabilité)
+12. [Sécurité](#12-sécurité)
+13. [Monitoring et Observabilité](#13-monitoring-et-observabilité)
 
 ---
 
@@ -51,9 +53,209 @@
 
 ---
 
-## 2. Architecture Actuelle
+## 2. Topics et Leurs Spécificités
 
-### 2.1 Diagramme d'Architecture Actuel
+### 2.1 Vue d'Ensemble des Topics
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              STRUCTURE                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  TOPICS                                                                  │
+│  ├── Foundation School (Training)                                       │
+│  │   └── Categories = Modules                                           │
+│  │       ├── Module 1: Contenu + Quiz                                  │
+│  │       ├── Module 2: Contenu + Quiz                                  │
+│  │       └── ...                                                        │
+│  │                                                                       │
+│  └── Rhapsody (Daily Quiz)                                              │
+│      └── Categories = Year → Month → Day                                │
+│          ├── 2025                                                       │
+│          │   ├── January                                                │
+│          │   │   ├── Day 1: Texte + Quiz                               │
+│          │   │   ├── Day 2: Texte + Quiz                               │
+│          │   │   └── ...                                                │
+│          │   └── ...                                                    │
+│          └── ...                                                        │
+│                                                                          │
+│  FEATURE GLOBALE                                                         │
+│  └── Contest (Daily Text + Quiz)                                        │
+│      └── Disponible pour TOUS les utilisateurs                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Comparaison Technique
+
+| Aspect | Rhapsody | Foundation School | Contest |
+|--------|----------|-------------------|---------|
+| **Type** | Quiz quotidien | Training | Feature globale |
+| **Structure Categories** | Year → Month → Day | Modules | (basé sur Rhapsody) |
+| **Contenu** | Texte + Quiz | Contenu + Quiz | Daily Text + Quiz |
+| **Accès** | Tous | Tous | **TOUS** |
+| **Répétition quiz** | Non (1/jour) | Oui (illimité) | Non (1/jour) |
+| **Contrainte temps** | Quotidien | ❌ Non | Quotidien |
+| **Classement** | Oui | ❌ Non | Oui (global) |
+| **Objectif** | Engagement | Apprentissage | Compétition |
+
+### 2.3 Flux de Données Spécifiques
+
+#### Rhapsody - Flux (Year → Month → Day)
+```
+Admin crée:
+  Topic: Rhapsody
+    └── Category: 2025 (Year)
+        └── Category: January (Month)
+            └── Category: Day 1 (Day)
+                ├── daily_text: "Texte du jour..."
+                └── Questions: [Q1, Q2, ... Q10]
+
+Utilisateur:
+  1. Navigue: 2025 → January → Day 1
+  2. Lit le texte (+2 points)
+  3. Répond au quiz (+0-8 points)
+  4. Score ajouté au classement
+```
+
+#### Foundation School - Flux (Modules)
+```
+Admin crée:
+  Topic: Foundation School
+    └── Categories (Modules):
+        ├── Module 1: L'assurance du salut
+        │   ├── content_text / video / audio
+        │   └── Questions: [Q1, Q2, ... Q10]
+        ├── Module 2: La nouvelle création
+        └── ...
+
+Utilisateur:
+  1. Sélectionne Module 1
+  2. Étudie le contenu (self-paced)
+  3. Passe le quiz (illimité)
+  4. Quiz réussi → Module 2 débloqué
+```
+
+#### Contest - Flux Quotidien
+```
+Système (automatique):
+  1. À 00:00, récupère le Day Rhapsody du jour
+  2. Crée un Contest basé sur ce Day
+  3. Contest disponible pour TOUS
+
+Utilisateur:
+  1. Accède au Contest du jour
+  2. Lit le texte
+  3. Répond au quiz
+  4. Score ajouté au classement global
+```
+
+### 2.4 Modes de Jeu - Flux
+
+#### Solo Mode
+```
+┌──────────┐
+│   User   │
+└────┬─────┘
+     │
+     │ 1. Sélectionne Mode: Solo
+     │ 2. Sélectionne Topic: FS ou Rhapsody
+     │ 3. Sélectionne Category:
+     │    - FS: Module 1, 2, ...
+     │    - Rhapsody: Year → Month → Day
+     ▼
+┌──────────────┐
+│ Quiz Screen  │
+│ - Questions  │
+│ - Timer (opt)│
+└────┬─────────┘
+     │
+     │ 4. Soumet réponses
+     ▼
+┌──────────────┐
+│ Results      │
+│ - Score      │
+│ - Réponses   │
+└──────────────┘
+```
+
+#### 1v1 Mode
+```
+┌──────────┐              ┌──────────┐
+│Challenger│              │ Opponent │
+└────┬─────┘              └────┬─────┘
+     │                         │
+     │ 1. Sélectionne Topic    │
+     │ 2. Sélectionne Category │
+     │ 3. Cherche adversaire   │
+     │                         │
+     │ 4. Envoie invitation ───────────────►
+     │                         │
+     │                         │ 5. Reçoit notification
+     │                         │
+     │◄─────────────────────── │ 6. Accepte
+     │                         │
+     │ 7. Battle commence      │ 7. Battle commence
+     │    (mêmes questions)    │    (mêmes questions)
+     │                         │
+     │ 8. Soumet réponses      │ 8. Soumet réponses
+     │                         │
+     └──────────┬──────────────┘
+                │
+                ▼
+         ┌──────────────┐
+         │   Results    │
+         │ - Scores     │
+         │ - Winner     │
+         │ - Points     │
+         └──────────────┘
+```
+
+#### Multiplayer Mode (Group Battle)
+```
+┌──────────────┐
+│ Group Owner  │
+└──────┬───────┘
+       │
+       │ 1. Crée groupe
+       │ 2. Obtient code d'invitation
+       │ 3. Invite membres
+       │
+       ▼
+┌──────────────────────────────────────┐
+│              GROUP                    │
+│  ┌────────┐ ┌────────┐ ┌────────┐   │
+│  │Member 1│ │Member 2│ │Member 3│   │
+│  └────────┘ └────────┘ └────────┘   │
+└──────────────────────────────────────┘
+       │
+       │ 4. Owner lance Battle
+       │    - Sélectionne Topic
+       │    - Sélectionne Category
+       │
+       ▼
+┌──────────────────────────────────────┐
+│           GROUP BATTLE               │
+│  - Tous les membres participent      │
+│  - Mêmes questions                   │
+│  - Temps limité (optionnel)          │
+└──────────────────────────────────────┘
+       │
+       │ 5. Résultats
+       ▼
+┌──────────────────────────────────────┐
+│         LEADERBOARD                  │
+│  1. Member 2 - 95%                   │
+│  2. Member 1 - 85%                   │
+│  3. Member 3 - 75%                   │
+└──────────────────────────────────────┘
+```
+
+---
+
+## 3. Architecture Actuelle
+
+### 3.1 Diagramme d'Architecture Actuel
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -95,7 +297,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Limitations de l'Architecture Actuelle
+### 3.2 Limitations de l'Architecture Actuelle
 
 1. **Monolithique:** Admin Panel API est un monolithe avec un seul contrôleur
 2. **Pas de cache:** Pas de système de cache pour les requêtes fréquentes
@@ -107,9 +309,9 @@
 
 ---
 
-## 3. Architecture Recommandée
+## 4. Architecture Recommandée
 
-### 3.1 Architecture Cible (Phase 1 - Amélioration Progressive)
+### 4.1 Architecture Cible (Phase 1 - Rhapsody + Foundation School)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -168,7 +370,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Architecture Cible (Phase 2 - Microservices)
+### 4.2 Architecture Cible (Phase 2 - Microservices)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -218,9 +420,9 @@
 
 ---
 
-## 4. Diagrammes d'Architecture
+## 5. Diagrammes d'Architecture
 
-### 4.1 Vue d'Ensemble Globale - Phase 1
+### 5.1 Vue d'Ensemble Globale - Phase 1
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -291,7 +493,7 @@
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Vue Simplifiée
+### 5.2 Vue Simplifiée
 
 ```
                     ┌─────────────┐
@@ -329,11 +531,11 @@
 
 ---
 
-## 5. Composants et Instances
+## 6. Composants et Instances
 
-### 5.1 Recommandations d'Instances par Composant
+### 6.1 Recommandations d'Instances par Composant
 
-#### 5.1.1 Mobile App (Flutter)
+#### 6.1.1 Mobile App (Flutter)
 
 **Instances Recommandées:**
 - **iOS App:** 1 instance (distribuée via App Store)
@@ -369,7 +571,7 @@ Mobile App Structure:
 - ✅ Implémenter retry logic avec exponential backoff
 - ✅ Ajouter offline mode avec sync automatique
 
-#### 5.1.2 Admin Panel API (CodeIgniter)
+#### 6.1.2 Admin Panel API (CodeIgniter)
 
 **Instances Recommandées:**
 
@@ -429,7 +631,7 @@ Recommended Structure:
 - ✅ Ajouter validation centralisée
 - ✅ Implémenter rate limiting par endpoint
 
-#### 5.1.3 Core API Services (Nouveau - Phase 2)
+#### 6.1.3 Core API Services (Phase 2)
 
 ##### Service 1: Quiz Service
 
@@ -553,7 +755,32 @@ Recommended Structure:
 - GET /api/v1/notifications/user/{id}
 - POST /api/v1/notifications/mark-read
 
-#### 5.1.4 AI Services (Optionnel - Phase 6)
+#### 6.1.4 Foundation School Service (Nouveau)
+
+| Phase | Instances | CPU | RAM | Port |
+|-------|-----------|-----|-----|------|
+| Development | 1 | 1 core | 1GB | 3007 |
+| Staging | 2 | 2 cores | 2GB | 3007 |
+| Production | 2-3 | 2 cores | 2GB | 3007 |
+
+**Responsibilities:**
+- Gestion des classes et modules
+- Progression des utilisateurs
+- Quiz de modules
+- Examens finaux
+- Génération de certificats
+- Suivi pastoral
+
+**Endpoints:**
+- GET /api/v1/fs/classes
+- GET /api/v1/fs/classes/{id}/modules
+- GET /api/v1/fs/modules/{id}/content
+- POST /api/v1/fs/modules/{id}/quiz/submit
+- GET /api/v1/fs/progress
+- POST /api/v1/fs/exams/{classId}/submit
+- GET /api/v1/fs/certificates
+
+#### 6.1.5 AI Services (Optionnel - Phase 4)
 
 **Note:** Ces services sont optionnels et peuvent être développés après les phases principales (1-5). Pour le développement initial, utiliser des questions manuelles créées via l'interface Admin Panel.
 
@@ -597,7 +824,7 @@ Recommended Structure:
 - Queue: RabbitMQ / Laravel Queue
 - Retry: 3 attempts with exponential backoff
 
-#### 5.1.5 Infrastructure Services
+#### 6.1.6 Infrastructure Services
 
 ##### API Gateway / Load Balancer
 
@@ -689,7 +916,7 @@ Recommended Structure:
 - Vertical: Augmenter CPU/RAM si nécessaire
 - Horizontal: Ajouter read replicas pour scaling reads
 
-### 5.2 Plan de Scaling par Charge
+### 6.2 Plan de Scaling par Charge
 
 #### Scénario 1: 1,000 Utilisateurs Actifs
 
@@ -736,11 +963,11 @@ Total Estimated Cost: High
 
 ---
 
-## 6. Services et APIs
+## 7. Services et APIs
 
-### 6.1 Structure des APIs
+### 7.1 Structure des APIs
 
-#### 6.1.1 Convention de Nommage
+#### 7.1.1 Convention de Nommage
 
 ```
 Base URL: https://api.rhapsodie-quiz.com/v1
@@ -760,7 +987,7 @@ GET  /api/v1/groups/{id}/members
 POST /api/v1/groups/{id}/members
 ```
 
-#### 6.1.2 Format de Réponse Standard
+#### 7.1.2 Format de Réponse Standard
 
 ```json
 {
@@ -793,9 +1020,9 @@ Error Response:
 }
 ```
 
-### 6.2 Services Détaillés
+### 7.2 Services Détaillés
 
-#### 6.2.1 Quiz Service API
+#### 7.2.1 Quiz Service API (Rhapsody)
 
 **Endpoints Principaux:**
 
@@ -819,7 +1046,43 @@ PUT    /api/v1/questions/{id}/edit
 DELETE /api/v1/questions/{id}/reject
 ```
 
-#### 6.2.2 Group Service API
+#### 7.2.2 Foundation School Service API
+
+**Endpoints Principaux:**
+
+```php
+// Classes
+GET    /api/v1/fs/classes
+GET    /api/v1/fs/classes/{id}
+GET    /api/v1/fs/classes/{id}/modules
+
+// Modules
+GET    /api/v1/fs/modules/{id}
+GET    /api/v1/fs/modules/{id}/content
+POST   /api/v1/fs/modules/{id}/view         // Mark content as viewed
+GET    /api/v1/fs/modules/{id}/quiz
+POST   /api/v1/fs/modules/{id}/quiz/submit
+
+// Progression
+GET    /api/v1/fs/progress                  // User's overall progress
+GET    /api/v1/fs/progress/class/{classId}  // Progress in specific class
+
+// Exams
+GET    /api/v1/fs/exams/{classId}           // Get exam questions
+POST   /api/v1/fs/exams/{classId}/submit
+
+// Certificates
+GET    /api/v1/fs/certificates              // User's certificates
+GET    /api/v1/fs/certificates/{id}/pdf     // Download certificate PDF
+
+// Pastoral (Leader/Pastor endpoints)
+GET    /api/v1/fs/pastoral/group/{groupId}/members
+GET    /api/v1/fs/pastoral/member/{userId}/progress
+POST   /api/v1/fs/pastoral/member/{userId}/allow-retry
+POST   /api/v1/fs/pastoral/enroll           // Enroll user to FS
+```
+
+#### 7.2.3 Group Service API
 
 **Endpoints Principaux:**
 
@@ -849,7 +1112,7 @@ GET    /api/v1/groups/join-requests/{groupId}
 POST   /api/v1/groups/join-requests/{requestId}/approve
 ```
 
-#### 6.2.3 Leaderboard Service API
+#### 7.2.4 Leaderboard Service API
 
 **Endpoints Principaux:**
 
@@ -868,9 +1131,9 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 
 ---
 
-## 7. Workflows et Flux d'Interaction
+## 8. Workflows et Flux d'Interaction
 
-### 7.1 Flux Général - Requête Utilisateur
+### 8.1 Flux Général - Requête Utilisateur
 
 ```
 ┌──────────┐
@@ -916,7 +1179,7 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
          └──────────┘
 ```
 
-### 7.2 Flux d'Authentification
+### 8.2 Flux d'Authentification
 
 ```
 ┌──────────┐
@@ -973,7 +1236,177 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 └──────────┘
 ```
 
-### 7.3 Workflow: Génération de Questions (PDF → Questions Validées)
+### 8.3 Workflow: Rhapsody Quotidien
+
+```
+┌──────────┐
+│  User    │
+│ (Mobile) │
+└────┬─────┘
+     │
+     │ 00:00 - Nouveau jour
+     │
+     │ 1. GET /api/v1/daily-text/{date}
+     ▼
+┌──────────────┐
+│ Admin API    │
+│ - Get Text   │
+│ - Check Read │
+└────┬─────────┘
+     │
+     │ 2. Texte + status
+     ▼
+┌──────────┐
+│  User    │
+│ Lit le   │
+│ texte    │
+└────┬─────┘
+     │
+     │ 3. POST /api/v1/daily-text/{date}/read
+     ▼
+┌──────────────┐
+│ Points       │
+│ +2 pts       │
+│ Quiz unlocked│
+└────┬─────────┘
+     │
+     │ 4. GET /api/v1/daily-quiz/{date}
+     ▼
+┌──────────────┐
+│ Quiz Service │
+│ 10 questions │
+└────┬─────────┘
+     │
+     │ 5. User answers
+     │
+     │ 6. POST /api/v1/daily-quiz/{date}/submit
+     ▼
+┌──────────────┐
+│ Score calc   │
+│ +0-8 pts     │
+│ Total: 10pts │
+└────┬─────────┘
+     │
+     │ 7. Update leaderboard
+     ▼
+┌──────────────┐
+│ Leaderboard  │
+│ Daily/Weekly │
+│ Monthly      │
+└──────────────┘
+```
+
+### 8.4 Workflow: Foundation School Module (Self-Paced Training)
+
+```
+┌──────────┐
+│  User    │
+│ (Mobile) │
+└────┬─────┘
+     │
+     │ 1. GET /api/v1/fs/progress
+     ▼
+┌──────────────┐
+│ FS Service   │
+│ - Current    │
+│   class      │
+│ - Modules    │
+│   status     │
+└────┬─────────┘
+     │
+     │ 2. Module list with status
+     │    (locked/available/completed)
+     ▼
+┌──────────┐
+│  User    │
+│ Selects  │
+│ module   │
+└────┬─────┘
+     │
+     │ 3. GET /api/v1/fs/modules/{id}/content
+     ▼
+┌──────────────┐
+│ FS Service   │
+│ - Text       │
+│ - Video URL  │
+│ - Audio URL  │
+│ - PDF URL    │
+└────┬─────────┘
+     │
+     │ 4. User studies content
+     │    (NO TIME LIMIT - self-paced)
+     │
+     │ 5. POST /api/v1/fs/modules/{id}/content-complete
+     ▼
+┌──────────────┐
+│ Progress     │
+│ content_     │
+│ completed    │
+└────┬─────────┘
+     │
+     │ 6. Quiz now available
+     │    GET /api/v1/fs/modules/{id}/quiz
+     ▼
+┌──────────────┐
+│ Quiz Service │
+│ 10-15 Qs     │
+└────┬─────────┘
+     │
+     │ 7. User answers
+     │
+     │ 8. POST /api/v1/fs/modules/{id}/quiz/submit
+     ▼
+┌──────────────────────────────────────┐
+│ Result                                │
+│                                       │
+│ - Show correct answers                │
+│ - Show explanations                   │
+│                                       │
+│ if quiz passed:                       │
+│   - Module completed                  │
+│   - Next module unlocked              │
+│   - Points awarded (optional)         │
+│                                       │
+│ if not passed:                        │
+│   - Can retry IMMEDIATELY             │
+│   - NO limit on attempts              │
+│   - Encourage to review content       │
+└──────────────────────────────────────┘
+```
+
+### 8.5 Workflow: Foundation School Class Completion
+
+```
+┌──────────┐
+│  User    │
+│ (Mobile) │
+└────┬─────┘
+     │
+     │ Last module completed
+     │
+     ▼
+┌──────────────────────────────────────┐
+│ Class Completed!                      │
+│                                       │
+│ - Congratulations message             │
+│ - Certificate available (optional)    │
+│ - Next class unlocked automatically   │
+│ - Notify pastor (optional)            │
+│                                       │
+│ NO final exam - completion by         │
+│ finishing all modules                 │
+└──────────────────────────────────────┘
+```
+
+**Note:** Foundation School is TRAINING, not examination. There is:
+- ❌ No timed exams
+- ❌ No weekly deadlines
+- ❌ No competitive leaderboard
+- ✅ Self-paced learning
+- ✅ Unlimited quiz retries
+- ✅ Focus on understanding, not speed
+
+### 8.6 Workflow: Génération de Questions IA (Phase 4)
 
 ```
 ┌──────────┐
@@ -1056,7 +1489,7 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 └──────────────────┘
 ```
 
-### 7.4 Workflow: Quiz Quotidien Utilisateur
+### 8.7 Workflow: Battle 1v1
 
 ```
 ┌──────────┐
@@ -1146,7 +1579,7 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 └──────────────┘
 ```
 
-### 7.5 Workflow: Battle 1v1
+### 8.8 Workflow: Battle 1v1 (Détaillé)
 
 ```
 ┌──────────┐         ┌──────────┐
@@ -1230,7 +1663,7 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
      └──────────────┘
 ```
 
-### 7.6 Workflow: Validation Admin
+### 8.9 Workflow: Validation Admin
 
 ```
 ┌──────────┐
@@ -1307,7 +1740,7 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 └──────────────┘
 ```
 
-### 7.7 Architecture de Données
+### 8.10 Architecture de Données
 
 #### Relations entre Entités Principales
 
@@ -1419,9 +1852,9 @@ GET /api/v1/leaderboard/all-time?group_id={id}&topic_id={id}
 
 ---
 
-## 8. Patterns de Communication
+## 9. Patterns de Communication
 
-### 8.1 Synchronous Communication
+### 9.1 Synchronous Communication
 
 **Utilisé pour:**
 - Requêtes utilisateur (mobile → API)
@@ -1434,7 +1867,7 @@ Mobile App → API Gateway → Service → Database
          ←                ←         ←
 ```
 
-### 8.2 Asynchronous Communication
+### 9.2 Asynchronous Communication
 
 **Utilisé pour:**
 - Génération de questions (PDF → QCM)
@@ -1451,7 +1884,7 @@ Admin Panel → Queue → Worker → Service → Database
               (Dead Letter Queue)
 ```
 
-### 8.3 Event-Driven Communication (Phase 2)
+### 9.3 Event-Driven Communication (Phase 2)
 
 **Utilisé pour:**
 - Mise à jour des classements
@@ -1464,7 +1897,7 @@ Service A → Event Bus → Service B, C, D
          (RabbitMQ / Kafka)
 ```
 
-### 8.4 Matrice d'Interactions
+### 9.4 Matrice d'Interactions
 
 | Composant Source | Composant Destination | Type | Protocole | Fréquence |
 |------------------|----------------------|------|-----------|-----------|
@@ -1484,9 +1917,9 @@ Service A → Event Bus → Service B, C, D
 
 ---
 
-## 9. Déploiement
+## 10. Déploiement
 
-### 9.1 Architecture de Déploiement (Phase 1)
+### 10.1 Architecture de Déploiement (Phase 1)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -1515,7 +1948,7 @@ Service A → Event Bus → Service B, C, D
 └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
-### 9.2 Docker Compose Configuration
+### 10.2 Docker Compose Configuration
 
 **Recommandation pour Production:**
 
@@ -1585,7 +2018,7 @@ volumes:
   redis-data:
 ```
 
-### 9.3 Déploiement Progressif
+### 10.3 Déploiement Progressif
 
 **Étape 1: Monolithique avec Load Balancer**
 - 2-3 instances Admin API
@@ -1602,7 +2035,7 @@ volumes:
 - API Gateway
 - Service Mesh (optionnel)
 
-### 9.4 Recommandations par Environnement
+### 10.4 Recommandations par Environnement
 
 #### Development
 
@@ -1642,9 +2075,9 @@ services:
 
 ---
 
-## 10. Scalabilité
+## 11. Scalabilité
 
-### 10.1 Stratégies de Scaling
+### 11.1 Stratégies de Scaling
 
 #### Horizontal Scaling (Recommandé)
 
@@ -1667,7 +2100,7 @@ services:
 - Augmenter CPU/RAM des instances
 - Solution rapide mais limitée
 
-### 10.2 Optimisations de Performance
+### 11.2 Optimisations de Performance
 
 #### Caching Strategy
 
@@ -1706,7 +2139,7 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 - Eager loading pour relations
 - Query caching
 
-### 10.3 Capacity Planning
+### 11.3 Capacity Planning
 
 **Estimations (10,000 utilisateurs actifs):**
 
@@ -1719,7 +2152,7 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 | AI API | 2 | 2 cores | 4GB | - |
 | PDF Workers | 2 | 2 cores | 2GB | - |
 
-### 10.4 Coûts Estimés (Cloud Providers)
+### 11.4 Coûts Estimés (Cloud Providers)
 
 #### AWS
 
@@ -1753,9 +2186,9 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 
 ---
 
-## 11. Sécurité
+## 12. Sécurité
 
-### 11.1 Authentification et Autorisation
+### 12.1 Authentification et Autorisation
 
 **Mobile App:**
 - Firebase Auth (Google, Apple)
@@ -1772,14 +2205,14 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 - Rate limiting par utilisateur/IP
 - CORS configuration stricte
 
-### 11.2 Sécurité des Données
+### 12.2 Sécurité des Données
 
 - **Encryption:** HTTPS/TLS 1.3
 - **Database:** Encryption at rest
 - **Sensitive Data:** Hashing (bcrypt pour passwords)
 - **API Keys:** Stockage sécurisé (env variables)
 
-### 11.3 Protection contre les Abus
+### 12.3 Protection contre les Abus
 
 - **Rate Limiting:**
   - Mobile API: 100 req/min par utilisateur
@@ -1797,9 +2230,9 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 
 ---
 
-## 12. Monitoring et Observabilité
+## 13. Monitoring et Observabilité
 
-### 12.1 Métriques à Surveiller
+### 13.1 Métriques à Surveiller
 
 **Application:**
 - Response time (p50, p95, p99)
@@ -1820,7 +2253,7 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 - Battle participation
 - Points distribution
 
-### 12.2 Outils Recommandés
+### 13.2 Outils Recommandés
 
 **Phase 1 (Simple):**
 - Laravel Telescope (dev/staging)
@@ -1834,7 +2267,7 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 - **Metrics:** Prometheus + Grafana
 - **Uptime:** UptimeRobot / Pingdom
 
-### 12.3 Alertes
+### 13.3 Alertes
 
 **Critiques:**
 - Database down
@@ -1850,87 +2283,96 @@ CREATE INDEX idx_group_member_user ON tbl_group_member(user_id, status);
 
 ---
 
-## 13. Recommandations par Phase
+## 14. Recommandations par Phase
 
-### Phase 1: Amélioration Progressive (Mois 1-3)
+### Phase 1: Rhapsody MVP (Mois 1-2)
 
 **Priorités:**
-1. ✅ Ajouter Redis pour cache
-2. ✅ Implémenter queue pour tâches longues
-3. ✅ Séparer API et Web controllers
-4. ✅ Ajouter rate limiting
-5. ✅ Monitoring basique
+1. [ ] Backend: Tables Rhapsody, API texte/quiz/points
+2. [ ] Mobile: Écrans texte du jour, quiz, résultats
+3. [ ] Groupes et classements basiques
+4. [ ] Monitoring basique
+
+**Instances:**
+- Admin API: 1-2 instances
+- MySQL: 1 instance + backup
+- Redis: 1 instance
+
+### Phase 2: Foundation School MVP (Mois 3-4)
+
+**Priorités:**
+1. [ ] Backend: Tables Foundation School, API progression
+2. [ ] Mobile: Liste modules, lecteur contenu, quiz
+3. [ ] Examens et certificats
+4. [ ] Suivi pastoral
 
 **Instances:**
 - Admin API: 2 instances
+- FS Service: 1-2 instances
 - MySQL: 1 instance + backup
 - Redis: 1 instance
 - Queue Workers: 2 instances
 
-### Phase 2: Refactoring (Mois 4-6)
+### Phase 3: Fonctionnalités Avancées (Mois 5-6)
 
 **Priorités:**
-1. ✅ Créer services séparés (Quiz, Group, User)
-2. ✅ Implémenter Repository pattern
-3. ✅ API Gateway
-4. ✅ Monitoring avancé
-5. ✅ Tests automatisés
+1. [ ] Battles 1v1
+2. [ ] Admin Panel amélioré
+3. [ ] Badges et récompenses
+4. [ ] Performance optimizations
 
 **Instances:**
 - API Gateway: 1 instance
-- Quiz Service: 2 instances
-- Group Service: 2 instances
-- User Service: 2 instances
+- Services: 2-3 instances chacun
 - MySQL: 1 primary + 1 replica
 - Redis: Cluster (3 nodes)
 
-### Phase 3: Microservices (Mois 7-12)
+### Phase 4: IA et Scale (Mois 7+)
 
 **Priorités:**
-1. ✅ Services complètement indépendants
-2. ✅ Event-driven architecture
-3. ✅ Service mesh (optionnel)
-4. ✅ Auto-scaling
-5. ✅ Multi-region (optionnel)
+1. [ ] Génération automatique de questions
+2. [ ] Auto-scaling
+3. [ ] Monitoring avancé
+4. [ ] Multi-region (optionnel)
 
 ---
 
-## 14. Checklist d'Implémentation
+## 15. Checklist d'Implémentation
+
+### Phase 1 - Rhapsody MVP
+- [ ] Tables: tbl_topic, tbl_daily_text, tbl_question, tbl_user_points
+- [ ] API: daily-text, daily-quiz, points, leaderboard
+- [ ] Mobile: Home, Quiz, Results, Profile, Leaderboard
+- [ ] Admin: Gestion questions, textes quotidiens
+
+### Phase 2 - Foundation School MVP
+- [ ] Tables: tbl_fs_class, tbl_fs_module, tbl_fs_question, tbl_fs_enrollment
+- [ ] Tables: tbl_fs_module_progress, tbl_fs_quiz_attempt, tbl_fs_certificate
+- [ ] API: classes, modules, progress, exams, certificates
+- [ ] Mobile: FS Home, Module List, Content Reader, Quiz, Certificate
+- [ ] Admin: Gestion classes/modules, inscriptions
 
 ### Infrastructure
-- [ ] Setup Load Balancer (Nginx)
-- [ ] Configure Redis Cache
-- [ ] Setup Queue System (Laravel Queue / RabbitMQ)
-- [ ] Database Backup Strategy
+- [ ] Docker Compose avec MySQL + Redis
+- [ ] Backup automatique
 - [ ] SSL Certificates
-- [ ] Monitoring Setup
-
-### Code
-- [ ] Refactor Admin API (séparer controllers)
-- [ ] Create Service Layer
-- [ ] Implement Repository Pattern
-- [ ] Add Caching Layer
-- [ ] Add Queue Jobs
-- [ ] API Documentation (OpenAPI/Swagger)
+- [ ] Monitoring basique (logs, health checks)
 
 ### Security
+- [ ] JWT Authentication
 - [ ] Rate Limiting
 - [ ] Input Validation
-- [ ] SQL Injection Protection
-- [ ] XSS Protection
-- [ ] CSRF Protection
-- [ ] Security Headers
+- [ ] CORS Configuration
 
 ### Testing
-- [ ] Unit Tests
-- [ ] Integration Tests
-- [ ] API Tests
-- [ ] Load Tests
-- [ ] Security Tests
+- [ ] API Tests (Postman/Insomnia)
+- [ ] Mobile Testing (iOS Simulator, Android Emulator)
+- [ ] User Acceptance Testing
 
 ---
 
 **Document créé le:** Décembre 2024  
 **Dernière mise à jour:** Décembre 2024  
-**Version:** 1.0  
+**Version:** 2.0  
+**Focus:** Rhapsody of Realities & Foundation School  
 **Auteur:** Architecture Team

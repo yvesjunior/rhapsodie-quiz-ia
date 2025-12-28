@@ -9,12 +9,15 @@ import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_all_time_cubit.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_daily_cubit.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_monthly_cubit.dart';
+import 'package:flutterquiz/features/profile_management/cubits/user_details_cubit.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
-import 'package:flutterquiz/ui/widgets/custom_appbar.dart';
 import 'package:flutterquiz/ui/widgets/error_container.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 import 'package:flutterquiz/utils/ui_utils.dart';
+
+/// Purple header color - consistent across all screens
+const _headerColor = Color(0xFF7B68EE);
 
 class LeaderBoardScreen extends StatefulWidget {
   const LeaderBoardScreen({super.key});
@@ -25,7 +28,7 @@ class LeaderBoardScreen extends StatefulWidget {
 
 class LeaderBoardScreenState extends State<LeaderBoardScreen>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
-  late final _tabController = TabController(length: 3, vsync: this);
+  int _selectedTabIndex = 0;
 
   final _allTimeRefreshKey = GlobalKey<RefreshIndicatorState>();
   final _monthlyRefreshKey = GlobalKey<RefreshIndicatorState>();
@@ -57,8 +60,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     controllerM.dispose();
     controllerA.dispose();
     controllerD.dispose();
-
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -87,7 +88,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   }
 
   void onTapTab() {
-    if (_tabController.index == 0) {
+    if (_selectedTabIndex == 0) {
       if (controllerA.hasClients && controllerA.offset != 0) {
         controllerA.animateTo(
           0,
@@ -97,7 +98,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       } else {
         _allTimeRefreshKey.currentState?.show();
       }
-    } else if (_tabController.index == 1) {
+    } else if (_selectedTabIndex == 1) {
       if (controllerM.hasClients && controllerM.offset != 0) {
         controllerM.animateTo(
           0,
@@ -107,7 +108,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       } else {
         _monthlyRefreshKey.currentState?.show();
       }
-    } else if (_tabController.index == 2) {
+    } else if (_selectedTabIndex == 2) {
       if (controllerD.hasClients && controllerD.offset != 0) {
         controllerD.animateTo(
           0,
@@ -123,30 +124,158 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    
     return Scaffold(
-      appBar: QAppBar(
-        elevation: 0,
-        noBottomRadius: true,
-        title: Text(context.tr('leaderboardLbl')!),
-        automaticallyImplyLeading: false,
-        bottom: TabBar(
-          controller: _tabController,
-          tabAlignment: TabAlignment.fill,
-          tabs: [
-            Tab(text: context.tr('allTimeLbl')),
-            Tab(text: context.tr('monthLbl')),
-            Tab(text: context.tr('dailyLbl')),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        physics: const ClampingScrollPhysics(),
+      backgroundColor: _headerColor,
+      body: Stack(
+        children: [
+          // Purple background
+          Container(
+            height: context.height * 0.55,
+            color: _headerColor,
+          ),
+          
+          // Content
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 16),
+                _buildTabBar(),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: IndexedStack(
+                    index: _selectedTabIndex,
         children: [
           allTimeLeaderBoard(),
           monthlyLeaderBoard(),
           dailyLeaderBoard(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          // User avatar
+          BlocBuilder<UserDetailsCubit, UserDetailsState>(
+            builder: (context, state) {
+              var profileUrl = '';
+              if (state is UserDetailsFetchSuccess) {
+                profileUrl = state.userProfile.profileUrl ?? '';
+              }
+              return Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFFFE4B5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: profileUrl.isNotEmpty
+                      ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
+                      : const Icon(Icons.person, color: Colors.brown),
+                ),
+              );
+            },
+          ),
+          
+          // Title
+          Expanded(
+            child: Text(
+              context.trWithFallback('leaderboardLbl', 'Leaderboard'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeights.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          
+          // Notification bell with badge
+          Stack(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.notifications_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    final tabs = [
+      context.trWithFallback('allTimeLbl', 'All Time'),
+      context.trWithFallback('thisMonthLbl', 'This Month'),
+      context.trWithFallback('thisWeekLbl', 'This Week'),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final isSelected = _selectedTabIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTabIndex = index),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withValues(alpha: 0.3) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Text(
+                  tabs[index],
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeights.bold : FontWeights.regular,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -176,7 +305,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
         if (state is LeaderBoardDailyFailure) {
           if (state.errorMessage == errorCodeUnauthorizedAccess) {
             showAlreadyLoggedInDialog(context);
-
             return;
           }
         }
@@ -188,24 +316,19 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             errorMessage: convertErrorCodeToLanguageKey(state.errorMessage),
             onTapRetry: fetchDailyLeaderBoard,
             showErrorImage: true,
-            errorMessageColor: Theme.of(context).primaryColor,
+            errorMessageColor: Colors.white,
           );
         }
 
-        ///
         if (state is LeaderBoardDailySuccess) {
           final dailyList = state.leaderBoardDetails;
           final hasMore = state.hasMore;
 
-          /// API returns empty list if there is no leaderboard data.
           if (dailyList.isEmpty) {
             return noLeaderboard(fetchDailyLeaderBoard);
           }
 
-          log(name: 'Leaderboard Daily', jsonEncode(dailyList));
-          log(name: 'Leaderboard Daily', 'Has More: $hasMore');
-
-          return _buildLeaderboardWithSlivers(
+          return _buildLeaderboardContent(
             leaderboardList: dailyList,
             controller: controllerD,
             hasMore: hasMore,
@@ -213,9 +336,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             profile: LeaderBoardDailyCubit.profileD,
             score: LeaderBoardDailyCubit.scoreD,
             onRefresh: () async {
-              await Future.delayed(const Duration(seconds: 1), () async {
+              await Future.delayed(const Duration(seconds: 1));
                 context.read<LeaderBoardDailyCubit>().fetchLeaderBoard('20');
-              });
             },
             refreshKey: _dailyRefreshKey,
           );
@@ -233,7 +355,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
         if (state is LeaderBoardMonthlyFailure) {
           if (state.errorMessage == errorCodeUnauthorizedAccess) {
             showAlreadyLoggedInDialog(context);
-
             return;
           }
         }
@@ -245,24 +366,19 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             errorMessage: convertErrorCodeToLanguageKey(state.errorMessage),
             onTapRetry: fetchMonthlyLeaderBoard,
             showErrorImage: true,
-            errorMessageColor: Theme.of(context).primaryColor,
+            errorMessageColor: Colors.white,
           );
         }
 
-        ///
         if (state is LeaderBoardMonthlySuccess) {
           final monthlyList = state.leaderBoardDetails;
           final hasMore = state.hasMore;
 
-          /// API returns empty list if there is no leaderboard data.
           if (monthlyList.isEmpty) {
             return noLeaderboard(fetchMonthlyLeaderBoard);
           }
 
-          log(name: 'Leaderboard Monthly', jsonEncode(monthlyList));
-          log(name: 'Leaderboard Monthly', 'Has More: $hasMore');
-
-          return _buildLeaderboardWithSlivers(
+          return _buildLeaderboardContent(
             leaderboardList: monthlyList,
             controller: controllerM,
             hasMore: hasMore,
@@ -270,9 +386,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             profile: LeaderBoardMonthlyCubit.profileM,
             score: LeaderBoardMonthlyCubit.scoreM,
             onRefresh: () async {
-              await Future.delayed(const Duration(seconds: 1), () async {
+              await Future.delayed(const Duration(seconds: 1));
                 context.read<LeaderBoardMonthlyCubit>().fetchLeaderBoard('20');
-              });
             },
             refreshKey: _monthlyRefreshKey,
           );
@@ -300,24 +415,19 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             errorMessage: convertErrorCodeToLanguageKey(state.errorMessage),
             onTapRetry: fetchAllTimeLeaderBoard,
             showErrorImage: true,
-            errorMessageColor: Theme.of(context).primaryColor,
+            errorMessageColor: Colors.white,
           );
         }
 
-        ///
         if (state is LeaderBoardAllTimeSuccess) {
           final allTimeList = state.leaderBoardDetails;
           final hasMore = state.hasMore;
 
-          /// API returns empty list if there is no leaderboard data.
           if (allTimeList.isEmpty) {
-            return noLeaderboard(fetchDailyLeaderBoard);
+            return noLeaderboard(fetchAllTimeLeaderBoard);
           }
 
-          log(name: 'Leaderboard All Time', jsonEncode(allTimeList));
-          log(name: 'Leaderboard All Time', 'Has More: $hasMore');
-
-          return _buildLeaderboardWithSlivers(
+          return _buildLeaderboardContent(
             leaderboardList: allTimeList,
             controller: controllerA,
             hasMore: hasMore,
@@ -325,9 +435,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             profile: LeaderBoardAllTimeCubit.profileA,
             score: LeaderBoardAllTimeCubit.scoreA,
             onRefresh: () async {
-              await Future.delayed(const Duration(seconds: 1), () async {
+              await Future.delayed(const Duration(seconds: 1));
                 context.read<LeaderBoardAllTimeCubit>().fetchLeaderBoard('20');
-              });
             },
             refreshKey: _allTimeRefreshKey,
           );
@@ -338,7 +447,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     );
   }
 
-  Widget _buildLeaderboardWithSlivers({
+  Widget _buildLeaderboardContent({
     required List<Map<String, dynamic>> leaderboardList,
     required ScrollController controller,
     required bool hasMore,
@@ -348,761 +457,376 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     required Future<void> Function() onRefresh,
     required GlobalKey<RefreshIndicatorState> refreshKey,
   }) {
-    final height = context.height;
     final showMyRank = score != '0' && int.parse(rank) > 3;
 
     return Column(
       children: [
+        // Top 3 Podium
+        _buildPodium(leaderboardList.take(3).toList()),
+        
+        const SizedBox(height: 16),
+        
+        // Rankings List
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              children: [
+                // My rank highlight (if applicable)
+                if (showMyRank)
+                  _buildMyRankCard(rank, profile, score),
+                
+                // Other rankings
         Expanded(
           child: RefreshIndicator(
             key: refreshKey,
-            color: context.primaryColor,
-            backgroundColor: context.scaffoldBackgroundColor,
+                    color: _headerColor,
             onRefresh: onRefresh,
-            child: CustomScrollView(
+                    child: ListView.builder(
               controller: controller,
-              slivers: [
-                // Collapsible Top 3 Section
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _LeaderboardTopThreeDelegate(
-                    expandedHeight: height * 0.24,
-                    collapsedHeight: height * 0.10,
-                    leaderboardList: leaderboardList,
-                  ),
-                ),
-
-                // Leaderboard List (items after top 3)
-                if (leaderboardList.length > 3)
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.width * 0.02,
-                      vertical: 5,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      itemCount: leaderboardList.length > 3 
+                          ? leaderboardList.length - 3 + (hasMore ? 1 : 0)
+                          : 0,
+                      itemBuilder: (context, index) {
                           final actualIndex = index + 3;
 
-                          if (hasMore &&
-                              actualIndex == leaderboardList.length - 1) {
-                            return const Center(
-                              child: CircularProgressContainer(),
-                            );
-                          }
-
-                          if (actualIndex >= leaderboardList.length) {
-                            return null;
-                          }
-
-                          return Column(
-                            children: [
-                              _buildLeaderboardItem(
-                                leaderboardList[actualIndex],
-                              ),
-                              if (actualIndex < leaderboardList.length - 1)
-                                Divider(
-                                  color: Colors.black26,
-                                  thickness: 0.5,
-                                  indent: context.width * 0.03,
-                                  endIndent: context.width * 0.03,
-                                ),
-                            ],
-                          );
-                        },
-                        childCount: leaderboardList.length - 3,
+                        if (hasMore && actualIndex >= leaderboardList.length) {
+                          return const Center(child: CircularProgressContainer());
+                        }
+                        
+                        if (actualIndex >= leaderboardList.length) return null;
+                        
+                        return _buildLeaderboardItem(leaderboardList[actualIndex]);
+                      },
                       ),
                     ),
                   ),
-
-                // Add bottom padding for "My Rank" space
-                if (showMyRank)
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
             ),
           ),
         ),
-
-        // My Rank Section - Pinned at bottom, always visible
-        if (showMyRank) myRank(rank, profile, score),
       ],
     );
   }
 
-  Widget _buildLeaderboardItem(Map<String, dynamic> item) {
-    final textStyle = TextStyle(
-      color: Theme.of(context).colorScheme.onTertiary,
-      fontSize: 16,
-    );
-    final width = context.width;
-    final height = context.height;
+  Widget _buildPodium(List<Map<String, dynamic>> top3) {
+    if (top3.isEmpty) return const SizedBox.shrink();
 
-    return Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: SizedBox(
+        height: 220,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        const SizedBox(width: 10),
+            // 2nd place
         Expanded(
-          child: Text(item['user_rank'] as String, style: textStyle),
+              child: top3.length > 1
+                  ? _buildPodiumItem(top3[1], 2, 120)
+                  : const SizedBox.shrink(),
         ),
+            const SizedBox(width: 8),
+            
+            // 1st place (taller)
         Expanded(
-          flex: 9,
-          child: ListTile(
-            dense: true,
-            contentPadding: const EdgeInsets.only(right: 20),
-            title: Text(
-              item['name'] as String? ?? '...',
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
+              child: top3.isNotEmpty
+                  ? _buildPodiumItem(top3[0], 1, 160)
+                  : const SizedBox.shrink(),
             ),
-            leading: Container(
-              width: width * 0.12,
-              height: height * 0.3,
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-              child: QImage.circular(
-                imageUrl: item['profile'] as String? ?? '',
-                width: double.maxFinite,
-                height: double.maxFinite,
-              ),
+            const SizedBox(width: 8),
+            
+            // 3rd place
+            Expanded(
+              child: top3.length > 2
+                  ? _buildPodiumItem(top3[2], 3, 100)
+                  : const SizedBox.shrink(),
             ),
-            trailing: SizedBox(
-              width: width * 0.12,
-              child: Center(
-                child: Text(
-                  UiUtils.formatNumber(
-                    int.parse(item['score'] as String? ?? '0'),
-                  ),
-                  maxLines: 1,
-                  softWrap: false,
-                  style: textStyle,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPodiumItem(Map<String, dynamic> user, int position, double podiumHeight) {
+    final name = user['name'] as String? ?? '...';
+    final profileUrl = user['profile'] as String? ?? '';
+    final score = user['score'] as String? ?? '0';
+    
+    // Avatar background colors
+    final avatarColors = {
+      1: const Color(0xFFFFE4B5),
+      2: const Color(0xFFB8E6D4),
+      3: const Color(0xFFFFD4CC),
+    };
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+        // Crown for 1st place
+        if (position == 1)
+          const Icon(
+            Icons.workspace_premium_rounded,
+            color: Color(0xFFFFD700),
+            size: 28,
+          ),
+        
+        const SizedBox(height: 4),
+        
+        // Avatar
+        Container(
+          width: position == 1 ? 70 : 56,
+          height: position == 1 ? 70 : 56,
+                      decoration: BoxDecoration(
+            color: avatarColors[position],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white, width: 3),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(13),
+            child: profileUrl.isNotEmpty
+                ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
+                : const Icon(Icons.person, color: Colors.brown),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget topThreeRanks(List<Map<String, dynamic>> circleList) {
-    final height = context.height;
-    final width = context.width;
-
-    Widget rank(double maxHeight, int idx) {
-      final imageSize = idx == 0 ? maxHeight * .40 : maxHeight * .35;
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Column(
-          mainAxisAlignment: idx == 0
-              ? MainAxisAlignment.start
-              : MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: imageSize,
-              width: imageSize,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: context.primaryTextColor.withValues(alpha: .3),
-                        ),
-                      ),
-                      child: QImage.circular(
-                        imageUrl: circleList[idx]['profile'] as String,
-                        width: double.maxFinite,
-                        height: double.maxFinite,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: idx == 0 ? -12 : -10,
-                    left: 0,
-                    right: 0,
-                    child: rankCircle(
-                      (idx + 1).toString(),
-                      size: idx == 0 ? 30 : 25,
-                    ),
-                  ),
-                ],
-              ),
+        
+        const SizedBox(height: 8),
+        
+        // Name
+        Text(
+          name.length > 10 ? '${name.substring(0, 10)}...' : name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeights.semiBold,
+            color: Colors.white,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // Podium block
+        Container(
+          height: podiumHeight,
+          decoration: BoxDecoration(
+            color: _headerColor.withValues(alpha: 0.6),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
             ),
-            const SizedBox(height: 10),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                // Points
             Text(
-              circleList[idx]['name']!.toString().isNotEmpty
-                  ? circleList[idx]['name']!.toString()
-                  : '...',
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              textAlign: TextAlign.center,
+                  '$score pt',
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeights.regular,
-                color: context.primaryTextColor.withValues(alpha: .8),
+                    fontWeight: FontWeights.semiBold,
+                    color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(height: 12),
+                const SizedBox(height: 8),
+                // Position number
             Text(
-              circleList[idx]['score'] as String? ?? '...',
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
+                  '$position',
+                  style: const TextStyle(
+                    fontSize: 40,
                 fontWeight: FontWeights.bold,
-                color: context.primaryTextColor,
+                    color: Colors.white,
               ),
             ),
           ],
         ),
+          ),
+        ),
+      ],
       );
     }
 
+  Widget _buildMyRankCard(String rank, String profile, String score) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
-      width: width,
-      height: height * 0.24,
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-        color: context.surfaceColor,
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final maxHeight = constraints.maxHeight;
-
-          return Row(
+      child: Row(
             children: [
-              /// Rank 2
-              Expanded(
-                flex: 2,
-                child: circleList.length > 1
-                    ? rank(maxHeight, 1)
-                    : const SizedBox.shrink(),
-              ),
-
-              /// Rank 1
-              Expanded(
-                flex: 3,
-                child: circleList.isNotEmpty
-                    ? rank(maxHeight, 0)
-                    : const SizedBox.shrink(),
-              ),
-
-              /// Rank 3
-              Expanded(
-                flex: 2,
-                child: circleList.length > 2
-                    ? rank(maxHeight, 2)
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget rankCircle(String text, {double size = 25}) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      width: size,
-      height: size,
+          // Rank
+          Text(
+            _getOrdinal(int.tryParse(rank) ?? 0),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeights.bold,
+              color: context.primaryTextColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // Avatar
+          Container(
+            width: 48,
+            height: 48,
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        shape: BoxShape.circle,
-      ),
-      padding: const EdgeInsets.all(2),
-      alignment: Alignment.center,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).primaryColor,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(text, style: TextStyle(color: colorScheme.surface)),
-      ),
-    );
-  }
-
-  Widget leaderBoardList(
-    List<Map<String, dynamic>> leaderBoardList,
-    ScrollController controller, {
-    required bool hasMore,
-  }) {
-    if (leaderBoardList.length <= 3) return const SizedBox();
-
-    final textStyle = TextStyle(
-      color: Theme.of(context).colorScheme.onTertiary,
-      fontSize: 16,
-    );
-    final width = context.width;
-    final height = context.height;
-
-    return Expanded(
-      child: Container(
-        height: height * .45,
-        padding: EdgeInsets.only(top: 5, left: width * .02, right: width * .02),
-        child: ListView.separated(
-          controller: controller,
-          shrinkWrap: true,
-          itemCount: leaderBoardList.length,
-          separatorBuilder: (_, i) => i > 2
-              ? Divider(
-                  color: Colors.black26,
-                  thickness: .5,
-                  indent: width * 0.03,
-                  endIndent: width * 0.03,
-                )
-              : const SizedBox.shrink(),
-          itemBuilder: (context, index) {
-            final leaderBoard = leaderBoardList[index];
-
-            return index > 2
-                ? (hasMore && index == (leaderBoardList.length - 1))
-                      ? const Center(child: CircularProgressContainer())
-                      : Row(
-                          children: [
-                            const SizedBox(width: 10),
+              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFB8E6D4),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: profile.isNotEmpty
+                  ? QImage(imageUrl: profile, fit: BoxFit.cover)
+                  : const Icon(Icons.person, color: Colors.brown),
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // "YOU" label
                             Expanded(
                               child: Text(
-                                leaderBoard['user_rank'] as String,
-                                style: textStyle,
-                              ),
-                            ),
-                            Expanded(
-                              flex: 9,
-                              child: ListTile(
-                                dense: true,
-                                contentPadding: const EdgeInsets.only(
-                                  right: 20,
-                                ),
-                                title: Text(
-                                  leaderBoard['name'] as String? ?? '...',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: textStyle,
-                                ),
-                                leading: Container(
-                                  width: width * .12,
-                                  height: height * .3,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(
-                                      context,
-                                    ).primaryColor.withValues(alpha: 0.5),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: QImage.circular(
-                                    imageUrl:
-                                        leaderBoard['profile'] as String? ?? '',
-                                    width: double.maxFinite,
-                                    height: double.maxFinite,
-                                  ),
-                                ),
-                                trailing: SizedBox(
-                                  width: width * .12,
-                                  child: Center(
-                                    child: Text(
-                                      UiUtils.formatNumber(
-                                        int.parse(
-                                          leaderBoard['score'] as String? ??
-                                              '0',
-                                        ),
-                                      ),
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      style: textStyle,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
+              'YOU',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeights.bold,
+                color: context.primaryTextColor,
+              ),
+            ),
+          ),
+          
+          // Score
+          Text(
+            '$score pt',
+            style: TextStyle(
+              fontSize: 14,
+              color: context.primaryTextColor.withValues(alpha: 0.6),
                               ),
                             ),
                           ],
-                        )
-                : const SizedBox();
-          },
-        ),
       ),
     );
   }
 
-  Widget myRank(String rank, String profile, String score) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textStyle = TextStyle(color: colorScheme.onTertiary, fontSize: 16);
+  Widget _buildLeaderboardItem(Map<String, dynamic> item) {
+    final rank = item['user_rank'] as String? ?? '0';
+    final name = item['name'] as String? ?? '...';
+    final profileUrl = item['profile'] as String? ?? '';
+    final score = item['score'] as String? ?? '0';
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(12),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Center(child: Text(rank, style: textStyle)),
-          const SizedBox(width: 8),
-          Container(
-            height: context.width * .11,
-            width: context.width * .11,
-            decoration: const BoxDecoration(shape: BoxShape.circle),
-            child: QImage.circular(imageUrl: profile, fit: BoxFit.fill),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
+          // Rank
+          SizedBox(
+            width: 36,
             child: Text(
-              context.tr(myRankKey)!,
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
+              _getOrdinal(int.tryParse(rank) ?? 0),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeights.semiBold,
+                color: context.primaryTextColor,
+              ),
             ),
           ),
-          Text(
-            score,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            style: textStyle,
+          
+          // Avatar
+              Container(
+            width: 48,
+            height: 48,
+                decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: _getAvatarColor(int.tryParse(rank) ?? 0),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: profileUrl.isNotEmpty
+                  ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
+                  : const Icon(Icons.person, color: Colors.brown),
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // Name
+          Expanded(
+            child: Text(
+              name,
+                  style: TextStyle(
+                fontSize: 16,
+                    fontWeight: FontWeights.semiBold,
+                color: context.primaryTextColor,
+                  ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+                ),
+          ),
+          
+          // Score
+                Text(
+            '$score pt',
+                  style: TextStyle(
+              fontSize: 14,
+              color: context.primaryTextColor.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getAvatarColor(int rank) {
+    final colors = [
+      const Color(0xFFFFE4B5),
+      const Color(0xFFB8E6D4),
+      const Color(0xFFFFD4CC),
+      const Color(0xFFD4E4FF),
+      const Color(0xFFE4D4FF),
+    ];
+    return colors[(rank - 1) % colors.length];
+  }
+
+  String _getOrdinal(int number) {
+    if (number <= 0) return '0';
+    
+    final lastDigit = number % 10;
+    final lastTwoDigits = number % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+      return '${number}th';
+    }
+    
+    switch (lastDigit) {
+      case 1:
+        return '${number}st';
+      case 2:
+        return '${number}nd';
+      case 3:
+        return '${number}rd';
+      default:
+        return '${number}th';
+    }
   }
 
   @override
   bool get wantKeepAlive => true;
-}
-
-/// Custom SliverPersistentHeaderDelegate for collapsible top 3 section
-class _LeaderboardTopThreeDelegate extends SliverPersistentHeaderDelegate {
-  _LeaderboardTopThreeDelegate({
-    required this.expandedHeight,
-    required this.collapsedHeight,
-    required this.leaderboardList,
-  });
-
-  final double expandedHeight;
-  final double collapsedHeight;
-  final List<Map<String, dynamic>> leaderboardList;
-
-  @override
-  double get minExtent => collapsedHeight;
-
-  @override
-  double get maxExtent => expandedHeight;
-
-  @override
-  bool shouldRebuild(covariant _LeaderboardTopThreeDelegate oldDelegate) {
-    return expandedHeight != oldDelegate.expandedHeight ||
-        collapsedHeight != oldDelegate.collapsedHeight ||
-        leaderboardList != oldDelegate.leaderboardList;
-  }
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final progress = shrinkOffset / (maxExtent - minExtent);
-    final isCollapsed = progress > 0.5;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-        color: Theme.of(context).colorScheme.surface,
-      ),
-      child: _buildTopThreeContent(context, progress, isCollapsed),
-    );
-  }
-
-  Widget _buildTopThreeContent(
-    BuildContext context,
-    double progress,
-    bool isCollapsed,
-  ) {
-    final width = MediaQuery.sizeOf(context).width;
-    final primaryTextColor = Theme.of(context).colorScheme.onTertiary;
-
-    // Calculate scaling based on scroll progress
-    final scale = 1.0 - (progress * 0.35);
-    final opacity = 1.0 - (progress * 0.2);
-
-    if (isCollapsed) {
-      return _buildCollapsedView(context, width, primaryTextColor);
-    }
-
-    return Opacity(
-      opacity: opacity,
-      child: Transform.scale(
-        scale: scale,
-        child: _buildExpandedView(context, width, primaryTextColor),
-      ),
-    );
-  }
-
-  Widget _buildCollapsedView(
-    BuildContext context,
-    double width,
-    Color primaryTextColor,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          if (leaderboardList.isNotEmpty)
-            _buildCompactRankItem(context, 0, width * 0.28, primaryTextColor),
-          if (leaderboardList.length > 1)
-            _buildCompactRankItem(context, 1, width * 0.28, primaryTextColor),
-          if (leaderboardList.length > 2)
-            _buildCompactRankItem(context, 2, width * 0.28, primaryTextColor),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactRankItem(
-    BuildContext context,
-    int index,
-    double width,
-    Color primaryTextColor,
-  ) {
-    final item = leaderboardList[index];
-    return SizedBox(
-      width: width,
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: primaryTextColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: QImage.circular(
-                  imageUrl: item['profile'] as String,
-                  width: double.maxFinite,
-                  height: double.maxFinite,
-                ),
-              ),
-              Positioned(
-                right: -4,
-                bottom: -4,
-                child: _rankCircle(context, (index + 1).toString(), size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['name']!.toString().isNotEmpty
-                      ? item['name']!.toString()
-                      : '...',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeights.semiBold,
-                    color: primaryTextColor,
-                  ),
-                ),
-                Text(
-                  item['score'] as String? ?? '...',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeights.regular,
-                    color: primaryTextColor.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedView(
-    BuildContext context,
-    double width,
-    Color primaryTextColor,
-  ) {
-    final height = MediaQuery.sizeOf(context).height;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
-      child: Row(
-        children: [
-          /// Rank 2
-          Expanded(
-            flex: 2,
-            child: leaderboardList.length > 1
-                ? _buildExpandedRankItem(context, 1, height, primaryTextColor)
-                : const SizedBox.shrink(),
-          ),
-
-          /// Rank 1
-          Expanded(
-            flex: 3,
-            child: leaderboardList.isNotEmpty
-                ? _buildExpandedRankItem(
-                    context,
-                    0,
-                    height,
-                    primaryTextColor,
-                    isFirst: true,
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          /// Rank 3
-          Expanded(
-            flex: 2,
-            child: leaderboardList.length > 2
-                ? _buildExpandedRankItem(context, 2, height, primaryTextColor)
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedRankItem(
-    BuildContext context,
-    int index,
-    double height,
-    Color primaryTextColor, {
-    bool isFirst = false,
-  }) {
-    final item = leaderboardList[index];
-    final maxHeight = expandedHeight;
-    final imageSize = isFirst ? maxHeight * 0.40 : maxHeight * 0.35;
-    final rankSize = isFirst ? 30.0 : 25.0;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          height: constraints.maxHeight,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisAlignment: isFirst
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: imageSize,
-                  width: imageSize,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: primaryTextColor.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: QImage.circular(
-                            imageUrl: item['profile'] as String,
-                            width: double.maxFinite,
-                            height: double.maxFinite,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: isFirst ? -12 : -10,
-                        left: 0,
-                        right: 0,
-                        child: _rankCircle(
-                          context,
-                          (index + 1).toString(),
-                          size: rankSize,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  item['name']!.toString().isNotEmpty
-                      ? item['name']!.toString()
-                      : '...',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeights.regular,
-                    color: primaryTextColor.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  item['score'] as String? ?? '...',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeights.bold,
-                    color: primaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _rankCircle(BuildContext context, String text, {double size = 25}) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        shape: BoxShape.circle,
-      ),
-      padding: const EdgeInsets.all(2),
-      alignment: Alignment.center,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).primaryColor,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: colorScheme.surface,
-            fontSize: size * 0.45,
-          ),
-        ),
-      ),
-    );
-  }
 }

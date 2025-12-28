@@ -11,6 +11,7 @@ class NavTab {
     required this.icon,
     required this.activeIcon,
     required this.child,
+    this.iconData,
   });
 
   /// The [NavTabType] associated with this navigation item.
@@ -24,6 +25,9 @@ class NavTab {
 
   /// Asset path for the active state icon of the tab.
   final String activeIcon;
+
+  /// Optional Material Icon (used instead of asset if provided)
+  final IconData? iconData;
 
   final Widget child;
 }

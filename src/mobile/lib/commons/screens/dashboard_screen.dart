@@ -20,6 +20,8 @@ import 'package:flutterquiz/features/profile_tab/screens/profile_tab_screen.dart
 import 'package:flutterquiz/features/quiz/cubits/quiz_category_cubit.dart';
 import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 import 'package:flutterquiz/features/quiz_zone_tab/screens/quiz_zone_tab_screen.dart';
+import 'package:flutterquiz/features/foundation/foundation.dart';
+import 'package:flutterquiz/features/foundation_tab/screens/foundation_tab_screen.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/ui/screens/home/home_screen.dart';
 import 'package:flutterquiz/ui/screens/home/leaderboard_screen.dart';
@@ -117,12 +119,13 @@ class DashboardScreenState extends State<DashboardScreen> {
     ),
     NavTab(
       tab: NavTabType.quizZone,
-      title: 'navQuizZone',
+      title: 'Foundation',
       icon: Assets.quizZoneNavIcon,
       activeIcon: Assets.quizZoneActiveNavIcon,
+      iconData: Icons.school,
       child: BlocProvider(
-        create: (_) => QuizCategoryCubit(QuizRepository()),
-        child: QuizZoneTabScreen(key: navTabsKeys[NavTabType.quizZone]),
+        create: (_) => FoundationCubit(FoundationRemoteDataSource()),
+        child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
       ),
     ),
     NavTab(
@@ -233,12 +236,13 @@ class DashboardScreenState extends State<DashboardScreen> {
       if (config.isQuizZoneEnabled)
         NavTab(
           tab: NavTabType.quizZone,
-          title: 'navQuizZone',
+          title: 'Foundation',
           icon: Assets.quizZoneNavIcon,
           activeIcon: Assets.quizZoneActiveNavIcon,
+          iconData: Icons.school,
           child: BlocProvider(
-            create: (_) => QuizCategoryCubit(QuizRepository()),
-            child: QuizZoneTabScreen(key: navTabsKeys[NavTabType.quizZone]),
+            create: (_) => FoundationCubit(FoundationRemoteDataSource()),
+            child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
           ),
         ),
       if (config.isPlayZoneEnabled)

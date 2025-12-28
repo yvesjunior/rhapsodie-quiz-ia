@@ -113,9 +113,16 @@ class AuthRemoteDataSource {
     required bool userLoggingOut,
   }) async {
     try {
-      final fcmId = userLoggingOut
-          ? ''
-          : await fcm.FirebaseMessaging.instance.getToken() ?? '';
+      // FCM token can fail on simulators, so we handle it gracefully
+      String fcmId = '';
+      if (!userLoggingOut) {
+        try {
+          fcmId = await fcm.FirebaseMessaging.instance.getToken() ?? '';
+        } catch (_) {
+          // FCM not available (e.g., on simulator), continue with empty token
+          fcmId = '';
+        }
+      }
       final body = {
         fcmIdKey: fcmId,
         firebaseIdKey: firebaseId.isNotEmpty ? firebaseId : 'firebaseId',

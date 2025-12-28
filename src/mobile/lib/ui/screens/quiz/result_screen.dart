@@ -30,11 +30,9 @@ import 'package:flutterquiz/features/quiz/models/user_battle_room_details.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/ui/screens/quiz/guess_the_word_quiz_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/review_answers_screen.dart';
-import 'package:flutterquiz/ui/screens/quiz/widgets/radial_result_container.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
 import 'package:flutterquiz/ui/widgets/custom_appbar.dart';
-import 'package:flutterquiz/ui/widgets/custom_rounded_button.dart';
 import 'package:flutterquiz/ui/widgets/error_container.dart';
 import 'package:flutterquiz/utils/answer_encryption.dart';
 import 'package:flutterquiz/utils/extensions.dart';
@@ -43,6 +41,9 @@ import 'package:lottie/lottie.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
+
+/// Purple header color - consistent across all screens
+const _headerColor = Color(0xFF7B68EE);
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
@@ -138,11 +139,12 @@ class ResultScreen extends StatefulWidget {
   State<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends State<ResultScreen> {
+class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderStateMixin {
   final ScreenshotController screenshotController = ScreenshotController();
   bool _isWinner = false;
   bool _isShareInProgress = false;
   bool _isReviewInProgress = false;
+  int _selectedTabIndex = 0; // 0: Standings, 1: Summary, 2: Play again
 
   bool _displayedAlreadyLoggedInDialog = false;
 
@@ -153,8 +155,6 @@ class _ResultScreenState extends State<ResultScreen> {
   late final String userName = userProfile.name ?? '';
 
   /// THIS is only for Self Challenge and Exam
-  /// we need to calculate things locally,
-  // as we don't give out any coins, score, nor update the statistics.
   late final String _userFirebaseId = context
       .read<UserDetailsCubit>()
       .getUserFirebaseId();
@@ -186,8 +186,6 @@ class _ResultScreenState extends State<ResultScreen> {
       ? (widget.obtainedMarks! * 100) / int.parse(widget.exam!.totalMarks)
       : (correctAnswers * 100) / totalQuestions;
 
-  /// --- End
-
   @override
   void initState() {
     super.initState();
@@ -212,8 +210,6 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _updateResult() async {
-    // We are calculating and showing result locally for exam and self challenge
-    // so no need to call api for updating result.
     if (widget.quizType case QuizTypes.selfChallenge || QuizTypes.exam) return;
 
     final type = switch (widget.quizType) {
@@ -290,9 +286,7 @@ class _ResultScreenState extends State<ResultScreen> {
     } else if (widget.quizType == QuizTypes.audioQuestions &&
         _isWinner &&
         !widget.isPlayed) {
-      //
       if (widget.questions!.first.subcategoryId == '0') {
-        //update category
         context.read<QuizCategoryCubit>().getQuizCategoryWithUserId(
           languageId: UiUtils.getCurrentQuizLanguageId(context),
           type: UiUtils.getCategoryTypeNumberFromQuizType(
@@ -300,7 +294,6 @@ class _ResultScreenState extends State<ResultScreen> {
           ),
         );
       } else {
-        //update subcategory
         context.read<SubCategoryCubit>().fetchSubCategory(
           widget.questions!.first.categoryId!,
         );
@@ -309,7 +302,6 @@ class _ResultScreenState extends State<ResultScreen> {
         _isWinner &&
         !widget.isPlayed) {
       if (widget.guessTheWordQuestions!.first.subcategory == '0') {
-        //update category
         context.read<QuizCategoryCubit>().getQuizCategoryWithUserId(
           languageId: UiUtils.getCurrentQuizLanguageId(context),
           type: UiUtils.getCategoryTypeNumberFromQuizType(
@@ -317,7 +309,6 @@ class _ResultScreenState extends State<ResultScreen> {
           ),
         );
       } else {
-        //update subcategory
         context.read<SubCategoryCubit>().fetchSubCategory(
           widget.guessTheWordQuestions!.first.category,
         );
@@ -326,13 +317,11 @@ class _ResultScreenState extends State<ResultScreen> {
         _isWinner &&
         !widget.isPlayed) {
       if (widget.questions!.first.subcategoryId == '0') {
-        //update category
         context.read<QuizCategoryCubit>().getQuizCategoryWithUserId(
           languageId: UiUtils.getCurrentQuizLanguageId(context),
           type: UiUtils.getCategoryTypeNumberFromQuizType(QuizTypes.mathMania),
         );
       } else {
-        //update subcategory
         context.read<SubCategoryCubit>().fetchSubCategory(
           widget.questions!.first.categoryId!,
         );
@@ -354,130 +343,306 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
-  Widget _buildGreetingMessage({
-    int? scorePct,
-    String? userName,
-    bool? isWinner,
-    bool? isDraw,
-  }) {
-    final String title;
-    final String message;
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
 
-    if (widget.quizType == QuizTypes.oneVsOneBattle ||
-        widget.quizType == QuizTypes.randomBattle) {
-      (title, message) = switch ((isWinner, isDraw)) {
-        // Win
-        (true, false) => ('victoryLbl', 'congratulationsLbl'),
-        // Lose
-        (false, false) => ('defeatLbl', 'betterNextLbl'),
-        // Draw
-        (false, true) => ('matchDrawLbl', ''),
-        _ => throw Exception('Match cannot be drawn and won'),
-      };
-    } else if (widget.quizType == QuizTypes.exam) {
-      title = widget.exam!.title;
-      message = examResultKey;
-    } else {
-      (title, message) = switch (scorePct!) {
-        <= 30 => (goodEffort, keepLearning),
-        <= 50 => (wellDone, makingProgress),
-        <= 70 => (greatJob, closerToMastery),
-        <= 90 => (excellentWork, keepGoing),
-        _ => (fantasticJob, achievedMastery),
-      };
-    }
+        if (context.read<UserDetailsCubit>().state
+            is UserDetailsFetchInProgress) {
+          return;
+        }
 
-    final titleStyle = TextStyle(
-      fontSize: 26,
-      color: context.primaryTextColor,
-      fontWeight: FontWeights.bold,
-    );
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 30),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  widget.quizType == QuizTypes.exam
-                      ? title
-                      : context.tr(title)!,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: titleStyle,
+        onPageBackCalls();
+        context.shouldPop();
+      },
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<UpdateCoinsCubit, UpdateCoinsState>(
+            listener: (context, state) {
+              if (state is UpdateCoinsFailure) {
+                if (state.errorMessage == errorCodeUnauthorizedAccess) {
+                  if (!_displayedAlreadyLoggedInDialog) {
+                    _displayedAlreadyLoggedInDialog = true;
+                    showAlreadyLoggedInDialog(context);
+                    return;
+                  }
+                }
+              }
+            },
+          ),
+          BlocListener<SetCoinScoreCubit, SetCoinScoreState>(
+      listener: (context, state) {
+        if (state is SetCoinScoreSuccess) {
+                setState(() {
+                  _isWinner = state.percentage >
+                      context.read<SystemConfigCubit>().quizWinningPercentage;
+                });
+                
+          if (widget.quizType
+              case QuizTypes.oneVsOneBattle || QuizTypes.randomBattle) {
+            final currUserId = context.read<UserDetailsCubit>().userId();
+            if (state.userRanks.first.userId == currUserId) {
+              context.read<BattleRoomCubit>().deleteBattleRoom();
+            }
+          }
+        }
+      },
+          ),
+        ],
+        child: Scaffold(
+          backgroundColor: _headerColor,
+          body: Stack(
+                      children: [
+              // Purple background that covers top portion
+              Container(
+                height: context.height * 0.45,
+                decoration: BoxDecoration(
+                  color: _headerColor,
+                  image: _isWinner ? const DecorationImage(
+                    image: AssetImage('assets/images/confetti_bg.png'),
+                    fit: BoxFit.cover,
+                    opacity: 0.3,
+                  ) : null,
                 ),
               ),
-              if (widget.quizType != QuizTypes.exam &&
-                  widget.quizType != QuizTypes.oneVsOneBattle &&
-                  widget.quizType != QuizTypes.randomBattle) ...[
-                Flexible(
-                  child: Text(
-                    " ${userName!.split(' ').first}",
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: titleStyle,
+              
+              // Wave decoration at bottom of purple section
+              Positioned(
+                top: context.height * 0.40,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: context.scaffoldBackgroundColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(40),
+                      topRight: Radius.circular(40),
+                    ),
                   ),
                 ),
-              ],
+              ),
+              
+              // Content
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    Expanded(
+                      child: _buildContent(),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 5),
-        Container(
-          alignment: Alignment.center,
-          width: context.shortestSide * .85,
-          child: Text(
-            context.tr(message)!,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 19, color: context.primaryTextColor),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildResultDataWithIconContainer(
-    String title,
-    String icon,
-    EdgeInsetsGeometry margin,
-  ) {
-    return Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        color: context.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      width: context.width * 0.2125,
-      height: 32,
-      alignment: Alignment.center,
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            icon,
-            colorFilter: ColorFilter.mode(
-              context.primaryTextColor,
-              BlendMode.srcIn,
+          const SizedBox(width: 44),
+          Expanded(
+            child: Text(
+              context.trWithFallback('quizSummaryLbl', 'Quiz Summary'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeights.bold,
+                color: Colors.white,
+              ),
             ),
-            width: 20,
-            height: 20,
           ),
-          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () {
+              onPageBackCalls();
+              globalCtx.pushNamedAndRemoveUntil(Routes.home, predicate: (_) => false);
+              dashboardScreenKey.currentState?.changeTab(NavTabType.home);
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.home_rounded,
+                color: _headerColor,
+              ),
+                ),
+              ),
+            ],
+      ),
+          );
+        }
+
+  Widget _buildContent() {
+    return BlocBuilder<SetCoinScoreCubit, SetCoinScoreState>(
+      builder: (context, state) {
+        if (state is SetCoinScoreFailure) {
+          return Center(
+            child: ErrorContainer(
+              showBackButton: true,
+              errorMessageColor: Colors.white,
+              errorMessage: convertErrorCodeToLanguageKey(state.error),
+              onTapRetry: _updateResult,
+              showErrorImage: true,
+            ),
+          );
+        }
+
+        if (state is! SetCoinScoreSuccess && 
+            widget.quizType != QuizTypes.selfChallenge && 
+            widget.quizType != QuizTypes.exam) {
+        return const Center(child: CircularProgressContainer());
+        }
+
+        final earnedScore = state is SetCoinScoreSuccess ? state.earnScore : 0;
+        final totalQues = state is SetCoinScoreSuccess ? state.totalQuestions : totalQuestions;
+        final correct = state is SetCoinScoreSuccess ? state.correctAnswer : correctAnswers;
+        final wrong = totalQues - correct;
+
+        return SingleChildScrollView(
+          child: Column(
+      children: [
+              // Trophy and congratulations
+              _buildTrophySection(earnedScore),
+              
+              // Stats row
+              _buildStatsRow(totalQues, correct, wrong),
+              
+              const SizedBox(height: 16),
+              
+              // Tab bar and standings/summary
+              _buildTabSection(state),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTrophySection(int earnedScore) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 4),
+            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.1),
+          ),
+        ],
+      ),
+      child: Column(
+                children: [
+          // Trophy
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Stars decoration
+              Positioned(
+                top: 0,
+                left: 20,
+                child: Icon(
+                  Icons.star,
+                  color: Colors.amber.withValues(alpha: 0.5),
+                  size: 16,
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 30,
+                child: Icon(
+                  Icons.star,
+                  color: Colors.amber.withValues(alpha: 0.7),
+                  size: 12,
+                ),
+              ),
+              // Trophy icon
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: _isWinner 
+                      ? Colors.amber.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.emoji_events_rounded,
+                  size: 60,
+                  color: _isWinner ? Colors.amber : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Share button (top right of card)
+          Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              onPressed: _shareScore,
+              icon: Icon(
+                Icons.share_rounded,
+                color: context.primaryTextColor.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+
+          // Congratulations text
           Text(
-            title,
-            style: TextStyle(
-              color: context.primaryTextColor,
+            _isWinner 
+                ? context.trWithFallback('congratulationsLbl', 'Congratulations!')
+                : context.trWithFallback('betterLuckLbl', 'Better luck next time!'),
+                        style: TextStyle(
+              fontSize: 24,
               fontWeight: FontWeights.bold,
-              fontSize: 18,
-              height: 1.2,
+                          color: context.primaryTextColor,
+                        ),
+                      ),
+          
+          const SizedBox(height: 8),
+          
+          // Points earned
+          RichText(
+            text: TextSpan(
+              text: context.trWithFallback('youScoredLbl', "You've scored "),
+              style: TextStyle(
+                fontSize: 16,
+                color: context.primaryTextColor.withValues(alpha: 0.6),
+              ),
+                      children: [
+                TextSpan(
+                  text: '+$earnedScore',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeights.bold,
+                    color: Color(0xFF4CD964),
+                  ),
+                ),
+                TextSpan(
+                  text: ' ${context.trWithFallback('pointsLbl', 'points')}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: context.primaryTextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -485,652 +650,481 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
-  Widget _buildIndividualResultContainer() {
-    return BlocConsumer<SetCoinScoreCubit, SetCoinScoreState>(
-      listener: (context, state) {
-        if (state is SetCoinScoreSuccess) {
-          if (widget.quizType
-              case QuizTypes.oneVsOneBattle || QuizTypes.randomBattle) {
-            final currUserId = context.read<UserDetailsCubit>().userId();
-
-            // Delete room
-            if (state.userRanks.first.userId == currUserId) {
-              context.read<BattleRoomCubit>().deleteBattleRoom();
-            }
-          }
-        }
-      },
-      builder: (context, state) {
-        if (state is SetCoinScoreSuccess) {
-          final confetti = _isWinner ? Assets.winConfetti : Assets.loseConfetti;
-
-          ///
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              /// Confetti
-              Align(
-                alignment: Alignment.topCenter,
-                child: Lottie.asset(confetti, fit: BoxFit.fill),
-              ),
-
-              /// User Details
-              Align(
-                alignment: Alignment.topCenter,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    var verticalSpacePercentage = 0.0;
-                    final mh = constraints.maxHeight;
-                    final mw = constraints.maxWidth;
-
-                    if (constraints.maxHeight <
-                        UiUtils.profileHeightBreakPointResultScreen) {
-                      verticalSpacePercentage = 0.015;
-                    } else {
-                      verticalSpacePercentage = 0.035;
-                    }
-
-                    return Column(
-                      children: [
-                        _buildGreetingMessage(
-                          scorePct: state.percentage,
-                          userName: userName,
-                        ),
-                        SizedBox(height: mh * verticalSpacePercentage),
-
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            QImage.circular(
-                              imageUrl: userProfileUrl,
-                              width: mw * .30,
-                              height: mw * .30,
-                            ),
-                            SvgPicture.asset(
-                              Assets.hexagonFrame,
-                              width: mw * .37,
-                              height: mw * .37,
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-
-              /// Correct Answer
-              Align(
-                alignment: AlignmentDirectional.bottomStart,
-                child: _buildResultDataWithIconContainer(
-                  '${state.correctAnswer}/${state.totalQuestions}',
-                  Assets.correct,
-                  const EdgeInsetsDirectional.only(start: 15, bottom: 60),
-                ),
-              ),
-
-              /// Incorrect Answer
-              Align(
-                alignment: AlignmentDirectional.bottomStart,
-                child: _buildResultDataWithIconContainer(
-                  '${state.totalQuestions - state.correctAnswer}/${state.totalQuestions}',
-                  Assets.wrong,
-                  const EdgeInsetsDirectional.only(start: 15, bottom: 20),
-                ),
-              ),
-
-              /// Score
-              Align(
-                alignment: AlignmentDirectional.bottomEnd,
-                child: _buildResultDataWithIconContainer(
-                  '${state.earnScore}',
-                  Assets.score,
-                  const EdgeInsetsDirectional.only(end: 15, bottom: 60),
-                ),
-              ),
-
-              /// Coins
-              Align(
-                alignment: AlignmentDirectional.bottomEnd,
-                child: _buildResultDataWithIconContainer(
-                  '${state.earnCoin}',
-                  Assets.earnedCoin,
-                  const EdgeInsetsDirectional.only(end: 15, bottom: 20),
-                ),
-              ),
-
-              /// Radial Percentage
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final mh = constraints.maxHeight;
-                    final double radialSizePercentage;
-                    if (mh < UiUtils.profileHeightBreakPointResultScreen) {
-                      radialSizePercentage = 0.4;
-                    } else {
-                      radialSizePercentage = 0.325;
-                    }
-
-                    return Transform.translate(
-                      offset: const Offset(0, 15),
-                      child: RadialPercentageResultContainer(
-                        percentage: state.percentage.toDouble(),
-                        timeTakenToCompleteQuizInSeconds: widget
-                            .timeTakenToCompleteQuiz
-                            ?.toInt(),
-                        size: Size(
-                          mh * radialSizePercentage,
-                          mh * radialSizePercentage,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        }
-
-        if (state is SetCoinScoreFailure) {
-          return Center(
-            child: ErrorContainer(
-              showBackButton: true,
-              errorMessageColor: context.primaryColor,
-              errorMessage: convertErrorCodeToLanguageKey(state.error),
-              onTapRetry: () async {
-                await _updateResult();
-              },
-              showErrorImage: true,
-            ),
-          );
-        }
-
-        return const Center(child: CircularProgressContainer());
-      },
+  Widget _buildStatsRow(int total, int correct, int wrong) {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStatItem(
+            icon: Icons.quiz_rounded,
+            iconColor: _headerColor,
+            value: total.toString(),
+            label: context.trWithFallback('totalQueLbl', 'Total Que'),
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
+          _buildStatItem(
+            icon: Icons.check_circle_rounded,
+            iconColor: const Color(0xFF4CD964),
+            value: correct.toString().padLeft(2, '0'),
+            label: context.trWithFallback('correctLbl', 'Correct'),
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
+          _buildStatItem(
+            icon: Icons.cancel_rounded,
+            iconColor: Colors.red,
+            value: wrong.toString().padLeft(2, '0'),
+            label: context.trWithFallback('wrongLbl', 'Wrong'),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSelfChallengeOrExamResultContainer() {
-    final confetti = _isWinner ? Assets.winConfetti : Assets.loseConfetti;
-
-    return Stack(
-      clipBehavior: Clip.none,
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    return Column(
       children: [
-        /// Confetti
-        Align(
-          alignment: Alignment.topCenter,
-          child: Lottie.asset(confetti, fit: BoxFit.fill),
+        Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeights.bold,
+                color: context.primaryTextColor,
+              ),
+            ),
+          ],
         ),
-
-        /// User Details
-        Align(
-          alignment: Alignment.topCenter,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              var verticalSpacePercentage = 0.0;
-              final mh = constraints.maxHeight;
-              final mw = constraints.maxWidth;
-
-              var radialSizePercentage = 0.0;
-              if (constraints.maxHeight <
-                  UiUtils.profileHeightBreakPointResultScreen) {
-                verticalSpacePercentage = 0.015;
-                radialSizePercentage = 0.6;
-              } else {
-                verticalSpacePercentage = 0.035;
-                radialSizePercentage = 0.525;
-              }
-
-              return Column(
-                children: [
-                  _buildGreetingMessage(
-                    scorePct: winPercentage.toInt(),
-                    userName: userName,
-                  ),
-                  SizedBox(height: mh * verticalSpacePercentage),
-
-                  if (widget.quizType == QuizTypes.exam) ...[
-                    Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: RadialPercentageResultContainer(
-                        percentage: winPercentage,
-                        timeTakenToCompleteQuizInSeconds: widget
-                            .timeTakenToCompleteQuiz
-                            ?.toInt(),
-                        size: Size(
-                          mh * radialSizePercentage,
-                          mh * radialSizePercentage,
-                        ),
-                      ),
-                    ),
-
-                    Transform.translate(
-                      offset: const Offset(0, -30),
-                      child: Text(
-                        '${widget.obtainedMarks}/${widget.exam!.totalMarks} ${context.tr(markKey)!}',
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: MediaQuery.of(
-                            context,
-                          ).textScaler.scale(22),
-                          fontWeight: FontWeight.w400,
-                          color: context.primaryTextColor,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        QImage.circular(
-                          imageUrl: userProfileUrl,
-                          width: mw * .30,
-                          height: mw * .30,
-                        ),
-                        SvgPicture.asset(
-                          Assets.hexagonFrame,
-                          width: mw * .37,
-                          height: mw * .37,
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
-        ),
-
-        /// Correct Answer
-        Align(
-          alignment: AlignmentDirectional.bottomEnd,
-          child: _buildResultDataWithIconContainer(
-            '$correctAnswers/$totalQuestions',
-            Assets.correct,
-            const EdgeInsetsDirectional.only(end: 15, bottom: 30),
-          ),
-        ),
-
-        /// Incorrect Answer
-        Align(
-          alignment: AlignmentDirectional.bottomStart,
-          child: _buildResultDataWithIconContainer(
-            '$wrongAnswers/$totalQuestions',
-            Assets.wrong,
-            const EdgeInsetsDirectional.only(start: 15, bottom: 30),
-          ),
-        ),
-
-        if (widget.quizType == QuizTypes.selfChallenge)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final mh = constraints.maxHeight;
-                final double radialSizePercentage;
-                if (mh < UiUtils.profileHeightBreakPointResultScreen) {
-                  radialSizePercentage = 0.4;
-                } else {
-                  radialSizePercentage = 0.325;
-                }
-
-                return Transform.translate(
-                  offset: const Offset(0, 15),
-                  child: RadialPercentageResultContainer(
-                    percentage: winPercentage,
-                    timeTakenToCompleteQuizInSeconds: widget
-                        .timeTakenToCompleteQuiz
-                        ?.toInt(),
-                    size: Size(
-                      mh * radialSizePercentage,
-                      mh * radialSizePercentage,
-                    ),
-                  ),
-                );
-              },
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: context.primaryTextColor.withValues(alpha: 0.5),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildBattleResultDetails() {
-    return BlocBuilder<SetCoinScoreCubit, SetCoinScoreState>(
-      builder: (context, state) {
-        if (state is SetCoinScoreSuccess) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final coinsString = widget.entryFee! > 0
-                  ? " ${state.isWinner ? state.winnerCoins : widget.entryFee} ${context.tr("coinsLbl")!}"
-                  : '';
+  Widget _buildTabSection(SetCoinScoreState state) {
+    final tabs = [
+      context.trWithFallback('standingsLbl', 'Standings'),
+      context.trWithFallback('summaryLbl', 'Summary'),
+      context.trWithFallback('playAgainBtn', 'Play again'),
+    ];
 
-              final BattleUserData winnerUserData;
-              final BattleUserData loserUserData;
-              final UserBattleRoomDetails winnerDetails;
-              final UserBattleRoomDetails loserDetails;
-
-              if (state.isDraw) {
-                winnerUserData = state.user1Data!;
-                loserUserData = state.user2Data!;
-                winnerDetails = widget.battleRoom!.user1!;
-                loserDetails = widget.battleRoom!.user2!;
-              } else {
-                final isUser1Winner = state.user1Id == state.winnerUserId;
-                winnerUserData = isUser1Winner
-                    ? state.user1Data!
-                    : state.user2Data!;
-                loserUserData = isUser1Winner
-                    ? state.user2Data!
-                    : state.user1Data!;
-                winnerDetails = isUser1Winner
-                    ? widget.battleRoom!.user1!
-                    : widget.battleRoom!.user2!;
-                loserDetails = isUser1Winner
-                    ? widget.battleRoom!.user2!
-                    : widget.battleRoom!.user1!;
-              }
-
-              return Column(
-                children: [
-                  _buildGreetingMessage(
-                    isWinner: state.isWinner,
-                    isDraw: state.isDraw,
-                  ),
-
-                  /// Status, You Won or You Lost
-                  if (!state.isDraw)
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          // Tab bar
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: List.generate(tabs.length, (index) {
+                final isSelected = _selectedTabIndex == index;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedTabIndex = index),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 16,
-                        ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: state.isWinner
-                              ? context.primaryColor.withValues(alpha: 0.2)
-                              : context.primaryTextColor.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isSelected ? _headerColor : Colors.transparent,
+                            width: 3,
+                          ),
+                        ),
                         ),
                         child: Text(
-                          "${context.tr(state.isWinner ? 'youWonLbl' : 'youLostLbl')!}$coinsString",
+                        tabs[index],
+                        textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: state.isWinner
-                                ? context.primaryColor
-                                : context.primaryTextColor,
-                          ),
+                          fontSize: 14,
+                          fontWeight: isSelected ? FontWeights.bold : FontWeights.regular,
+                          color: isSelected 
+                              ? context.primaryTextColor 
+                              : context.primaryTextColor.withValues(alpha: 0.5),
                         ),
                       ),
                     ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  QImage.circular(
-                                    width: 80,
-                                    height: 80,
-                                    imageUrl: winnerDetails.profileUrl,
-                                  ),
-                                  const QImage(
-                                    imageUrl: Assets.hexagonFrame,
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                winnerDetails.name,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeights.bold,
-                                  fontSize: 16,
-                                  color: context.primaryTextColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-
-                                decoration: BoxDecoration(
-                                  color: context.primaryColor.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${winnerUserData.points} ${context.tr('scoreLbl')}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontWeight: FontWeights.bold,
-                                    fontSize: 16,
-                                    color: context.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              if (winnerUserData.quickestBonus > 0 ||
-                                  winnerUserData.secondQuickestBonus > 0) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '+${winnerUserData.quickestBonus + winnerUserData.secondQuickestBonus} ${context.tr('speedBonus')}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontWeight: FontWeights.bold,
-                                    fontSize: 12,
-                                    color: context.primaryTextColor,
-                                  ),
-                                ),
-                              ],
-
-                              const SizedBox(height: 8),
-                              Text(
-                                '${winnerUserData.correctAnswers} / ${state.totalQuestions} ${context.tr("correctAnswersLbl")}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeights.bold,
-                                  fontSize: 12,
-                                  color: context.primaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Vs
-                        const SizedBox(width: 4),
-                        const Expanded(
-                          child: QImage(
-                            imageUrl: Assets.versus,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  QImage.circular(
-                                    width: 80,
-                                    height: 80,
-                                    imageUrl: loserDetails.profileUrl,
-                                  ),
-                                  QImage(
-                                    imageUrl: Assets.hexagonFrame,
-                                    width: 100,
-                                    height: 100,
-                                    color: context.primaryTextColor,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                loserDetails.name,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeights.bold,
-                                  fontSize: 16,
-                                  color: context.primaryTextColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: context.primaryTextColor.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${loserUserData.points} ${context.tr('scoreLbl')}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontWeight: FontWeights.bold,
-                                    fontSize: 16,
-                                    color: context.primaryTextColor,
-                                  ),
-                                ),
-                              ),
-                              if (loserUserData.quickestBonus > 0 ||
-                                  loserUserData.secondQuickestBonus > 0) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '+${loserUserData.quickestBonus + loserUserData.secondQuickestBonus} ${context.tr('speedBonus')}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontWeight: FontWeights.bold,
-                                    fontSize: 12,
-                                    color: context.primaryTextColor,
-                                  ),
-                                ),
-                              ],
-
-                              const SizedBox(height: 8),
-                              Text(
-                                '${loserUserData.correctAnswers} / ${state.totalQuestions} ${context.tr("correctAnswersLbl")}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeights.bold,
-                                  fontSize: 12,
-                                  color: context.primaryTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                ],
-              );
-            },
-          );
-        }
-
-        if (state is SetCoinScoreFailure) {
-          return Center(
-            child: ErrorContainer(
-              showBackButton: true,
-              errorMessageColor: Theme.of(context).primaryColor,
-              errorMessage: convertErrorCodeToLanguageKey(state.error),
-              onTapRetry: () async {
-                await _updateResult();
-              },
-              showErrorImage: true,
+                );
+              }),
             ),
-          );
-        }
-
-        return const Center(child: CircularProgressContainer());
-      },
-    );
-  }
-
-  Widget _buildResultContainer(BuildContext context) {
-    return BlocListener<SetCoinScoreCubit, SetCoinScoreState>(
-      listener: (context, state) {
-        if (state is SetCoinScoreSuccess) {
-          setState(() {
-            _isWinner =
-                state.percentage >
-                context.read<SystemConfigCubit>().quizWinningPercentage;
-          });
-        }
-      },
-      child: Screenshot(
-        controller: screenshotController,
-        child: Container(
-          height: context.height * 0.56,
-          width: context.width * 0.9,
-          decoration: BoxDecoration(
-            color: _isWinner
-                ? context.surfaceColor
-                : context.primaryTextColor.withValues(alpha: .05),
-            borderRadius: BorderRadius.circular(10),
           ),
-          child: switch (widget.quizType) {
-            QuizTypes.oneVsOneBattle ||
-            QuizTypes.randomBattle => _buildBattleResultDetails(),
-            QuizTypes.selfChallenge ||
-            QuizTypes.exam => _buildSelfChallengeOrExamResultContainer(),
-            _ => _buildIndividualResultContainer(),
-          },
-        ),
+          
+          Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+          
+          // Tab content
+          IndexedStack(
+            index: _selectedTabIndex,
+                      children: [
+              _buildStandingsTab(state),
+              _buildSummaryTab(state),
+              _buildPlayAgainTab(),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildButton(String buttonTitle, VoidCallback onTap) {
-    return CustomRoundedButton(
-      widthPercentage: 0.90,
-      backgroundColor: context.primaryColor,
-      buttonTitle: buttonTitle,
-      radius: 8,
-      elevation: 5,
-      showBorder: false,
-      fontWeight: FontWeights.regular,
-      height: 50,
-      titleColor: context.surfaceColor,
-      onTap: onTap,
-      textSize: 20,
+  Widget _buildStandingsTab(SetCoinScoreState state) {
+    // Build standings from available data
+    final standings = <Map<String, dynamic>>[];
+    
+    // Get percentage from state or calculate locally
+    final percentage = state is SetCoinScoreSuccess 
+        ? state.percentage 
+        : winPercentage.toInt();
+    final earnedCoins = state is SetCoinScoreSuccess ? state.earnCoin : 0;
+    
+    // Add user's own result
+    standings.add({
+      'rank': 1,
+      'name': userName,
+      'profile': userProfileUrl,
+      'percentage': percentage,
+      'coins': earnedCoins,
+      'isMe': true,
+    });
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Column(
+                            children: [
+          // Header row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+                                children: [
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    context.trWithFallback('rankLbl', 'Rank'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.primaryTextColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    '${standings.length} ${context.trWithFallback('playersLbl', 'Players')}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.primaryTextColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                              Text(
+                  '${context.trWithFallback('correctLbl', 'Correct')}(%)',
+                                style: TextStyle(
+                    fontSize: 12,
+                    color: context.primaryTextColor.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Standings list
+          ...standings.take(5).map((player) => _buildStandingItem(player)),
+          
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 
-  //play again button will be build different for every quizType
+  Widget _buildStandingItem(Map<String, dynamic> player) {
+    final rank = player['rank'] as int;
+    final name = player['name'] as String;
+    final profile = player['profile'] as String? ?? '';
+    final percentage = player['percentage'] as int;
+    final coins = player['coins'] as int;
+    final isMe = player['isMe'] as bool? ?? false;
+    
+    final rankColors = {
+      1: const Color(0xFFFFD700),
+      2: const Color(0xFFC0C0C0),
+      3: const Color(0xFFCD7F32),
+    };
+
+    final avatarColors = {
+      1: const Color(0xFFF8B5D4),
+      2: const Color(0xFFFFE4B5),
+      3: const Color(0xFFB8E6D4),
+      4: const Color(0xFFD4E4FF),
+    };
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+        color: isMe 
+            ? const Color(0xFFE8F5E9)
+            : (rank == 1 ? const Color(0xFFFFF9E6) : Colors.transparent),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // Rank
+          SizedBox(
+            width: 36,
+                                child: Text(
+              _getOrdinal(rank),
+                                  style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeights.semiBold,
+                color: context.primaryTextColor,
+                                  ),
+                                ),
+                              ),
+          
+          // Avatar
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: avatarColors[rank % 4 + 1],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: profile.isNotEmpty
+                      ? QImage(imageUrl: profile, fit: BoxFit.cover)
+                      : const Icon(Icons.person, color: Colors.brown),
+                ),
+                if (rank == 1)
+                  Positioned(
+                    top: -8,
+                    left: 0,
+                    right: 0,
+                    child: Icon(
+                      Icons.workspace_premium_rounded,
+                      color: rankColors[1],
+                      size: 20,
+                                  ),
+                                ),
+                              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // Name and coins
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                              Text(
+                  name,
+                                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeights.semiBold,
+                                  color: context.primaryTextColor,
+                                ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (rank == 1 && coins > 0)
+                  Row(
+                    children: [
+                      Text(
+                        context.trWithFallback('wonLbl', 'Won'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: const Color(0xFF4CD964),
+                        ),
+                      ),
+                        const SizedBox(width: 4),
+                      const Icon(
+                        Icons.monetization_on,
+                        color: Color(0xFFFFC107),
+                        size: 14,
+                      ),
+                      Text(
+                        ' $coins',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFFFC107),
+                        ),
+                      ),
+                    ],
+                                  ),
+                                ],
+                              ),
+          ),
+          
+          // Percentage
+                              Text(
+            '$percentage%',
+                                style: TextStyle(
+                                  fontSize: 16,
+              fontWeight: FontWeights.bold,
+                                  color: context.primaryTextColor,
+                                ),
+                              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTab(SetCoinScoreState state) {
+    final earnedCoins = state is SetCoinScoreSuccess ? state.earnCoin : 0;
+    final earnedScore = state is SetCoinScoreSuccess ? state.earnScore : 0;
+    final percentage = state is SetCoinScoreSuccess ? state.percentage : winPercentage.toInt();
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildSummaryItem(
+            context.trWithFallback('scoreLbl', 'Score'),
+            '$earnedScore',
+            Icons.star_rounded,
+            Colors.amber,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryItem(
+            context.trWithFallback('coinsLbl', 'Coins'),
+            '$earnedCoins',
+            Icons.monetization_on,
+            const Color(0xFFFFC107),
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryItem(
+            context.trWithFallback('accuracyLbl', 'Accuracy'),
+            '$percentage%',
+            Icons.analytics_rounded,
+            _headerColor,
+          ),
+          const SizedBox(height: 20),
+          
+          // Review Answers Button
+          _buildActionButton(
+            context.trWithFallback('reviewAnsBtn', 'Review Answers'),
+            _reviewAnswers,
+            isPrimary: false,
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(width: 12),
+          Text(
+            label,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: context.primaryTextColor,
+                                  ),
+                                ),
+          const Spacer(),
+                                Text(
+            value,
+                                  style: TextStyle(
+              fontSize: 20,
+                                    fontWeight: FontWeights.bold,
+                                    color: context.primaryTextColor,
+                                  ),
+                                ),
+                              ],
+      ),
+    );
+  }
+
+  Widget _buildPlayAgainTab() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Icon(
+            Icons.replay_rounded,
+            size: 60,
+            color: _headerColor.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+                              Text(
+            context.trWithFallback('readyForMoreLbl', 'Ready for more?'),
+                                style: TextStyle(
+              fontSize: 18,
+                                  fontWeight: FontWeights.bold,
+                                  color: context.primaryTextColor,
+                                ),
+                              ),
+          const SizedBox(height: 8),
+          Text(
+            context.trWithFallback('playAgainDescLbl', 'Challenge yourself again!'),
+            style: TextStyle(
+              fontSize: 14,
+              color: context.primaryTextColor.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildPlayAgainButton(),
+          const SizedBox(height: 12),
+          _buildActionButton(
+            context.trWithFallback('homeBtn', 'Go Home'),
+            () {
+              fetchUpdateUserDetails();
+              globalCtx.pushNamedAndRemoveUntil(Routes.home, predicate: (_) => false);
+              dashboardScreenKey.currentState?.changeTab(NavTabType.home);
+            },
+            isPrimary: false,
+          ),
+          const SizedBox(height: 16),
+        ],
+            ),
+          );
+        }
+
   Widget _buildPlayAgainButton() {
     if (widget.quizType == QuizTypes.audioQuestions) {
-      return _buildButton(context.tr('playAgainBtn')!, () {
+      return _buildActionButton(
+        context.trWithFallback('playAgainBtn', 'Play Again'),
+        () {
         fetchUpdateUserDetails();
         Navigator.of(context).pushReplacementNamed(
           Routes.quiz,
@@ -1145,13 +1139,16 @@ class _ResultScreenState extends State<ResultScreen> {
                 : '',
           },
         );
-      });
+        },
+      );
     } else if (widget.quizType == QuizTypes.guessTheWord) {
       if (_isWinner) {
-        return const SizedBox();
+        return const SizedBox.shrink();
       }
 
-      return _buildButton(context.tr('playAgainBtn')!, () async {
+      return _buildActionButton(
+        context.trWithFallback('playAgainBtn', 'Play Again'),
+        () async {
         await context.pushReplacementNamed(
           Routes.guessTheWord,
           arguments: GuessTheWordQuizScreenArgs(
@@ -1163,36 +1160,30 @@ class _ResultScreenState extends State<ResultScreen> {
             isPremiumCategory: widget.isPremiumCategory,
           ),
         );
-      });
+        },
+      );
     } else if (widget.quizType == QuizTypes.quizZone) {
-      //if user is winner
       if (_isWinner) {
-        //we need to check if currentLevel is last level or not
         final maxLevel = int.parse(widget.subcategoryMaxLevel!);
         final currentLevel = int.parse(widget.questions!.first.level!);
         if (maxLevel == currentLevel) {
           return const SizedBox.shrink();
         }
-        return _buildButton(
-          context.tr('nextLevelBtn')!,
+        return _buildActionButton(
+          context.trWithFallback('nextLevelBtn', 'Next Level'),
           () {
-            //if given level is same as unlocked level then we need to update level
-            //else do not update level
             final unlockedLevel =
                 int.parse(widget.questions!.first.level!) ==
                     widget.unlockedLevel
                 ? (widget.unlockedLevel! + 1)
                 : widget.unlockedLevel;
-            //play quiz for next level
             Navigator.of(context).pushReplacementNamed(
               Routes.quiz,
               arguments: {
                 'quizType': widget.quizType,
-                //if subcategory id is empty for question means we need to fetch question by it's category
                 'categoryId': widget.categoryId,
                 'subcategoryId': widget.subcategoryId,
                 'level': (currentLevel + 1).toString(),
-                //increase level
                 'subcategoryMaxLevel': widget.subcategoryMaxLevel,
                 'unlockedLevel': unlockedLevel,
               },
@@ -1200,15 +1191,14 @@ class _ResultScreenState extends State<ResultScreen> {
           },
         );
       }
-      //if user failed to complete this level
-      return _buildButton(context.tr('playAgainBtn')!, () {
+      return _buildActionButton(
+        context.trWithFallback('playAgainBtn', 'Play Again'),
+        () {
         fetchUpdateUserDetails();
-        //to play this level again (for quizZone quizType)
         Navigator.of(context).pushReplacementNamed(
           Routes.quiz,
           arguments: {
             'quizType': widget.quizType,
-            //if subcategory id is empty for question means we need to fetch questions by it's category
             'categoryId': widget.categoryId,
             'subcategoryId': widget.subcategoryId,
             'level': widget.questions!.first.level,
@@ -1216,37 +1206,53 @@ class _ResultScreenState extends State<ResultScreen> {
             'subcategoryMaxLevel': widget.subcategoryMaxLevel,
           },
         );
-      });
+        },
+      );
     }
 
     return const SizedBox.shrink();
   }
 
-  Widget _buildShareYourScoreButton() {
-    return Builder(
-      builder: (context) {
-        return _buildButton(context.tr('shareScoreBtn')!, () async {
+  Widget _buildActionButton(String label, VoidCallback onTap, {bool isPrimary = true}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isPrimary ? _headerColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: isPrimary ? null : Border.all(color: _headerColor),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeights.semiBold,
+            color: isPrimary ? Colors.white : _headerColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _shareScore() async {
           if (_isShareInProgress) return;
 
           setState(() => _isShareInProgress = true);
 
           try {
-            //capturing image
             final image = await screenshotController.capture();
-            //root directory path
             final directory = (await getApplicationDocumentsDirectory()).path;
 
             final fileName = DateTime.now().microsecondsSinceEpoch.toString();
-            //create file with given path
             final file = await File('$directory/$fileName.png').create();
-            //write as bytes
             await file.writeAsBytes(image!.buffer.asUint8List());
 
             final appLink = context.read<SystemConfigCubit>().appUrl;
-
             final referralCode =
-                context.read<UserDetailsCubit>().getUserProfile().referCode ??
-                '';
+          context.read<UserDetailsCubit>().getUserProfile().referCode ?? '';
 
             final scoreText =
                 '$kAppName'
@@ -1273,26 +1279,48 @@ class _ResultScreenState extends State<ResultScreen> {
               setState(() => _isShareInProgress = false);
             }
           }
-        });
-      },
-    );
   }
 
   bool _unlockedReviewAnswersOnce = false;
 
-  Widget _buildReviewAnswersButton() {
-    Future<void> onTapYesReviewAnswers() async {
+  Future<void> _reviewAnswers() async {
+    if (_isReviewInProgress) return;
+
+    if (_unlockedReviewAnswersOnce) {
+      await context.pushNamed(
+        Routes.reviewAnswers,
+        arguments: ReviewAnswersScreenArgs(
+          quizType: widget.quizType!,
+          questions: widget.quizType == QuizTypes.guessTheWord
+              ? []
+              : widget.questions!,
+          guessTheWordQuestions: widget.quizType == QuizTypes.guessTheWord
+              ? widget.guessTheWordQuestions!
+              : [],
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isReviewInProgress = true);
+
+    try {
+      await context.showDialog<void>(
+        title: context.tr('reviewAnswers'),
+        image: Assets.coinsDialogIcon,
+        message:
+            '${context.tr('spend')} ${context.read<SystemConfigCubit>().reviewAnswersDeductCoins} ${context.tr('reviewAnsMessage')}',
+        onConfirm: () async {
       final reviewAnswersDeductCoins = context
           .read<SystemConfigCubit>()
           .reviewAnswersDeductCoins;
-      //check if user has enough coins
+          
       if (int.parse(context.read<UserDetailsCubit>().getCoins()!) <
           reviewAnswersDeductCoins) {
         await showNotEnoughCoinsDialog(context);
         return;
       }
 
-      /// update coins
       await context
           .read<UpdateCoinsCubit>()
           .updateCoins(
@@ -1334,36 +1362,7 @@ class _ResultScreenState extends State<ResultScreen> {
               );
             }
           });
-    }
-
-    return _buildButton(context.tr('reviewAnsBtn')!, () async {
-      if (_isReviewInProgress) return;
-
-      if (_unlockedReviewAnswersOnce) {
-        await context.pushNamed(
-          Routes.reviewAnswers,
-          arguments: ReviewAnswersScreenArgs(
-            quizType: widget.quizType!,
-            questions: widget.quizType == QuizTypes.guessTheWord
-                ? []
-                : widget.questions!,
-            guessTheWordQuestions: widget.quizType == QuizTypes.guessTheWord
-                ? widget.guessTheWordQuestions!
-                : [],
-          ),
-        );
-        return;
-      }
-
-      setState(() => _isReviewInProgress = true);
-
-      try {
-        await context.showDialog<void>(
-          title: context.tr('reviewAnswers'),
-          image: Assets.coinsDialogIcon,
-          message:
-              '${context.tr('spend')} ${context.read<SystemConfigCubit>().reviewAnswersDeductCoins} ${context.tr('reviewAnsMessage')}',
-          onConfirm: onTapYesReviewAnswers,
+        },
           confirmButtonText: context.tr('reviewAndImprove'),
           cancelButtonText: context.tr('notNow'),
         );
@@ -1372,116 +1371,27 @@ class _ResultScreenState extends State<ResultScreen> {
           setState(() => _isReviewInProgress = false);
         }
       }
-    });
   }
 
-  Widget _buildHomeButton() {
-    void onTapHomeButton() {
-      fetchUpdateUserDetails();
-      globalCtx.pushNamedAndRemoveUntil(Routes.home, predicate: (_) => false);
-      dashboardScreenKey.currentState?.changeTab(NavTabType.home);
+  String _getOrdinal(int number) {
+    if (number <= 0) return '0';
+    
+    final lastDigit = number % 10;
+    final lastTwoDigits = number % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+      return '${number}th';
     }
-
-    return _buildButton(context.tr('homeBtn')!, onTapHomeButton);
-  }
-
-  Widget _buildResultButtons(BuildContext context) {
-    const buttonSpace = SizedBox(height: 15);
-
-    return Column(
-      children: [
-        if (widget.quizType! == QuizTypes.audioQuestions ||
-            widget.quizType == QuizTypes.guessTheWord ||
-            widget.quizType == QuizTypes.quizZone) ...[
-          _buildPlayAgainButton(),
-          buttonSpace,
-        ],
-        if (widget.quizType == QuizTypes.quizZone ||
-            widget.quizType == QuizTypes.dailyQuiz ||
-            widget.quizType == QuizTypes.trueAndFalse ||
-            widget.quizType == QuizTypes.selfChallenge ||
-            widget.quizType == QuizTypes.audioQuestions ||
-            widget.quizType == QuizTypes.guessTheWord ||
-            widget.quizType == QuizTypes.funAndLearn ||
-            widget.quizType == QuizTypes.mathMania) ...[
-          _buildReviewAnswersButton(),
-          buttonSpace,
-        ],
-        _buildShareYourScoreButton(),
-        buttonSpace,
-        _buildHomeButton(),
-        buttonSpace,
-      ],
-    );
-  }
-
-  late final String _appbarTitle = context.tr(switch (widget.quizType) {
-    QuizTypes.selfChallenge => 'selfChallengeResult',
-    QuizTypes.audioQuestions => 'audioQuizResult',
-    QuizTypes.mathMania => 'mathQuizResult',
-    QuizTypes.guessTheWord => 'guessTheWordResult',
-    QuizTypes.exam => 'examResult',
-    QuizTypes.dailyQuiz => 'dailyQuizResult',
-    QuizTypes.randomBattle => 'randomBattleResult',
-    QuizTypes.oneVsOneBattle => 'oneVsOneBattleResult',
-    QuizTypes.funAndLearn => 'funAndLearnResult',
-    QuizTypes.trueAndFalse => 'truefalseQuizResult',
-    QuizTypes.bookmarkQuiz => 'bookmarkQuizResult',
-    _ => 'quizResultLbl',
-  })!;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-
-        if (context.read<UserDetailsCubit>().state
-            is UserDetailsFetchInProgress) {
-          return;
-        }
-
-        onPageBackCalls();
-        context.shouldPop();
-      },
-      child: MultiBlocListener(
-        listeners: [
-          BlocListener<UpdateCoinsCubit, UpdateCoinsState>(
-            listener: (context, state) {
-              if (state is UpdateCoinsFailure) {
-                if (state.errorMessage == errorCodeUnauthorizedAccess) {
-                  //already showed already logged in from other api error
-                  if (!_displayedAlreadyLoggedInDialog) {
-                    _displayedAlreadyLoggedInDialog = true;
-                    showAlreadyLoggedInDialog(context);
-                    return;
-                  }
-                }
-              }
-            },
-          ),
-        ],
-        child: Scaffold(
-          appBar: QAppBar(
-            roundedAppBar: false,
-            title: Text(_appbarTitle),
-            onTapBackButton: () {
-              onPageBackCalls();
-              Navigator.pop(context);
-            },
-          ),
-          body: SingleChildScrollView(
-            child: Column(
-              children: [
-                Center(child: _buildResultContainer(context)),
-                const SizedBox(height: 20),
-                _buildResultButtons(context),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    
+    switch (lastDigit) {
+      case 1:
+        return '${number}st';
+      case 2:
+        return '${number}nd';
+      case 3:
+        return '${number}rd';
+      default:
+        return '${number}th';
+    }
   }
 }

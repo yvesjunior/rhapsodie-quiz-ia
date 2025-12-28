@@ -82,3 +82,53 @@ const getMultiMatchQuestionsUrl = '$_api/get_multi_match_questions';
 const getMultiMatchQuestionsByLevelUrl =
     '$_api/get_multi_match_questions_by_level';
 const multiMatchReportQuestionUrl = '$_api/multi_match_report_question';
+
+// ============================================
+// NEW: Topics & Categories (Rhapsody, Foundation School)
+// ============================================
+const getTopicsUrl = '$_api/get_topics';
+const getTopicUrl = '$_api/get_topic';
+const getTopicCategoriesUrl = '$_api/get_topic_categories';
+const getRhapsodyDailyUrl = '$_api/get_rhapsody_daily';
+const getRhapsodyYearsUrl = '$_api/get_rhapsody_years';
+const getRhapsodyMonthsUrl = '$_api/get_rhapsody_months';
+const getRhapsodyDaysUrl = '$_api/get_rhapsody_days';
+const getRhapsodyDayDetailUrl = '$_api/get_rhapsody_day_detail';
+const getFoundationSchoolModulesUrl = '$_api/get_foundation_school_modules';
+const getFoundationClassesUrl = '$_api/get_foundation_classes';
+const getFoundationClassDetailUrl = '$_api/get_foundation_class_detail';
+const getLatestRhapsodyMonthsUrl = '$_api/get_latest_rhapsody_months';
+const getUserProgressUrl = '$_api/get_user_progress';
+const updateUserProgressUrl = '$_api/update_user_progress';
+
+// ============================================
+// NEW: Groups
+// ============================================
+const createGroupUrl = '$_api/create_group';
+const getMyGroupsUrl = '$_api/get_my_groups';
+const getGroupUrl = '$_api/get_group';
+const joinGroupUrl = '$_api/join_group';
+const leaveGroupUrl = '$_api/leave_group';
+const deleteGroupUrl = '$_api/delete_group';
+const searchGroupsUrl = '$_api/search_groups';
+const getPublicGroupsUrl = '$_api/get_public_groups';
+const joinPublicGroupUrl = '$_api/join_public_group';
+
+// ============================================
+// NEW: 1v1 Battles
+// ============================================
+const create1v1BattleUrl = '$_api/create_1v1_battle';
+const join1v1BattleUrl = '$_api/join_1v1_battle';
+const get1v1BattleUrl = '$_api/get_1v1_battle';
+const submit1v1AnswersUrl = '$_api/submit_1v1_answers';
+const get1v1HistoryUrl = '$_api/get_1v1_history';
+
+// ============================================
+// NEW: Group Battles
+// ============================================
+const createGroupBattleUrl = '$_api/create_group_battle';
+const joinGroupBattleUrl = '$_api/join_group_battle';
+const startGroupBattleUrl = '$_api/start_group_battle';
+const submitGroupBattleAnswersUrl = '$_api/submit_group_battle_answers';
+const getGroupBattleUrl = '$_api/get_group_battle';
+const getGroupBattlesUrl = '$_api/get_group_battles';

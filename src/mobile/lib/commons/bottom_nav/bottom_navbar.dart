@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutterquiz/commons/bottom_nav/models/nav_tab.dart';
 import 'package:flutterquiz/commons/widgets/custom_image.dart';
 import 'package:flutterquiz/core/core.dart';
+import 'package:flutterquiz/utils/extensions.dart';
 
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
@@ -51,18 +52,24 @@ class BottomNavBar extends StatelessWidget {
                       child: AnimatedScale(
                         scale: isSelected ? 1.2 : 1.0,
                         duration: const Duration(milliseconds: 150),
-                        child: QImage(
-                          imageUrl: isSelected
-                              ? navTab.activeIcon
-                              : navTab.icon,
-                          color: color,
-                        ),
+                        child: navTab.iconData != null
+                            ? Icon(
+                                navTab.iconData,
+                                color: color,
+                                size: 24,
+                              )
+                            : QImage(
+                                imageUrl: isSelected
+                                    ? navTab.activeIcon
+                                    : navTab.icon,
+                                color: color,
+                              ),
                       ),
                     ),
                     const Flexible(child: SizedBox(height: 4)),
                     Flexible(
                       child: Text(
-                        context.tr(navTab.title)!,
+                        context.trWithFallback(navTab.title, navTab.title),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,

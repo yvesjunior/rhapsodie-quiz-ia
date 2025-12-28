@@ -137,3 +137,37 @@ const rewardPointLbl = 'rewardPointLbl';
 const searchQuizCategoriesLbl = 'searchQuizCategoriesLbl';
 const exploreCategoriesLbl = 'exploreCategoriesLbl';
 const randomQuizLbl = 'randomQuizLbl';
+
+// Profile/Account screen labels
+const accountLbl = 'accountLbl';
+const followersLbl = 'followersLbl';
+const followingLbl = 'followingLbl';
+const editProfileLbl = 'editProfileLbl';
+const coinBalanceLbl = 'coinBalanceLbl';
+const thisWeekLbl = 'thisWeekLbl';
+const rankingLbl = 'rankingLbl';
+const pointsLbl = 'pointsLbl';
+const correctoMeterLbl = 'correctoMeterLbl';
+const winningMeterLbl = 'winningMeterLbl';
+
+// Leaderboard screen labels
+const thisMonthLbl = 'thisMonthLbl';
+
+// Quiz Summary/Result screen labels
+const quizSummaryLbl = 'quizSummaryLbl';
+const congratulationsLbl = 'congratulationsLbl';
+const betterLuckLbl = 'betterLuckLbl';
+const youScoredLbl = 'youScoredLbl';
+const totalQueLbl = 'totalQueLbl';
+const correctLbl = 'correctLbl';
+const wrongLbl = 'wrongLbl';
+const standingsLbl = 'standingsLbl';
+const summaryLbl = 'summaryLbl';
+const rankLbl = 'rankLbl';
+const playersLbl = 'playersLbl';
+const wonLbl = 'wonLbl';
+const scoreLbl = 'scoreLbl';
+const accuracyLbl = 'accuracyLbl';
+const readyForMoreLbl = 'readyForMoreLbl';
+const playAgainDescLbl = 'playAgainDescLbl';
+const startLbl = 'startLbl';

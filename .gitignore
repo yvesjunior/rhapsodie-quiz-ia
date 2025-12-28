@@ -24,6 +24,7 @@ database-backups/
 # Firebase configuration files
 **/firebase_config.json
 **/firebase.json
+**/firebase_options.dart
 **/google-services.json
 **/GoogleService-Info.plist
 **/assets/firebase_config.json

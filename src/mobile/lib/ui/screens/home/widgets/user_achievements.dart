@@ -43,7 +43,7 @@ class UserAchievements extends StatelessWidget {
           Expanded(
             child: _AchievementItem(
               icon: _buildRankIcon(context),
-              topLabel: '${_getOrdinal(int.tryParse(userRank) ?? 0)} ${context.tr('rankLbl') ?? 'Rank'}',
+              topLabel: '${_getOrdinal(int.tryParse(userRank) ?? 0)} ${context.trWithFallback('rankLbl', 'Rank')}',
               value: '${numberFormat.format(double.parse(userScore))} pt',
             ),
           ),
@@ -59,7 +59,7 @@ class UserAchievements extends StatelessWidget {
           Expanded(
             child: _AchievementItem(
               icon: _buildCoinIcon(context),
-              topLabel: context.tr('rewardPointLbl') ?? 'Reward Point',
+              topLabel: context.trWithFallback('rewardPointLbl', 'Reward Point'),
               value: numberFormat.format(double.parse(userCoins)),
             ),
           ),
