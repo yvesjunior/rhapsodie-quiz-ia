@@ -415,6 +415,14 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _onPressedSoloMode() {
+    if (_isGuest) {
+      showLoginRequiredDialog(context);
+      return;
+    }
+    globalCtx.pushNamed(Routes.soloMode);
+  }
+
   void _onPressedBattle(String index) {
     if (_isGuest) {
       showLoginRequiredDialog(context);
@@ -480,7 +488,7 @@ class HomeScreenState extends State<HomeScreen>
                 title: context.trWithFallback('soloModeLbl', 'Solo'),
                 backgroundColor: GameModeColors.soloMode,
                 imagePath: 'assets/images/solo_mode.png',
-                onTap: () => _onPressedSelfExam('selfChallenge'),
+                onTap: () => _onPressedSoloMode(),
               ),
             ),
           if (_sysConfigCubit.isSelfChallengeQuizEnabled)

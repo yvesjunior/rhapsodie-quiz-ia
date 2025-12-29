@@ -376,7 +376,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     final currentCoins = int.parse(
       context.read<UserDetailsCubit>().getCoins()!,
     );
-    //cost of using lifeline is 5 coins
+    //cost of using lifeline is 2 coins
     if (currentCoins < context.read<SystemConfigCubit>().lifelinesDeductCoins) {
       return false;
     }
@@ -430,6 +430,23 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     VoidCallback? onTap,
   }) {
     final onTertiary = Theme.of(context).colorScheme.onTertiary;
+    final isUsed = lifelines[title] != LifelineStatus.unused;
+    
+    // Get display label for each lifeline
+    String getLabel() {
+      switch (title) {
+        case fiftyFifty:
+          return '50/50';
+        case audiencePoll:
+          return 'Poll';
+        case resetTime:
+          return 'Timer';
+        case skip:
+          return 'Skip';
+        default:
+          return '';
+      }
+    }
 
     return GestureDetector(
       onTap:
@@ -447,19 +464,42 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: onTertiary.withValues(alpha: 0.6)),
+          border: Border.all(
+            color: isUsed 
+                ? onTertiary.withValues(alpha: 0.3) 
+                : onTertiary.withValues(alpha: 0.6),
+          ),
+          color: isUsed ? onTertiary.withValues(alpha: 0.05) : null,
         ),
         width: isSmallDevice ? 65.0 : 75.0,
-        height: isSmallDevice ? 45.0 : 55.0,
-        padding: const EdgeInsets.all(11),
-        child: SvgPicture.asset(
-          icon,
-          colorFilter: ColorFilter.mode(
-            lifelines[title] == LifelineStatus.unused
-                ? onTertiary
-                : onTertiary.withValues(alpha: 0.6),
-            BlendMode.srcIn,
-          ),
+        height: isSmallDevice ? 55.0 : 65.0,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              icon,
+              width: isSmallDevice ? 20 : 24,
+              height: isSmallDevice ? 20 : 24,
+              colorFilter: ColorFilter.mode(
+                isUsed
+                    ? onTertiary.withValues(alpha: 0.4)
+                    : onTertiary,
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              getLabel(),
+              style: TextStyle(
+                fontSize: isSmallDevice ? 9 : 10,
+                fontWeight: FontWeight.w600,
+                color: isUsed
+                    ? onTertiary.withValues(alpha: 0.4)
+                    : onTertiary,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -53,6 +53,7 @@ import 'package:flutterquiz/ui/screens/topics/topics_screen.dart';
 import 'package:flutterquiz/ui/screens/rhapsody/rhapsody_screen.dart';
 import 'package:flutterquiz/ui/screens/foundation/foundation_screen.dart';
 import 'package:flutterquiz/ui/screens/foundation/foundation_class_screen.dart';
+import 'package:flutterquiz/ui/screens/solo/solo_mode_screen.dart';
 
 final globalNavigator = GlobalKey<NavigatorState>();
 final BuildContext globalCtx = globalNavigator.currentContext!;
@@ -85,6 +86,7 @@ class Routes {
   static const reviewAnswers = '/reviewAnswers';
   static const selfChallenge = '/selfChallenge';
   static const selfChallengeQuestions = '/selfChallengeQuestions';
+  static const soloMode = '/soloMode';
   static const battleRoomQuiz = '/battleRoomQuiz';
   static const battleRoomFindOpponent = '/battleRoomFindOpponent';
 
@@ -175,6 +177,8 @@ class Routes {
         return SelfChallengeScreen.route(rs);
       case selfChallengeQuestions:
         return SelfChallengeQuestionsScreen.route(rs);
+      case soloMode:
+        return SoloModeScreen.route(rs);
       case category:
         return CategoryScreen.route(rs);
       case bookmark:

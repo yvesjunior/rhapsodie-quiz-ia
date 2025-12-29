@@ -337,5 +337,95 @@ class Topic_model extends CI_Model
 
         return $months;
     }
+
+    // =========================================================================
+    // SOLO MODE (Practice Mode) - Random Questions by Topic
+    // =========================================================================
+
+    /**
+     * Get random questions from ALL categories within a topic
+     * Used for Solo Mode practice quizzes
+     * 
+     * @param string $topic_slug Topic slug (rhapsody or foundation_school)
+     * @param int $count Number of questions to return (5, 10, 15, or 20)
+     * @param int $language_id Optional language filter
+     * @return array Random questions
+     */
+    public function get_random_questions_by_topic($topic_slug, $count = 10, $language_id = 0)
+    {
+        $topic = $this->get_topic_by_slug($topic_slug);
+        if (!$topic) {
+            return [];
+        }
+
+        // Build query to get random questions from all categories in this topic
+        $this->db->select('q.*');
+        $this->db->from('tbl_question q');
+        $this->db->join('tbl_category c', 'q.category = c.id');
+        $this->db->where('c.topic_id', $topic['id']);
+        // Note: tbl_question doesn't have a status column
+        
+        if ($language_id > 0) {
+            $this->db->where('q.language_id', $language_id);
+        }
+        
+        // Random order and limit
+        $this->db->order_by('RAND()');
+        $this->db->limit($count);
+        
+        return $this->db->get()->result_array();
+    }
+
+    /**
+     * Get total available questions count for a topic
+     * 
+     * @param string $topic_slug Topic slug
+     * @return int Total questions count
+     */
+    public function get_topic_questions_count($topic_slug)
+    {
+        $topic = $this->get_topic_by_slug($topic_slug);
+        if (!$topic) {
+            return 0;
+        }
+
+        $this->db->from('tbl_question q');
+        $this->db->join('tbl_category c', 'q.category = c.id');
+        $this->db->where('c.topic_id', $topic['id']);
+        // Note: tbl_question doesn't have a status column
+        
+        return $this->db->count_all_results();
+    }
+
+    /**
+     * Get topics available for Solo Mode with question counts
+     * 
+     * @return array Topics with metadata for Solo Mode
+     */
+    public function get_solo_mode_topics()
+    {
+        $topics = $this->get_all_topics();
+        $result = [];
+        
+        foreach ($topics as $topic) {
+            $questions_count = $this->get_topic_questions_count($topic['slug']);
+            
+            // Only include topics that have questions
+            if ($questions_count > 0) {
+                $result[] = [
+                    'id' => $topic['id'],
+                    'slug' => $topic['slug'],
+                    'name' => $topic['name'],
+                    'description' => $topic['description'] ?? '',
+                    'image' => $topic['image'] ?? '',
+                    'topic_type' => $topic['topic_type'] ?? 'general',
+                    'questions_count' => $questions_count,
+                    'has_enough_questions' => $questions_count >= 5 // Minimum for Solo Mode
+                ];
+            }
+        }
+        
+        return $result;
+    }
 }
 

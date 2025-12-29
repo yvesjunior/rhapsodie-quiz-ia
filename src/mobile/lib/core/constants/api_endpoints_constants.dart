@@ -132,3 +132,10 @@ const startGroupBattleUrl = '$_api/start_group_battle';
 const submitGroupBattleAnswersUrl = '$_api/submit_group_battle_answers';
 const getGroupBattleUrl = '$_api/get_group_battle';
 const getGroupBattlesUrl = '$_api/get_group_battles';
+
+// ============================================
+// NEW: Solo Mode (Practice Mode)
+// ============================================
+const getSoloTopicsUrl = '$_api/get_solo_topics';
+const getSoloQuestionsUrl = '$_api/get_solo_questions';
+const submitSoloQuizUrl = '$_api/submit_solo_quiz';

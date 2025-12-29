@@ -5075,47 +5075,49 @@ class Api extends REST_Controller
                     }
                 }
                 $earnCoin = $userScore = 0;
+                $wrongAnswer = $total_questions - $correctAnswer;
 
+                // NEW COIN RULE: Award 1 coin only for 100% correct (perfect score)
+                if ($correctAnswer == $total_questions && $total_questions > 0) {
+                    $earnCoin = 1;
+                }
+                
+                // Foundation School quizzes don't award coins
+                $this->load->model('Topic_model');
+                $isFoundationSchool = $this->Topic_model->is_foundation_school_category($category);
+                if ($isFoundationSchool) {
+                    $earnCoin = 0;
+                }
+
+                // Calculate user score for statistics (not for coins)
+                $quiz_zone_correct_answer_credit_score = is_settings('quiz_zone_correct_answer_credit_score');
+                $quiz_zone_wrong_answer_deduct_score = is_settings('quiz_zone_wrong_answer_deduct_score');
+                $userScore = ($correctAnswer * $quiz_zone_correct_answer_credit_score) - ($wrongAnswer * $quiz_zone_wrong_answer_deduct_score);
+                
+                $getLevelData = $this->db->select('level')->where('user_id', $user_id)->where('category', $category)->where('subcategory', $subcategory)->get('tbl_level')->row_array();
+                $nextUnlockLevel = $getLevelData['level'] ?? 0;
+                
                 if ($winningPer >= $quiz_winning_percentage) {
                     $ratio = $winningPer;
-                    $wrongAnswer = $total_questions - $correctAnswer;
-                    $minimum_coins_winning_percentage = is_settings('minimum_coins_winning_percentage');
-                    $maximum_winning_coins = is_settings('maximum_winning_coins');
-                    $quiz_zone_correct_answer_credit_score = is_settings('quiz_zone_correct_answer_credit_score');
-                    $quiz_zone_wrong_answer_deduct_score = is_settings('quiz_zone_wrong_answer_deduct_score');
-                    if ($winningPer >= $minimum_coins_winning_percentage) {
-                        $earnCoin = $maximum_winning_coins;
-                    } else {
-                        $earnCoin = ($maximum_winning_coins - (($minimum_coins_winning_percentage - $winningPer) / 10));
-                    }
-                    $userScore = ($correctAnswer * $quiz_zone_correct_answer_credit_score) - ($wrongAnswer * $quiz_zone_wrong_answer_deduct_score);
-                    $getLevelData = $this->db->select('level')->where('user_id', $user_id)->where('category', $category)->where('subcategory', $subcategory)->get('tbl_level')->row_array();
-
-                    $nextUnlockLevel = $getLevelData['level'] ?? 0;
 
                     if ($userScore) {
                         $this->set_monthly_leaderboard($user_id, $userScore);
                     }
-                    $this->set_users_statistics($user_id, $category, $questions_answered, $correctAnswer,  $ratio);
+                    $this->set_users_statistics($user_id, $category, $questions_answered, $correctAnswer, $ratio);
 
                     $updateLevel = $currentLevel + 1;
-                    $earnCoin = floor($earnCoin);
                     
-                    // Foundation School quizzes don't award coins
-                    $this->load->model('Topic_model');
-                    $isFoundationSchool = $this->Topic_model->is_foundation_school_category($category);
-                    if ($isFoundationSchool) {
-                        $earnCoin = 0;
+                    // Update level if progressing
+                    if ($updateLevel > $nextUnlockLevel && $updateLevel != $nextUnlockLevel) {
+                        $this->set_quiz_level_data($user_id, 1, $updateLevel, $category, $subcategory);
                     }
                     
-                    if ($earnCoin && ($updateLevel > $nextUnlockLevel && $updateLevel != $nextUnlockLevel)) {
-                        $this->set_quiz_level_data($user_id, 1, $updateLevel, $category, $subcategory);
+                    // Award 1 coin for 100% correct (no first-completion restriction, replay allowed)
+                    if ($earnCoin) {
                         $this->set_coins($user_id, $earnCoin);
-                        $title = 'wonQuizZone';
+                        $title = 'perfectQuiz';
                         $status = 0; //add
                         $this->set_tracker_data($user_id, $earnCoin, $title, $status);
-                    } else {
-                        $earnCoin = 0;
                     }
                 }
                 $this->set_badges($user_id, $this->DASHING_DEBUT);
@@ -8204,6 +8206,278 @@ class Api extends REST_Controller
 
             $response['error'] = false;
             $response['data'] = $battles;
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    // =========================================================================
+    // SOLO MODE (Practice Mode) - Random Questions by Topic
+    // =========================================================================
+
+    /**
+     * Get available topics for Solo Mode
+     * POST /Api/get_solo_topics
+     * 
+     * Returns topics with question counts for Solo Mode selection
+     */
+    public function get_solo_topics_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            $topics = $this->Topic_model->get_solo_mode_topics();
+
+            $response['error'] = false;
+            $response['data'] = array_values($topics); // Ensure indexed array for JSON
+            $response['message'] = 'Topics for Solo Mode';
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get random questions for Solo Mode
+     * POST /Api/get_solo_questions
+     * 
+     * @param topic (required) - Topic slug: 'rhapsody' or 'foundation_school'
+     * @param count (required) - Number of questions: 5, 10, 15, or 20
+     * @param language_id (optional) - Language filter
+     * 
+     * Returns random questions from ALL categories within the topic
+     */
+    public function get_solo_questions_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+            $firebase_id = $is_user['firebase_id'];
+
+            // Validate required parameters
+            if (!$this->post('topic')) {
+                $response['error'] = true;
+                $response['message'] = 'topic is required (rhapsody or foundation_school)';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            if (!$this->post('count')) {
+                $response['error'] = true;
+                $response['message'] = 'count is required (5, 10, 15, or 20)';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $topic_slug = $this->post('topic');
+            $count = intval($this->post('count'));
+            $language_id = $this->post('language_id') ?: 0;
+
+            // Validate count (allowed: 5, 10, 15, 20)
+            $allowed_counts = [5, 10, 15, 20];
+            if (!in_array($count, $allowed_counts)) {
+                $response['error'] = true;
+                $response['message'] = 'count must be 5, 10, 15, or 20';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            
+            // Verify topic exists
+            $topic = $this->Topic_model->get_topic_by_slug($topic_slug);
+            if (!$topic) {
+                $response['error'] = true;
+                $response['message'] = 'Topic not found: ' . $topic_slug;
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Get random questions
+            $questions = $this->Topic_model->get_random_questions_by_topic($topic_slug, $count, $language_id);
+
+            if (empty($questions)) {
+                $response['error'] = true;
+                $response['message'] = 'No questions available for this topic';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if we have enough questions
+            if (count($questions) < $count) {
+                $response['error'] = true;
+                $response['message'] = 'Not enough questions available. Requested: ' . $count . ', Available: ' . count($questions);
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Process questions (shuffle options, add image URLs, etc.)
+            for ($i = 0; $i < count($questions); $i++) {
+                $questions[$i]['image'] = ($questions[$i]['image']) 
+                    ? base_url() . QUESTION_IMG_PATH . $questions[$i]['image'] 
+                    : '';
+                $questions[$i] = $this->suffleOptions($questions[$i], $firebase_id);
+                unset($questions[$i]['session_answer']);
+            }
+
+            // Get total available for info
+            $total_available = $this->Topic_model->get_topic_questions_count($topic_slug);
+
+            $response['error'] = false;
+            $response['data'] = array_values($questions); // Ensure indexed array for JSON
+            $response['topic'] = [
+                'id' => $topic['id'],
+                'slug' => $topic['slug'],
+                'name' => $topic['name']
+            ];
+            $response['requested_count'] = $count;
+            $response['total_available'] = $total_available;
+            $response['message'] = 'Random questions for Solo Mode';
+
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Submit Solo Mode quiz answers
+     * POST /Api/submit_solo_quiz
+     * 
+     * @param topic (required) - Topic slug
+     * @param question_count (required) - Number of questions answered
+     * @param answers (required) - Array of {question_id, selected_answer}
+     * @param time_taken (optional) - Total time in milliseconds
+     * 
+     * Reward: +1 coin if 100% correct AND question_count > 5
+     */
+    public function submit_solo_quiz_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return;
+            }
+            $user_id = $is_user['user_id'];
+
+            // Validate required parameters
+            if (!$this->post('topic') || !$this->post('question_count') || !$this->post('answers')) {
+                $response['error'] = true;
+                $response['message'] = 'topic, question_count, and answers are required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $topic_slug = $this->post('topic');
+            $question_count = intval($this->post('question_count'));
+            $answers = $this->post('answers'); // Array of {question_id, selected_answer}
+            $time_taken = $this->post('time_taken') ?: 0;
+
+            if (!is_array($answers)) {
+                $answers = json_decode($answers, true);
+            }
+
+            if (empty($answers)) {
+                $response['error'] = true;
+                $response['message'] = 'answers array is empty';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            $this->load->model('Topic_model');
+            
+            // Verify topic exists
+            $topic = $this->Topic_model->get_topic_by_slug($topic_slug);
+            if (!$topic) {
+                $response['error'] = true;
+                $response['message'] = 'Topic not found: ' . $topic_slug;
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Calculate score
+            $correct_answers = 0;
+            $total_questions = count($answers);
+            $detailed_results = [];
+
+            foreach ($answers as $answer) {
+                $question_id = $answer['question_id'];
+                $selected = $answer['selected_answer'];
+
+                // Get correct answer from database
+                $question = $this->db->where('id', $question_id)->get('tbl_question')->row_array();
+                
+                if ($question) {
+                    $is_correct = (strtolower($selected) == strtolower($question['answer']));
+                    if ($is_correct) {
+                        $correct_answers++;
+                    }
+
+                    $detailed_results[] = [
+                        'question_id' => $question_id,
+                        'selected_answer' => $selected,
+                        'correct_answer' => $question['answer'],
+                        'is_correct' => $is_correct,
+                        'question' => $question['question'],
+                        'note' => $question['note'] ?? '' // Explanation
+                    ];
+                }
+            }
+
+            // Calculate percentage
+            $percentage = ($total_questions > 0) ? round(($correct_answers / $total_questions) * 100) : 0;
+
+            // Determine coin reward
+            // Rule: +1 coin if 100% correct AND question_count > 5
+            $earned_coin = 0;
+            if ($percentage == 100 && $question_count > 5) {
+                $earned_coin = 1;
+                $this->set_coins($user_id, $earned_coin);
+                
+                // Track the coin reward
+                $title = 'soloModePerfect';
+                $status = 0; // add
+                $this->set_tracker_data($user_id, $earned_coin, $title, $status);
+            }
+
+            // Save solo quiz attempt (optional - for tracking)
+            // We could add a tbl_solo_quiz_attempt table later if needed
+
+            $response['error'] = false;
+            $response['score'] = $correct_answers;
+            $response['total_questions'] = $total_questions;
+            $response['correct_answers'] = $correct_answers;
+            $response['wrong_answers'] = $total_questions - $correct_answers;
+            $response['percentage'] = $percentage;
+            $response['earned_coin'] = $earned_coin;
+            $response['coin_eligible'] = ($question_count > 5); // Tells if coin was possible
+            $response['time_taken'] = $time_taken;
+            $response['topic'] = [
+                'id' => $topic['id'],
+                'slug' => $topic['slug'],
+                'name' => $topic['name']
+            ];
+            $response['detailed_results'] = $detailed_results;
+            $response['message'] = ($earned_coin > 0) 
+                ? 'Perfect score! +1 coin earned' 
+                : ($percentage == 100 && $question_count <= 5 
+                    ? 'Perfect score! (No coin for 5 questions or less)' 
+                    : 'Quiz completed');
+
         } catch (Exception $e) {
             $response['error'] = true;
             $response['message'] = $e->getMessage();

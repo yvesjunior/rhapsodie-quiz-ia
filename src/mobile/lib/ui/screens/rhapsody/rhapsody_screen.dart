@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
 import 'package:flutterquiz/core/core.dart';
@@ -367,46 +368,130 @@ class _MonthCard extends StatelessWidget {
     required this.onTap,
   });
 
+  // Get seasonal icon based on month
+  IconData get _seasonIcon {
+    final monthNum = _getMonthNumber(month.name);
+    if (monthNum >= 12 || monthNum <= 2) return Icons.ac_unit; // Winter
+    if (monthNum >= 3 && monthNum <= 5) return Icons.local_florist; // Spring
+    if (monthNum >= 6 && monthNum <= 8) return Icons.wb_sunny; // Summer
+    return Icons.eco; // Fall
+  }
+
+  int _getMonthNumber(String name) {
+    const months = ['january', 'february', 'march', 'april', 'may', 'june',
+                    'july', 'august', 'september', 'october', 'november', 'december'];
+    return months.indexOf(name.toLowerCase()) + 1;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color,
+              color.withValues(alpha: 0.7),
+            ],
           ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Text(
-              month.name.substring(0, 3).toUpperCase(),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
+            // Background pattern
+            Positioned(
+              right: -10,
+              top: -10,
+              child: Icon(
+                _seasonIcon,
+                size: 60,
+                color: Colors.white.withValues(alpha: 0.15),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${month.daysCount} days',
-              style: TextStyle(
-                fontSize: 11,
-                color: color.withOpacity(0.7),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Season icon
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _seasonIcon,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Month name
+                  Text(
+                    month.name.substring(0, 3).toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Frosted stats bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${month.daysCount}d',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (month.questionsCount > 0) ...[
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Text(
+                            '${month.questionsCount}Q',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (month.questionsCount > 0)
-              Text(
-                '${month.questionsCount} Q',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: color.withOpacity(0.6),
-                ),
-              ),
           ],
         ),
       ),
@@ -576,6 +661,7 @@ class RhapsodyMonthScreen extends StatelessWidget {
         final day = days[index];
         return _DayCard(
           day: day,
+          colorIndex: index,
           onTap: () => _onDayTap(context, day),
         );
       },
@@ -598,9 +684,30 @@ class RhapsodyMonthScreen extends StatelessWidget {
 
 class _DayCard extends StatelessWidget {
   final RhapsodyDay day;
+  final int colorIndex;
   final VoidCallback onTap;
 
-  const _DayCard({required this.day, required this.onTap});
+  const _DayCard({
+    required this.day,
+    required this.colorIndex,
+    required this.onTap,
+  });
+
+  // Accent colors for glass cards
+  static const _accentColors = [
+    Color(0xFF6366F1), // Indigo
+    Color(0xFF8B5CF6), // Violet
+    Color(0xFFEC4899), // Pink
+    Color(0xFF14B8A6), // Teal
+    Color(0xFF3B82F6), // Blue
+    Color(0xFF10B981), // Emerald
+    Color(0xFFF59E0B), // Amber
+    Color(0xFFEF4444), // Red
+    Color(0xFF06B6D4), // Cyan
+    Color(0xFFA855F7), // Purple
+  ];
+
+  Color get _accentColor => _accentColors[colorIndex % _accentColors.length];
 
   @override
   Widget build(BuildContext context) {
@@ -608,55 +715,107 @@ class _DayCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1565C0).withOpacity(0.08),
-          borderRadius: BorderRadius.circular(14),
+          // Glass effect: semi-transparent white
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(20),
+          // Elegant border with gradient feel
           border: Border.all(
-            color: const Color(0xFF1565C0).withOpacity(0.15),
+            color: Colors.white.withOpacity(0.8),
+            width: 1.5,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Day number - top left, sharing corner border
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1565C0),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(13),
-                  bottomRight: Radius.circular(10),
-                ),
-              ),
-              child: Text(
-                '${day.day}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+          boxShadow: [
+            // Soft outer shadow
+            BoxShadow(
+              color: _accentColor.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-            const Spacer(),
-            // Title - centered
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Center(
-                child: Text(
-                  day.title,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF333333),
-                    height: 1.3,
+            // Inner glow effect
+            BoxShadow(
+              color: Colors.white.withOpacity(0.8),
+              blurRadius: 1,
+              spreadRadius: -1,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Subtle gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _accentColor.withOpacity(0.05),
+                        _accentColor.withOpacity(0.1),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const Spacer(),
-          ],
+              // Content
+              Column(
+                children: [
+                  // Day number - floating pill
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _accentColor,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _accentColor.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'Day ${day.day}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Title
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      day.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Bottom accent line
+                  Container(
+                    height: 3,
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: _accentColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -815,7 +974,11 @@ class _RhapsodyDayScreen extends StatelessWidget {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.favorite, color: Colors.amber, size: 20),
+                          FaIcon(
+                            FontAwesomeIcons.personPraying,
+                            color: Colors.grey,
+                            size: 18,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'PRAYER',
@@ -967,6 +1130,7 @@ class _RhapsodyDayScreen extends StatelessWidget {
         'level': '0',
         'isPlayed': false,
         'isPremiumCategory': false,
+        'showCoins': true, 
       },
     );
   }

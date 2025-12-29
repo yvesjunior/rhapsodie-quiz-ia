@@ -341,22 +341,18 @@ class _MonthCard extends StatelessWidget {
       child: Container(
         height: 94,
         decoration: BoxDecoration(
-          color: month.color.withValues(alpha: 0.15),
+          color: month.color,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: month.color.withValues(alpha: 0.3),
-            width: 1,
-          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               month.name.toUpperCase(),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeights.bold,
-                color: month.color,
+                color: Colors.white,
                 letterSpacing: 0.5,
               ),
               textAlign: TextAlign.center,
@@ -369,7 +365,7 @@ class _MonthCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeights.medium,
-                color: month.color.withValues(alpha: 0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
             if (month.questionCount > 0) ...[
@@ -378,7 +374,7 @@ class _MonthCard extends StatelessWidget {
                 '${month.questionCount} Q',
                 style: TextStyle(
                   fontSize: 10,
-                  color: month.color.withValues(alpha: 0.6),
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],
