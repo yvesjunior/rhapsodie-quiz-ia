@@ -1518,6 +1518,17 @@ class Api extends REST_Controller
             $other_user_rank_sql = $this->db->get();
             $data = $other_user_rank_sql->result_array();
 
+            // Initialize default values for empty leaderboard
+            $topThreeUsersData = array();
+            $user_rank = array(
+                'user_id' => $user_id,
+                'score' => '0',
+                'user_rank' => '0',
+                'email' => '',
+                'name' => '',
+                'profile' => '',
+            );
+
             if ($user_id) {
                 if (!empty($data)) {
                     for ($i = 0; $i < count($data); $i++) {
@@ -1556,32 +1567,15 @@ class Api extends REST_Controller
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
-                    } else {
-                        $my_rank = array(
-                            'user_id' => $user_id,
-                            'score' => '0',
-                            'user_rank' => '0',
-                            'email' => '',
-                            'name' => '',
-                            'profile' => '',
-                        );
-                        $user_rank = $my_rank;
                     }
                 }
                 $response['error'] = false;
                 $response['total'] = "$total";
                 // making user's rank and other user's rank in seperate indexes
                 $response['data'] = array(
-                    'my_rank' => $user_rank ?? array(
-                        'user_id' => $user_id,
-                        'score' => '0',
-                        'user_rank' => '0',
-                        'email' => '',
-                        'name' => '',
-                        'profile' => '',
-                    ),
+                    'my_rank' => $user_rank,
                     'other_users_rank' => $data,
-                    'top_three_ranks' => $topThreeUsersData ?? array()
+                    'top_three_ranks' => $topThreeUsersData
                 );
             } else {
                 $response['error'] = true;
@@ -1635,6 +1629,18 @@ class Api extends REST_Controller
             }
             $query = $this->db->get();
             $data = $query->result_array();
+            
+            // Initialize default values for empty leaderboard
+            $topThreeUsersData = array();
+            $user_rank = array(
+                'user_id' => $user_id,
+                'score' => '0',
+                'user_rank' => '0',
+                'email' => '',
+                'name' => '',
+                'profile' => '',
+            );
+            
             if ($user_id) {
                 if (!empty($data)) {
                     for ($i = 0; $i < count($data); $i++) {
@@ -1643,7 +1649,6 @@ class Api extends REST_Controller
                             $data[$i]['profile'] = ($data[$i]['profile']) ? base_url() . USER_IMG_PATH . $data[$i]['profile'] : '';
                         }
                     }
-
 
                     $this->db->reset_query();
                     $this->db->from("($subQuery) r");
@@ -1659,7 +1664,6 @@ class Api extends REST_Controller
                         }
                     }
 
-
                     $this->db->reset_query();
                     $this->db->from("($subQuery) r");
                     $this->db->where('r.user_id', $user_id);
@@ -1674,31 +1678,14 @@ class Api extends REST_Controller
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
-                    } else {
-                        $my_rank = array(
-                            'user_id' => $user_id,
-                            'score' => '0',
-                            'user_rank' => '0',
-                            'email' => '',
-                            'name' => '',
-                            'profile' => '',
-                        );
-                        $user_rank = $my_rank;
                     }
                 }
                 $response['error'] = false;
                 $response['total'] = "$total";
                 $response['data'] = array(
-                    'my_rank' => $user_rank ?? array(
-                        'user_id' => $user_id,
-                        'score' => '0',
-                        'user_rank' => '0',
-                        'email' => '',
-                        'name' => '',
-                        'profile' => '',
-                    ),
+                    'my_rank' => $user_rank,
                     'other_users_rank' => $data,
-                    'top_three_ranks' => $topThreeUsersData ?? array()
+                    'top_three_ranks' => $topThreeUsersData
                 );
             } else {
                 $response['error'] = true;
@@ -1731,9 +1718,9 @@ class Api extends REST_Controller
             $sort = 'r.user_rank';
             $order = 'ASC';
 
-            $sub_query = "(SELECT s.*, @user_rank := @user_rank + 1 AS user_rank FROM (SELECT m.id, m.user_id,u.email, u.name,u.profile, SUM(m.score) AS score,MAX(m.last_updated) as last_updated FROM tbl_leaderboard_monthly m JOIN tbl_users u ON u.id = m.user_id WHERE u.status = 1 GROUP BY m.user_id) s, (SELECT @user_rank := 0) init ORDER BY s.score DESC, s.last_updated ASC)";
+            $sub_query = "SELECT s.*, @user_rank := @user_rank + 1 AS user_rank FROM (SELECT m.id, m.user_id,u.email, u.name,u.profile, SUM(m.score) AS score,MAX(m.last_updated) as last_updated FROM tbl_leaderboard_monthly m JOIN tbl_users u ON u.id = m.user_id WHERE u.status = 1 GROUP BY m.user_id) s, (SELECT @user_rank := 0) init ORDER BY s.score DESC, s.last_updated ASC";
             $this->db->select('r.*');
-            $this->db->from("$sub_query r", false);
+            $this->db->from("($sub_query) r", false);
 
             $total = $this->db->count_all_results('', false);
             $this->db->order_by($sort, $order);
@@ -1743,8 +1730,19 @@ class Api extends REST_Controller
 
             $other_user_rank_sql = $this->db->get();
             $data = $other_user_rank_sql->result_array();
+            
+            // Initialize default values for empty leaderboard
+            $topThreeUsersData = array();
+            $user_rank = array(
+                'user_id' => $user_id,
+                'score' => '0',
+                'user_rank' => '0',
+                'email' => '',
+                'name' => '',
+                'profile' => '',
+            );
+            
             if ($user_id) {
-
                 if (!empty($data)) {
                     for ($i = 0; $i < count($data); $i++) {
                         if (filter_var($data[$i]['profile'], FILTER_VALIDATE_URL) === false) {
@@ -1776,31 +1774,14 @@ class Api extends REST_Controller
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
-                    } else {
-                        $my_rank = array(
-                            'user_id' => $user_id,
-                            'score' => '0',
-                            'user_rank' => '0',
-                            'email' => '',
-                            'name' => '',
-                            'profile' => '',
-                        );
-                        $user_rank = $my_rank;
                     }
                 }
                 $response['error'] = false;
                 $response['total'] = "$total";
                 $response['data'] = array(
-                    'my_rank' => $user_rank ?? array(
-                        'user_id' => $user_id,
-                        'score' => '0',
-                        'user_rank' => '0',
-                        'email' => '',
-                        'name' => '',
-                        'profile' => '',
-                    ),
+                    'my_rank' => $user_rank,
                     'other_users_rank' => $data,
-                    'top_three_ranks' => $topThreeUsersData ?? array()
+                    'top_three_ranks' => $topThreeUsersData
                 );
             } else {
                 $response['error'] = true;
