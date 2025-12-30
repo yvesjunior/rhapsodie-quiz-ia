@@ -3,13 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
+import 'package:flutterquiz/commons/widgets/show_login_required_dialog.dart';
 import 'package:flutterquiz/core/constants/assets_constants.dart';
 import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/core/routes/routes.dart';
+import 'package:flutterquiz/features/auth/cubits/auth_cubit.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/rhapsody/rhapsody.dart';
-import 'package:flutterquiz/ui/screens/home/widgets/explore_categories_section.dart';
 import 'package:flutterquiz/commons/widgets/custom_image.dart';
+import 'package:flutterquiz/ui/screens/home/widgets/rhapsody_section.dart' show CategoryColors;
 import 'package:flutterquiz/utils/extensions.dart';
 
 class RhapsodyScreen extends StatefulWidget {
@@ -1319,6 +1321,12 @@ class _RhapsodyDayScreen extends StatelessWidget {
   }
 
   void _startQuiz(BuildContext context, RhapsodyDayDetail detail) {
+    // Check if the user is a guest, Show login required dialog for guest users
+    if (context.read<AuthCubit>().isGuest) {
+      showLoginRequiredDialog(context);
+      return;
+    }
+
     Navigator.of(context).pushNamed(
       Routes.quiz,
       arguments: {

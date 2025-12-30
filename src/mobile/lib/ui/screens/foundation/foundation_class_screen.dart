@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutterquiz/commons/widgets/show_login_required_dialog.dart';
 import 'package:flutterquiz/core/routes/routes.dart';
+import 'package:flutterquiz/features/auth/cubits/auth_cubit.dart';
 import 'package:flutterquiz/features/foundation/foundation.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 
@@ -329,6 +331,12 @@ class FoundationClassScreen extends StatelessWidget {
   }
 
   void _startQuiz(BuildContext context, FoundationClass classDetail) {
+    // Check if the user is a guest, Show login required dialog for guest users
+    if (context.read<AuthCubit>().isGuest) {
+      showLoginRequiredDialog(context);
+      return;
+    }
+
     Navigator.of(context).pushNamed(
       Routes.quiz,
       arguments: {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutterquiz/core/core.dart';
-import 'package:flutterquiz/ui/screens/home/widgets/explore_categories_section.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 
 /// Rhapsody Section for Home Screen
@@ -417,5 +416,17 @@ class RhapsodyColors {
   static const month2 = Color(0xFF673AB7); // Deep Purple
   static const month3 = Color(0xFF3F51B5); // Indigo
   static const month4 = Color(0xFF5C6BC0); // Indigo lighter
+}
+
+/// Category Colors for various screens
+class CategoryColors {
+  static const space = Color(0xFFFF6B35);    // Orange
+  static const sports = Color(0xFFE91E63);   // Pink
+  static const history = Color(0xFF4CAF50);  // Green
+  static const maths = Color(0xFF9C27B0);    // Purple
+  static const science = Color(0xFF2196F3);  // Blue
+  static const geography = Color(0xFF00BCD4); // Cyan
+  static const music = Color(0xFFFFEB3B);    // Yellow
+  static const movies = Color(0xFFE91E63);   // Pink
 }
 

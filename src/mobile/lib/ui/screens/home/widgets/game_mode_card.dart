@@ -35,21 +35,24 @@ class GameModeCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Title
+            // Title with auto-sizing
             Positioned(
               top: 16,
               left: 12,
               right: 12,
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeights.bold,
-                  color: Colors.white,
-                  height: 1.2,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeights.bold,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             // Image at bottom

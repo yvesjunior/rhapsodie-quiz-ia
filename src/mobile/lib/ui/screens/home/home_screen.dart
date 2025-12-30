@@ -698,6 +698,95 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildContestPromoSection() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: hzMargin),
+      child: GestureDetector(
+        onTap: () {
+          if (_isGuest) {
+            showLoginRequiredDialog(context);
+            return;
+          }
+          if (_sysConfigCubit.isContestEnabled) {
+            Navigator.of(context).pushNamed(Routes.contest);
+          } else {
+            context.showSnack(context.tr(currentlyNotAvailableKey)!);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1565C0).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Trophy Image
+              Image.asset(
+                'assets/images/cup-contest.png',
+                height: 80,
+                width: 80,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 16),
+              // Text Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr(contest) ?? 'Contest',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Compete and win prizes!',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        context.tr('playnowLbl') ?? 'Play Now',
+                        style: const TextStyle(
+                          color: Color(0xFF1565C0),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLiveContestSection() {
     void onTapViewAll() {
       if (_sysConfigCubit.isContestEnabled) {
@@ -1097,23 +1186,10 @@ class HomeScreenState extends State<HomeScreen>
                 child: _buildGameModes(),
               ),
               
-              // Search Bar - moved up to reduce gap (40% less)
+              // Contest Promotion Section - moved up
               Transform.translate(
                 offset: const Offset(0, -50),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: hzMargin),
-                  child: CategorySearchBar(
-                    onTap: () {
-                      // Navigate to category search/list
-                      Navigator.of(context).pushNamed(
-                        Routes.category,
-                        arguments: CategoryScreenArgs(
-                          quizType: QuizTypes.quizZone,
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                child: _buildContestPromoSection(),
               ),
               
               // Rhapsody Section
@@ -1163,39 +1239,6 @@ class HomeScreenState extends State<HomeScreen>
               
               const SizedBox(height: 24),
               
-              // Explore Categories Section
-              ExploreCategoriesSection(
-                categories: _buildCategoryItems(),
-                onViewAll: () {
-                  Navigator.of(context).pushNamed(
-                    Routes.category,
-                    arguments: CategoryScreenArgs(
-                      quizType: QuizTypes.quizZone,
-                    ),
-                  );
-                },
-                onCategoryTap: (category) {
-                  // Handle category tap
-                  Navigator.of(context).pushNamed(
-                    Routes.category,
-                    arguments: CategoryScreenArgs(
-                      quizType: QuizTypes.quizZone,
-                    ),
-                  );
-                },
-                onRandomQuizTap: () {
-                  if (_isGuest) {
-                    showLoginRequiredDialog(context);
-                    return;
-                  }
-                  context.read<QuizCategoryCubit>().reset();
-                  context.read<SubCategoryCubit>().reset();
-                  globalCtx.pushNamed(Routes.selfChallenge);
-                },
-              ),
-              
-              const SizedBox(height: 24),
-              
               // Daily Ads
               if (!_isGuest &&
                   _sysConfigCubit.isAdsEnable &&
@@ -1203,11 +1246,6 @@ class HomeScreenState extends State<HomeScreen>
                 _buildDailyAds(),
               ],
               
-              // Live Contest Section
-              if (!_isGuest &&
-                  _sysConfigCubit.isContestEnabled) ...[
-                _buildLiveContestSection(),
-              ],
               
               const SizedBox(height: 100), // Bottom padding for nav bar
             ],
@@ -1215,36 +1253,6 @@ class HomeScreenState extends State<HomeScreen>
         );
       },
     );
-  }
-
-  List<CategoryItem> _buildCategoryItems() {
-    // Return sample categories - these would typically come from your category cubit
-    return [
-      CategoryItem(
-        id: '1',
-        name: 'Space',
-        color: CategoryColors.space,
-        icon: Icons.rocket_launch_rounded,
-      ),
-      CategoryItem(
-        id: '2',
-        name: 'Sports',
-        color: CategoryColors.sports,
-        icon: Icons.sports_soccer_rounded,
-      ),
-      CategoryItem(
-        id: '3',
-        name: 'History',
-        color: CategoryColors.history,
-        icon: Icons.shield_rounded,
-      ),
-      CategoryItem(
-        id: '4',
-        name: 'Maths',
-        color: CategoryColors.maths,
-        icon: Icons.calculate_rounded,
-      ),
-    ];
   }
 
   List<RhapsodyMonth> _buildRhapsodyMonths() {

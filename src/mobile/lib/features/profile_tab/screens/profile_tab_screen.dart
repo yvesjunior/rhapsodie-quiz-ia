@@ -48,7 +48,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
     (name: 'wallet', image: Assets.walletMenuIcon),
     (name: 'coinHistory', image: Assets.coinHistoryMenuIcon),
     (name: 'inviteFriendsLbl', image: Assets.inviteFriendsMenuIcon),
-    (name: 'bookmarkLbl', image: Assets.bookmarkMenuIcon),
     (name: 'badges', image: Assets.badgesMenuIcon),
     (name: 'rewardsLbl', image: Assets.rewardMenuIcon),
     (name: 'statisticsLabel', image: Assets.statisticsMenuIcon),
@@ -59,9 +58,7 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
     (name: 'vibrationLbl', image: Assets.vibrationIcon),
     (name: 'adsPreference', image: Assets.adsPreferenceIcon),
     (name: 'aboutQuizApp', image: Assets.aboutUsMenuIcon),
-    (name: howToPlayLbl, image: Assets.howToPlayMenuIcon),
     (name: 'shareAppLbl', image: Assets.shareMenuIcon),
-    (name: 'rateUsLbl', image: Assets.rateMenuIcon),
     (name: 'logoutLbl', image: Assets.logoutMenuIcon),
     (name: 'deleteAccountLbl', image: Assets.deleteAccountMenuIcon),
   ];
@@ -106,12 +103,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
       if (item.name == 'quizLanguage' && !config.isLanguageModeEnabled) {
         return false;
       }
-      if (item.name == 'bookmarkLbl' &&
-          !(config.isQuizZoneEnabled ||
-              config.isGuessTheWordEnabled ||
-              config.isAudioQuizEnabled)) {
-        return false;
-      }
       if (item.name == 'language' && systemLanguages.length == 1) {
         return false;
       }
@@ -142,12 +133,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
       case 'aboutQuizApp':
         globalCtx.pushNamed(Routes.aboutApp);
         return;
-      case howToPlayLbl:
-        globalCtx.pushNamed(
-          Routes.appSettings,
-          arguments: const AppSettingsScreenArgs(howToPlayLbl),
-        );
-        return;
       case 'shareAppLbl':
         {
           try {
@@ -159,9 +144,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
             context.showSnack(e.toString());
           }
         }
-        return;
-      case 'rateUsLbl':
-        launchUrl(Uri.parse(context.read<SystemConfigCubit>().appUrl));
         return;
       case 'adsPreference':
         GdprHelper.changePrivacyPreferences();
@@ -180,9 +162,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
         return;
       case 'wallet':
         globalCtx.pushNamed(Routes.wallet);
-        return;
-      case 'bookmarkLbl':
-        globalCtx.pushNamed(Routes.bookmark);
         return;
       case 'inviteFriendsLbl':
         globalCtx.pushNamed(Routes.referAndEarn);
@@ -834,6 +813,7 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
 
   Widget _buildMenuItem(MenuItem item) {
     Widget? trailing;
+    final isDeleteAccount = item.name == 'deleteAccountLbl';
 
     if (item.name == 'soundLbl') {
       trailing = const _SoundSwitchWidget();
@@ -849,14 +829,19 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
+          color: isDeleteAccount 
+              ? Colors.red.shade50 
+              : context.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: isDeleteAccount 
+              ? Border.all(color: Colors.red.shade300, width: 1.5)
+              : null,
         ),
         child: Row(
           children: [
             QImage(
               imageUrl: item.image,
-              color: context.primaryColor,
+              color: isDeleteAccount ? Colors.red : context.primaryColor,
               fit: BoxFit.fitHeight,
               height: 24,
             ),
@@ -868,9 +853,9 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
                 style: TextStyle(
-                  fontWeight: FontWeights.regular,
+                  fontWeight: isDeleteAccount ? FontWeights.bold : FontWeights.regular,
                   fontSize: 16,
-                  color: context.primaryTextColor,
+                  color: isDeleteAccount ? Colors.red : context.primaryTextColor,
                 ),
               ),
             ),
