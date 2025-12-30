@@ -241,7 +241,7 @@ class Routes {
           matchCode: args?['matchCode'] as String?,
         );
       case rhapsody:
-        return RhapsodyScreen.route();
+        return RhapsodyScreen.route(arguments: rs.arguments as Map<String, dynamic>?);
       case rhapsodyMonth:
         final args = rs.arguments as Map<String, dynamic>;
         return RhapsodyScreen.monthRoute(

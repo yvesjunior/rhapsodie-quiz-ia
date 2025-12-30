@@ -3,21 +3,55 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
+import 'package:flutterquiz/core/constants/assets_constants.dart';
 import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/core/routes/routes.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/rhapsody/rhapsody.dart';
 import 'package:flutterquiz/ui/screens/home/widgets/explore_categories_section.dart';
+import 'package:flutterquiz/commons/widgets/custom_image.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 
 class RhapsodyScreen extends StatefulWidget {
   const RhapsodyScreen({super.key});
 
-  static Route route() {
+  static Route route({Map<String, dynamic>? arguments}) {
+    // Check if we need to navigate to a specific day
+    if (arguments != null && arguments['action'] == 'showDay') {
+      final year = arguments['year'] as int;
+      final month = arguments['month'] as int;
+      final day = arguments['day'] as int;
+      return dayRoute(year: year, month: month, day: day);
+    }
+    
     return MaterialPageRoute(
       builder: (_) => BlocProvider(
         create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())..loadYearsAndMonths(),
         child: const RhapsodyScreen(),
+      ),
+    );
+  }
+
+  /// Route directly to a specific day
+  static Route dayRoute({
+    required int year,
+    required int month,
+    required int day,
+  }) {
+    return MaterialPageRoute(
+      builder: (_) => BlocProvider(
+        create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+          ..loadDayDetail(year, month, day),
+        child: _RhapsodyDayScreen(
+          day: RhapsodyDay(
+            id: '',
+            name: 'Day $day',
+            title: '',
+            day: day,
+            month: month,
+            year: year,
+          ),
+        ),
       ),
     );
   }
@@ -160,37 +194,75 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _navItem(context, Icons.home_rounded, 'Home', NavTabType.home),
-          _navItem(context, Icons.school, 'Foundation', NavTabType.quizZone),
-          _navItem(context, Icons.sports_esports_rounded, 'Play Zone', NavTabType.playZone),
-          _navItem(context, Icons.person_rounded, 'Profile', NavTabType.profile),
+          _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
+          _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
+          _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
+          _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
         ],
       ),
     );
   }
 
-  Widget _navItem(BuildContext context, IconData icon, String label, NavTabType tabType) {
-    final color = context.primaryTextColor.withValues(alpha: 0.6);
+  Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
-          // Pop back to dashboard and switch to the selected tab
           Navigator.of(context).popUntil((route) => route.isFirst);
           dashboardScreenKey.currentState?.changeTab(tabType);
         },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: color),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: QImage(imageUrl: iconAsset, color: color)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Icon(icon, color: color, size: 24)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -571,17 +643,18 @@ class RhapsodyMonthScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _navItem(context, Icons.home_rounded, 'Home', NavTabType.home),
-          _navItem(context, Icons.school, 'Foundation', NavTabType.quizZone),
-          _navItem(context, Icons.sports_esports_rounded, 'Play Zone', NavTabType.playZone),
-          _navItem(context, Icons.person_rounded, 'Profile', NavTabType.profile),
+          _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
+          _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
+          _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
+          _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
         ],
       ),
     );
   }
 
-  Widget _navItem(BuildContext context, IconData icon, String label, NavTabType tabType) {
-    final color = context.primaryTextColor.withValues(alpha: 0.6);
+  Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -589,18 +662,56 @@ class RhapsodyMonthScreen extends StatelessWidget {
           Navigator.of(context).popUntil((route) => route.isFirst);
           dashboardScreenKey.currentState?.changeTab(tabType);
         },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 12, color: color),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: QImage(imageUrl: iconAsset, color: color)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Icon(icon, color: color, size: 24)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -848,6 +959,94 @@ class _RhapsodyDayScreen extends StatelessWidget {
 
           return const SizedBox();
         },
+      ),
+      bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: kBottomNavigationBarHeight + 26,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: const [
+          BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
+          _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
+          _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
+          _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: QImage(imageUrl: iconAsset, color: color)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Icon(icon, color: color, size: 24)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1130,7 +1329,11 @@ class _RhapsodyDayScreen extends StatelessWidget {
         'level': '0',
         'isPlayed': false,
         'isPremiumCategory': false,
-        'showCoins': true, 
+        'showCoins': true,
+        // Rhapsody day info for "Next" navigation
+        'rhapsodyDay': detail.day,
+        'rhapsodyMonth': detail.month,
+        'rhapsodyYear': detail.year,
       },
     );
   }

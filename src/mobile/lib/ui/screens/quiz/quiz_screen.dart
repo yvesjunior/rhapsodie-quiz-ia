@@ -46,6 +46,11 @@ class QuizScreen extends StatefulWidget {
     super.key,
     this.showRetryButton = true,
     this.showCoins = true,
+    this.rhapsodyDay,
+    this.rhapsodyMonth,
+    this.rhapsodyYear,
+    this.foundationClassId,
+    this.foundationClassOrder,
   });
 
   final QuizTypes quizType;
@@ -65,6 +70,15 @@ class QuizScreen extends StatefulWidget {
   final bool showRetryButton;
   final bool isPremiumCategory;
   final bool showCoins; // Hide coins display for Foundation School
+  
+  // Rhapsody day info for "Next" navigation
+  final int? rhapsodyDay;
+  final int? rhapsodyMonth;
+  final int? rhapsodyYear;
+  
+  // Foundation class info for "Next" navigation
+  final String? foundationClassId;
+  final int? foundationClassOrder;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -103,6 +117,11 @@ class QuizScreen extends StatefulWidget {
           showRetryButton: arguments['showRetryButton'] as bool? ?? true,
           isPremiumCategory: arguments['isPremiumCategory'] as bool? ?? false,
           showCoins: arguments['showCoins'] as bool? ?? true,
+          rhapsodyDay: arguments['rhapsodyDay'] as int?,
+          rhapsodyMonth: arguments['rhapsodyMonth'] as int?,
+          rhapsodyYear: arguments['rhapsodyYear'] as int?,
+          foundationClassId: arguments['foundationClassId'] as String?,
+          foundationClassOrder: arguments['foundationClassOrder'] as int?,
         ),
       ),
     );
@@ -262,6 +281,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         'lifelines': lifelinesKeys,
         'entryFee': 0,
         'isPremiumCategory': widget.isPremiumCategory,
+        // Rhapsody day info for "Next" navigation
+        'rhapsodyDay': widget.rhapsodyDay,
+        'rhapsodyMonth': widget.rhapsodyMonth,
+        'rhapsodyYear': widget.rhapsodyYear,
+        // Foundation class info for "Next" navigation
+        'foundationClassId': widget.foundationClassId,
+        'foundationClassOrder': widget.foundationClassOrder,
       },
     );
   }

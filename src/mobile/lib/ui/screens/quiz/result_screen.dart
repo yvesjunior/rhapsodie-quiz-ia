@@ -28,6 +28,9 @@ import 'package:flutterquiz/features/quiz/models/question.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/quiz/models/user_battle_room_details.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
+import 'package:flutterquiz/features/rhapsody/rhapsody_remote_data_source.dart';
+import 'package:flutterquiz/features/foundation/foundation_remote_data_source.dart';
+import 'package:flutterquiz/ui/screens/quiz/category_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/guess_the_word_quiz_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/review_answers_screen.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
@@ -42,8 +45,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// Purple header color - consistent across all screens
-const _headerColor = Color(0xFF7B68EE);
+// Header color is now using primary color from theme - see _ResultScreenState._headerColor getter
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
@@ -69,6 +71,11 @@ class ResultScreen extends StatefulWidget {
     this.lifelines = const [],
     this.totalHintUsed,
     this.matchId,
+    this.rhapsodyDay,
+    this.rhapsodyMonth,
+    this.rhapsodyYear,
+    this.foundationClassId,
+    this.foundationClassOrder,
   });
 
   final QuizTypes? quizType;
@@ -92,6 +99,15 @@ class ResultScreen extends StatefulWidget {
   final List<String> lifelines;
   final int? totalHintUsed;
   final String? matchId;
+  
+  // Rhapsody day info for "Next" navigation
+  final int? rhapsodyDay;
+  final int? rhapsodyMonth;
+  final int? rhapsodyYear;
+  
+  // Foundation class info for "Next" navigation
+  final String? foundationClassId;
+  final int? foundationClassOrder;
 
   static Route<dynamic> route(RouteSettings routeSettings) {
     final args = routeSettings.arguments! as Map;
@@ -130,6 +146,11 @@ class ResultScreen extends StatefulWidget {
           lifelines: args['lifelines'] as List<String>? ?? const [],
           totalHintUsed: args['totalHintUsed'] as int?,
           matchId: args['matchId'] as String?,
+          rhapsodyDay: args['rhapsodyDay'] as int?,
+          rhapsodyMonth: args['rhapsodyMonth'] as int?,
+          rhapsodyYear: args['rhapsodyYear'] as int?,
+          foundationClassId: args['foundationClassId'] as String?,
+          foundationClassOrder: args['foundationClassOrder'] as int?,
         ),
       ),
     );
@@ -147,6 +168,9 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   int _selectedTabIndex = 0; // 0: Standings, 1: Summary, 2: Play again
 
   bool _displayedAlreadyLoggedInDialog = false;
+
+  /// Header color using app's primary color
+  Color get _headerColor => Theme.of(context).primaryColor;
 
   late final UserProfile userProfile = context
       .read<UserDetailsCubit>()
@@ -183,7 +207,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       : totalQuestions - correctAnswers;
 
   double get winPercentage => widget.quizType == QuizTypes.exam
-      ? (widget.obtainedMarks! * 100) / int.parse(widget.exam!.totalMarks)
+      ? (widget.obtainedMarks! * 100) / (int.tryParse(widget.exam?.totalMarks ?? '') ?? 1)
       : (correctAnswers * 100) / totalQuestions;
 
   @override
@@ -268,6 +292,180 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
 
   Future<void> fetchUpdateUserDetails() async {
     await context.read<UserDetailsCubit>().fetchUserDetails();
+  }
+
+  /// Navigate to the next Rhapsody day's content
+  Future<void> _navigateToNextRhapsodyDay() async {
+    final currentDay = widget.rhapsodyDay!;
+    final currentMonth = widget.rhapsodyMonth!;
+    final currentYear = widget.rhapsodyYear!;
+    
+    // Calculate next day
+    int nextDay = currentDay + 1;
+    int nextMonth = currentMonth;
+    int nextYear = currentYear;
+    
+    // Handle month overflow (simple check, max 31 days)
+    if (nextDay > 31) {
+      nextDay = 1;
+      nextMonth++;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear++;
+      }
+    }
+    
+    // Check if next day exists by trying to fetch it
+    try {
+      final dataSource = RhapsodyRemoteDataSource();
+      final nextDayDetail = await dataSource.getRhapsodyDayDetail(nextYear, nextMonth, nextDay);
+      
+      if (nextDayDetail != null) {
+        // Next day exists, navigate to it
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(
+            Routes.rhapsody,
+            arguments: {
+              'action': 'showDay',
+              'year': nextYear,
+              'month': nextMonth,
+              'day': nextDay,
+            },
+          );
+        }
+      } else {
+        // No next day available, show congratulations dialog
+        _showNoMoreContentDialog();
+      }
+    } catch (e) {
+      // Error fetching, show dialog
+      _showNoMoreContentDialog();
+    }
+  }
+  
+  /// Navigate to the next Foundation class
+  Future<void> _navigateToNextFoundationClass() async {
+    final currentOrder = widget.foundationClassOrder!;
+    
+    try {
+      final dataSource = FoundationRemoteDataSource();
+      final classes = await dataSource.getFoundationClasses();
+      
+      if (classes == null || classes.isEmpty) {
+        _showNoMoreFoundationContentDialog();
+        return;
+      }
+      
+      // Sort by rowOrder and find next class
+      classes.sort((a, b) => a.rowOrder.compareTo(b.rowOrder));
+      
+      // Find the next class after current order
+      final nextClass = classes.where((c) => c.rowOrder > currentOrder).firstOrNull;
+      
+      if (nextClass != null) {
+        // Next class exists, navigate to it
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(
+            Routes.foundationClass,
+            arguments: {
+              'classId': nextClass.id,
+            },
+          );
+        }
+      } else {
+        // No next class available, show congratulations dialog
+        _showNoMoreFoundationContentDialog();
+      }
+    } catch (e) {
+      // Error fetching, show dialog
+      _showNoMoreFoundationContentDialog();
+    }
+  }
+
+  /// Show dialog when there's no more Foundation content
+  void _showNoMoreFoundationContentDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Text('🎓 ', style: TextStyle(fontSize: 24)),
+            Expanded(
+              child: Text(
+                context.trWithFallback('congratulationsLbl', 'Congratulations!'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          context.trWithFallback(
+            'noMoreFoundationContentMsg', 
+            "You've completed all Foundation School classes! Great job mastering the fundamentals.",
+          ),
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(); // Go back to Foundation list
+            },
+            child: Text(
+              context.trWithFallback('okLbl', 'OK'),
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show dialog when there's no more Rhapsody content
+  void _showNoMoreContentDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Text('🎉 ', style: TextStyle(fontSize: 24)),
+            Expanded(
+              child: Text(
+                context.trWithFallback('congratulationsLbl', 'Congratulations!'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          context.trWithFallback(
+            'noMoreRhapsodyContentMsg', 
+            "You've completed all available Rhapsody content! Check back later for new devotionals.",
+          ),
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(); // Go back to Rhapsody list
+            },
+            child: Text(
+              context.trWithFallback('okLbl', 'OK'),
+              style: TextStyle(
+                color: Theme.of(context).primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void onPageBackCalls() {
@@ -401,28 +599,6 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 height: context.height * 0.45,
                 decoration: BoxDecoration(
                   color: _headerColor,
-                  image: _isWinner ? const DecorationImage(
-                    image: AssetImage('assets/images/confetti_bg.png'),
-                    fit: BoxFit.cover,
-                    opacity: 0.3,
-                  ) : null,
-                ),
-              ),
-              
-              // Wave decoration at bottom of purple section
-              Positioned(
-                top: context.height * 0.40,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: context.scaffoldBackgroundColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(40),
-                      topRight: Radius.circular(40),
-                    ),
-                  ),
                 ),
               ),
               
@@ -577,14 +753,16 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 height: 100,
                 decoration: BoxDecoration(
                   color: _isWinner 
-                      ? Colors.amber.withValues(alpha: 0.2)
+                      ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
                       : Colors.grey.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.emoji_events_rounded,
-                  size: 60,
-                  color: _isWinner ? Colors.amber : Colors.grey,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Image.asset(
+                    'assets/images/cup.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ],
@@ -618,33 +796,47 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           
           const SizedBox(height: 8),
           
-          // Points earned
+          // Success percentage
           RichText(
             text: TextSpan(
-              text: context.trWithFallback('youScoredLbl', "You've scored "),
+              text: context.trWithFallback('successRateLbl', "Success rate: "),
               style: TextStyle(
                 fontSize: 16,
                 color: context.primaryTextColor.withValues(alpha: 0.6),
               ),
-                      children: [
+              children: [
                 TextSpan(
-                  text: '+$earnedScore',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeights.bold,
-                    color: Color(0xFF4CD964),
-                  ),
-                ),
-                TextSpan(
-                  text: ' ${context.trWithFallback('pointsLbl', 'points')}',
+                  text: '${winPercentage.toStringAsFixed(0)}%',
                   style: TextStyle(
                     fontSize: 16,
-                    color: context.primaryTextColor.withValues(alpha: 0.6),
+                    fontWeight: FontWeights.bold,
+                    color: winPercentage >= 100 ? const Color(0xFF4CD964) : 
+                           winPercentage >= 70 ? Colors.orange : Colors.red,
                   ),
                 ),
               ],
             ),
           ),
+          
+          // Coin reward for 100% success
+          if (winPercentage >= 100 && totalQuestions > 5) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  '+1 ${context.trWithFallback('coinLbl', 'coin')}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeights.bold,
+                    color: Color(0xFFFFD700),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1002,32 +1194,26 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
 
   Widget _buildSummaryTab(SetCoinScoreState state) {
     final earnedCoins = state is SetCoinScoreSuccess ? state.earnCoin : 0;
-    final earnedScore = state is SetCoinScoreSuccess ? state.earnScore : 0;
     final percentage = state is SetCoinScoreSuccess ? state.percentage : winPercentage.toInt();
 
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          _buildSummaryItem(
-            context.trWithFallback('scoreLbl', 'Score'),
-            '$earnedScore',
-            Icons.star_rounded,
-            Colors.amber,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryItem(
-            context.trWithFallback('coinsLbl', 'Coins'),
-            '$earnedCoins',
-            Icons.monetization_on,
-            const Color(0xFFFFC107),
-          ),
-          const SizedBox(height: 12),
+          // Accuracy (success rate)
           _buildSummaryItem(
             context.trWithFallback('accuracyLbl', 'Accuracy'),
             '$percentage%',
             Icons.analytics_rounded,
             _headerColor,
+          ),
+          const SizedBox(height: 12),
+          // Coins earned (only for 100% success with > 5 questions)
+          _buildSummaryItem(
+            context.trWithFallback('coinsEarnedLbl', 'Coins Earned'),
+            '$earnedCoins',
+            Icons.monetization_on,
+            const Color(0xFFFFC107),
           ),
           const SizedBox(height: 20),
           
@@ -1104,16 +1290,6 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 24),
           _buildPlayAgainButton(),
-          const SizedBox(height: 12),
-          _buildActionButton(
-            context.trWithFallback('homeBtn', 'Go Home'),
-            () {
-              fetchUpdateUserDetails();
-              globalCtx.pushNamedAndRemoveUntil(Routes.home, predicate: (_) => false);
-              dashboardScreenKey.currentState?.changeTab(NavTabType.home);
-            },
-            isPrimary: false,
-          ),
           const SizedBox(height: 16),
         ],
             ),
@@ -1164,30 +1340,43 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       );
     } else if (widget.quizType == QuizTypes.quizZone) {
       if (_isWinner) {
-        final maxLevel = int.parse(widget.subcategoryMaxLevel!);
-        final currentLevel = int.parse(widget.questions!.first.level!);
-        if (maxLevel == currentLevel) {
-          return const SizedBox.shrink();
+        // Check if this is a Rhapsody quiz (has rhapsody day info)
+        final isRhapsodyQuiz = widget.rhapsodyDay != null && 
+                               widget.rhapsodyMonth != null && 
+                               widget.rhapsodyYear != null;
+        
+        if (isRhapsodyQuiz) {
+          // Navigate to the next Rhapsody day
+          return _buildActionButton(
+            context.trWithFallback('nextBtn', 'Next'),
+            () {
+              fetchUpdateUserDetails();
+              _navigateToNextRhapsodyDay();
+            },
+          );
         }
+        
+        // Check if this is a Foundation quiz (has foundation class info)
+        final isFoundationQuiz = widget.foundationClassId != null && 
+                                 widget.foundationClassOrder != null;
+        
+        if (isFoundationQuiz) {
+          // Navigate to the next Foundation class
+          return _buildActionButton(
+            context.trWithFallback('nextBtn', 'Next'),
+            () {
+              fetchUpdateUserDetails();
+              _navigateToNextFoundationClass();
+            },
+          );
+        }
+        
+        // Non-Rhapsody/Foundation quizZone - just go back
         return _buildActionButton(
-          context.trWithFallback('nextLevelBtn', 'Next Level'),
+          context.trWithFallback('nextBtn', 'Next'),
           () {
-            final unlockedLevel =
-                int.parse(widget.questions!.first.level!) ==
-                    widget.unlockedLevel
-                ? (widget.unlockedLevel! + 1)
-                : widget.unlockedLevel;
-            Navigator.of(context).pushReplacementNamed(
-              Routes.quiz,
-              arguments: {
-                'quizType': widget.quizType,
-                'categoryId': widget.categoryId,
-                'subcategoryId': widget.subcategoryId,
-                'level': (currentLevel + 1).toString(),
-                'subcategoryMaxLevel': widget.subcategoryMaxLevel,
-                'unlockedLevel': unlockedLevel,
-              },
-            );
+            fetchUpdateUserDetails();
+            Navigator.of(context).pop();
           },
         );
       }
@@ -1195,22 +1384,40 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
         context.trWithFallback('playAgainBtn', 'Play Again'),
         () {
         fetchUpdateUserDetails();
+        // Restart quiz from the beginning (level 0)
         Navigator.of(context).pushReplacementNamed(
           Routes.quiz,
           arguments: {
             'quizType': widget.quizType,
             'categoryId': widget.categoryId,
             'subcategoryId': widget.subcategoryId,
-            'level': widget.questions!.first.level,
-            'unlockedLevel': widget.unlockedLevel,
+            'level': '0', // Start from beginning
+            'unlockedLevel': 0,
             'subcategoryMaxLevel': widget.subcategoryMaxLevel,
           },
         );
         },
       );
+    } else if (widget.quizType == QuizTypes.funAndLearn) {
+      // Rhapsody quiz - show "Next" button to go back to days list
+      return _buildActionButton(
+        context.trWithFallback('nextBtn', 'Next'),
+        () {
+          fetchUpdateUserDetails();
+          // Go back to the Rhapsody days list
+          Navigator.of(context).pop();
+        },
+      );
     }
 
-    return const SizedBox.shrink();
+    // Default fallback - show a "Done" button to go back
+    return _buildActionButton(
+      context.trWithFallback('doneBtn', 'Done'),
+      () {
+        fetchUpdateUserDetails();
+        Navigator.of(context).pop();
+      },
+    );
   }
 
   Widget _buildActionButton(String label, VoidCallback onTap, {bool isPrimary = true}) {
@@ -1315,7 +1522,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           .read<SystemConfigCubit>()
           .reviewAnswersDeductCoins;
           
-      if (int.parse(context.read<UserDetailsCubit>().getCoins()!) <
+      if ((int.tryParse(context.read<UserDetailsCubit>().getCoins() ?? '') ?? 0) <
           reviewAnswersDeductCoins) {
         await showNotEnoughCoinsDialog(context);
         return;

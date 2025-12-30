@@ -340,6 +340,9 @@ class FoundationClassScreen extends StatelessWidget {
         'isPlayed': false,
         'isPremiumCategory': false,
         'showCoins': false, // Foundation School doesn't award coins
+        // Foundation class info for "Next" navigation
+        'foundationClassId': classDetail.id,
+        'foundationClassOrder': classDetail.rowOrder,
       },
     );
   }

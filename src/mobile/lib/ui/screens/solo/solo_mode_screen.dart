@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/commons/bottom_nav/models/nav_tab_type_enum.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
+import 'package:flutterquiz/commons/widgets/custom_image.dart';
+import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/core/localization/localization_extensions.dart';
 import 'package:flutterquiz/core/theme/theme_extension.dart';
 import 'package:flutterquiz/features/solo/solo.dart';
 import 'package:flutterquiz/ui/widgets/custom_appbar.dart';
+import 'package:flutterquiz/utils/extensions.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SoloModeScreen extends StatelessWidget {
@@ -927,28 +930,37 @@ class _ResultsView extends StatelessWidget {
                           
                           const SizedBox(height: 12),
                           
-                          // Score text
-                          RichText(
-                            text: TextSpan(
-                              style: const TextStyle(fontSize: 16),
-                              children: [
-                                TextSpan(
-                                  text: "You've scored ",
-                                  style: TextStyle(color: Colors.grey[600]),
+                          // Success rate
+                          Builder(
+                            builder: (context) {
+                              final successRate = result.totalQuestions > 0
+                                  ? (result.correctAnswers / result.totalQuestions * 100).round()
+                                  : 0;
+                              final rateColor = successRate == 100
+                                  ? const Color(0xFF4CD964) // Green for 100%
+                                  : (successRate >= 70
+                                      ? Colors.orange // Orange for 70-99%
+                                      : Colors.red); // Red for <70%
+                              return RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(fontSize: 16),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Success rate: ',
+                                      style: TextStyle(color: Colors.grey[600]),
+                                    ),
+                                    TextSpan(
+                                      text: '$successRate%',
+                                      style: TextStyle(
+                                        color: rateColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                TextSpan(
-                                  text: '+${result.correctAnswers * 10}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: ' points',
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                           
                           const SizedBox(height: 30),
@@ -1197,7 +1209,7 @@ class _ResultsView extends StatelessWidget {
 }
 
 // ============================================
-// Bottom Navigation Bar for Solo Mode (same as Rhapsody)
+// Bottom Navigation Bar for Solo Mode (matching Dashboard)
 // ============================================
 
 Widget _buildBottomNav(BuildContext context) {
@@ -1213,17 +1225,18 @@ Widget _buildBottomNav(BuildContext context) {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _navItem(context, Icons.home_rounded, 'Home', NavTabType.home),
-        _navItem(context, Icons.school, 'Foundation', NavTabType.quizZone),
-        _navItem(context, Icons.sports_esports_rounded, 'Play Zone', NavTabType.playZone),
-        _navItem(context, Icons.person_rounded, 'Profile', NavTabType.profile),
+        _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
+        _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
+        _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
+        _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
+        _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
       ],
     ),
   );
 }
 
-Widget _navItem(BuildContext context, IconData icon, String label, NavTabType tabType) {
-  final color = context.primaryTextColor.withValues(alpha: 0.6);
+Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
+  final color = context.primaryTextColor.withValues(alpha: 0.8);
   return Expanded(
     child: GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -1231,18 +1244,56 @@ Widget _navItem(BuildContext context, IconData icon, String label, NavTabType ta
         Navigator.of(context).popUntil((route) => route.isFirst);
         dashboardScreenKey.currentState?.changeTab(tabType);
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: color),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: QImage(imageUrl: iconAsset, color: color)),
+            const Flexible(child: SizedBox(height: 4)),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
+  final color = context.primaryTextColor.withValues(alpha: 0.8);
+  return Expanded(
+    child: GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        dashboardScreenKey.currentState?.changeTab(tabType);
+      },
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: Icon(icon, color: color, size: 24)),
+            const Flexible(child: SizedBox(height: 4)),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

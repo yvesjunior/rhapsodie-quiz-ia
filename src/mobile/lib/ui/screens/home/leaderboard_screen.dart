@@ -519,174 +519,274 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   Widget _buildPodium(List<Map<String, dynamic>> top3) {
     if (top3.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: SizedBox(
-        height: 220,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-            // 2nd place
-        Expanded(
-              child: top3.length > 1
-                  ? _buildPodiumItem(top3[1], 2, 120)
-                  : const SizedBox.shrink(),
-        ),
-            const SizedBox(width: 8),
-            
-            // 1st place (taller)
-        Expanded(
-              child: top3.isNotEmpty
-                  ? _buildPodiumItem(top3[0], 1, 160)
-                  : const SizedBox.shrink(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth - 40; // Account for padding
+        final stepWidth = availableWidth / 3;
+        
+        // Podium height scales with width to maintain aspect ratio
+        // Original image aspect ratio is approximately 2.5:1 (width:height)
+        final podiumHeight = availableWidth / 2.5;
+        final totalHeight = podiumHeight + 140; // Extra space for avatars
+        
+        // Score positions as percentages of podium height
+        // These percentages match where the white boxes are in the image
+        final score1stBottom = podiumHeight * 0.68; // 1st place (highest)
+        final score2ndBottom = podiumHeight * 0.46; // 2nd place (medium)
+        final score3rdBottom = podiumHeight * 0.39; // 3rd place (lowest)
+        
+        // Avatar overlap positions
+        final avatarBottom = podiumHeight * 0.68;
+        final avatar1stExtra = podiumHeight * 0.25; // Extra height for 1st place
+        final avatar3rdOffset = podiumHeight * 0.14; // Push down 3rd place
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: SizedBox(
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Podium image at the bottom
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Image.asset(
+                    'assets/images/poduim.png',
+                    width: double.infinity,
+                    height: podiumHeight,
+                    fit: BoxFit.fill,
+                  ),
+                ),
+                // 2nd place score - on left white box
+                if (top3.length > 1)
+                  Positioned(
+                    bottom: score2ndBottom,
+                    left: 0,
+                    width: stepWidth,
+                    child: Center(
+                      child: Text(
+                        '${top3[1]['score'] ?? '0'} pt',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeights.bold,
+                          color: _headerColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                // 1st place score - on center white box (highest)
+                if (top3.isNotEmpty)
+                  Positioned(
+                    bottom: score1stBottom,
+                    left: stepWidth,
+                    width: stepWidth,
+                    child: Center(
+                      child: Text(
+                        '${top3[0]['score'] ?? '0'} pt',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeights.bold,
+                          color: _headerColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                // 3rd place score - on right white box (lowest)
+                if (top3.length > 2)
+                  Positioned(
+                    bottom: score3rdBottom,
+                    right: 0,
+                    width: stepWidth,
+                    child: Center(
+                      child: Text(
+                        '${top3[2]['score'] ?? '0'} pt',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeights.bold,
+                          color: _headerColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Avatars positioned to overlap the podium
+                Positioned(
+                  bottom: avatarBottom,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // 2nd place (medium height step)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: podiumHeight * 0.08),
+                          child: top3.length > 1
+                              ? _buildPodiumAvatar(top3[1], 2)
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                      // 1st place (tallest step)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: avatar1stExtra),
+                          child: top3.isNotEmpty
+                              ? _buildPodiumAvatar(top3[0], 1)
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                      // 3rd place (shortest step)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: avatar3rdOffset),
+                          child: top3.length > 2
+                              ? _buildPodiumAvatar(top3[2], 3)
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            
-            // 3rd place
-            Expanded(
-              child: top3.length > 2
-                  ? _buildPodiumItem(top3[2], 3, 100)
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildPodiumItem(Map<String, dynamic> user, int position, double podiumHeight) {
+  Widget _buildPodiumAvatar(Map<String, dynamic> user, int position) {
     final name = user['name'] as String? ?? '...';
     final profileUrl = user['profile'] as String? ?? '';
-    final score = user['score'] as String? ?? '0';
+    
+    // Avatar border colors matching the design
+    final avatarBorderColors = {
+      1: const Color(0xFFFFD700), // Gold for 1st
+      2: const Color(0xFF90EE90), // Light green for 2nd
+      3: const Color(0xFF87CEEB), // Light blue for 3rd
+    };
     
     // Avatar background colors
-    final avatarColors = {
+    final avatarBgColors = {
       1: const Color(0xFFFFE4B5),
       2: const Color(0xFFB8E6D4),
-      3: const Color(0xFFFFD4CC),
+      3: const Color(0xFFB8D4E6),
     };
 
+    final avatarSize = position == 1 ? 68.0 : 54.0;
+
     return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-          children: [
+      mainAxisSize: MainAxisSize.min,
+      children: [
         // Crown for 1st place
         if (position == 1)
-          const Icon(
-            Icons.workspace_premium_rounded,
-            color: Color(0xFFFFD700),
-            size: 28,
+          const Padding(
+            padding: EdgeInsets.only(bottom: 2),
+            child: Text(
+              '👑',
+              style: TextStyle(fontSize: 22),
+            ),
           ),
         
-        const SizedBox(height: 4),
-        
-        // Avatar
+        // Avatar with border
         Container(
-          width: position == 1 ? 70 : 56,
-          height: position == 1 ? 70 : 56,
-                      decoration: BoxDecoration(
-            color: avatarColors[position],
+          width: avatarSize,
+          height: avatarSize,
+          decoration: BoxDecoration(
+            color: avatarBgColors[position],
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white, width: 3),
+            border: Border.all(
+              color: avatarBorderColors[position]!,
+              width: 3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(13),
             child: profileUrl.isNotEmpty
                 ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
-                : const Icon(Icons.person, color: Colors.brown),
+                : Icon(
+                    Icons.person,
+                    color: Colors.brown.shade300,
+                    size: position == 1 ? 34 : 28,
+                  ),
           ),
         ),
         
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         
         // Name
-        Text(
-          name.length > 10 ? '${name.substring(0, 10)}...' : name,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeights.semiBold,
-            color: Colors.white,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Podium block
-        Container(
-          height: podiumHeight,
-          decoration: BoxDecoration(
-            color: _headerColor.withValues(alpha: 0.6),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
+        SizedBox(
+          width: 80,
+          child: Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeights.semiBold,
+              color: Colors.white,
             ),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-                // Points
-            Text(
-                  '$score pt',
-              style: TextStyle(
-                fontSize: 12,
-                    fontWeight: FontWeights.semiBold,
-                    color: Colors.white.withValues(alpha: 0.8),
-              ),
-            ),
-                const SizedBox(height: 8),
-                // Position number
-            Text(
-                  '$position',
-                  style: const TextStyle(
-                    fontSize: 40,
-                fontWeight: FontWeights.bold,
-                    color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
-      );
-    }
+    );
+  }
 
   Widget _buildMyRankCard(String rank, String profile, String score) {
     return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
+        color: const Color(0xFFE8F4E8),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFB8E6B8), width: 1),
       ),
       child: Row(
-            children: [
-          // Rank
-          Text(
-            _getOrdinal(int.tryParse(rank) ?? 0),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeights.bold,
-              color: context.primaryTextColor,
+        children: [
+          // Rank with superscript
+          RichText(
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeights.bold,
+                color: context.primaryTextColor,
+              ),
+              children: [
+                TextSpan(text: rank),
+                WidgetSpan(
+                  child: Transform.translate(
+                    offset: const Offset(0, -6),
+                    child: Text(
+                      _getOrdinalSuffix(int.tryParse(rank) ?? 0),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeights.bold,
+                        color: context.primaryTextColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           
           // Avatar
           Container(
             width: 48,
             height: 48,
-      decoration: BoxDecoration(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFFB8E6D4),
+              color: const Color(0xFFD4B8E6),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -698,8 +798,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
           const SizedBox(width: 12),
           
           // "YOU" label
-                            Expanded(
-                              child: Text(
+          Expanded(
+            child: Text(
               'YOU',
               style: TextStyle(
                 fontSize: 16,
@@ -714,12 +814,22 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             '$score pt',
             style: TextStyle(
               fontSize: 14,
-              color: context.primaryTextColor.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
+              color: context.primaryTextColor.withOpacity(0.6),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  String _getOrdinalSuffix(int number) {
+    if (number >= 11 && number <= 13) return 'th';
+    switch (number % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
   }
 
   Widget _buildLeaderboardItem(Map<String, dynamic> item) {
@@ -727,42 +837,75 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     final name = item['name'] as String? ?? '...';
     final profileUrl = item['profile'] as String? ?? '';
     final score = item['score'] as String? ?? '0';
+    final rankInt = int.tryParse(rank) ?? 0;
+
+    // Colors for different rank ranges
+    Color getItemColor() {
+      if (rankInt <= 10) return const Color(0xFFE8D4F4); // Purple tint
+      if (rankInt <= 20) return const Color(0xFFD4E8F4); // Blue tint
+      if (rankInt <= 50) return const Color(0xFFD4F4E8); // Green tint
+      return const Color(0xFFF4E8D4); // Orange tint
+    }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Rank
+          // Rank with superscript
           SizedBox(
-            width: 36,
-            child: Text(
-              _getOrdinal(int.tryParse(rank) ?? 0),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeights.semiBold,
-                color: context.primaryTextColor,
+            width: 44,
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeights.bold,
+                  color: context.primaryTextColor,
+                ),
+                children: [
+                  TextSpan(text: rank),
+                  WidgetSpan(
+                    child: Transform.translate(
+                      offset: const Offset(0, -5),
+                      child: Text(
+                        _getOrdinalSuffix(rankInt),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeights.bold,
+                          color: context.primaryTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           
-          // Avatar
-              Container(
+          // Avatar with colored background
+          Container(
             width: 48,
             height: 48,
-                decoration: BoxDecoration(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: _getAvatarColor(int.tryParse(rank) ?? 0),
+              color: getItemColor(),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: profileUrl.isNotEmpty
                   ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
-                  : const Icon(Icons.person, color: Colors.brown),
+                  : Icon(Icons.person, color: Colors.brown.shade300),
             ),
           ),
           const SizedBox(width: 12),

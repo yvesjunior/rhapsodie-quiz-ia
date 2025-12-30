@@ -1498,27 +1498,8 @@ class Api extends REST_Controller
             $month = date('m', strtotime($this->toDate));
             $year = date('Y', strtotime($this->toDate));
 
-            $sort = 'r.user_rank';
-            $order = 'ASC';
-
-            $sub_query = "SELECT s.*, @user_rank := @user_rank + 1 user_rank FROM ( SELECT m.id, user_id,u.email, u.name,u.profile, SUM(score) as score,date_created, MAX(last_updated) as last_updated FROM tbl_leaderboard_monthly m join tbl_users u on u.id = m.user_id WHERE u.status=1 AND YEAR(last_updated)=$year AND MONTH(last_updated)=$month AND u.status=1 GROUP BY user_id) s, (SELECT @user_rank := 0) init ORDER BY score DESC, last_updated ASC";
-
-            $this->db->reset_query();
-            $this->db->from("($sub_query) r");
-
-            $total = $this->db->count_all_results('', false);
-
-            $this->db->select('r.*');
-            $this->db->order_by($sort, $order);
-
-            if ($limit) {
-                $this->db->limit($limit, $offset);
-            }
-
-            $other_user_rank_sql = $this->db->get();
-            $data = $other_user_rank_sql->result_array();
-
-            // Initialize default values for empty leaderboard
+            // Initialize default values
+            $data = array();
             $topThreeUsersData = array();
             $user_rank = array(
                 'user_id' => $user_id,
@@ -1528,50 +1509,91 @@ class Api extends REST_Controller
                 'name' => '',
                 'profile' => '',
             );
+            $total = 0;
 
             if ($user_id) {
+                // Use raw query for complex ranking (similar to myGlobalRank approach)
+                // Note: Using MAX(m.id) to satisfy only_full_group_by mode
+                $sql = "SELECT r.* FROM (
+                    SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+                    FROM (
+                        SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.profile, SUM(m.score) as score, MAX(m.last_updated) as last_updated 
+                        FROM tbl_leaderboard_monthly m 
+                        JOIN tbl_users u ON u.id = m.user_id 
+                        WHERE u.status = 1 AND YEAR(m.last_updated) = ? AND MONTH(m.last_updated) = ?
+                        GROUP BY m.user_id, u.email, u.name, u.profile
+                        ORDER BY score DESC, last_updated ASC
+                    ) s, (SELECT @user_rank := 0) init
+                ) r ORDER BY r.user_rank ASC LIMIT ? OFFSET ?";
+                
+                $result = $this->db->query($sql, array($year, $month, (int)$limit, (int)$offset));
+                $data = $result->result_array();
+
+                // Get total count
+                $count_sql = "SELECT COUNT(*) as cnt FROM (
+                    SELECT m.user_id FROM tbl_leaderboard_monthly m 
+                    JOIN tbl_users u ON u.id = m.user_id 
+                    WHERE u.status = 1 AND YEAR(m.last_updated) = ? AND MONTH(m.last_updated) = ?
+                    GROUP BY m.user_id
+                ) t";
+                $count_result = $this->db->query($count_sql, array($year, $month));
+                $count_row = $count_result->row_array();
+                $total = $count_row ? (int)$count_row['cnt'] : 0;
+
                 if (!empty($data)) {
+                    // Process profile URLs
                     for ($i = 0; $i < count($data); $i++) {
                         if (filter_var($data[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $data[$i]['profile'] = ($data[$i]['profile']) ? base_url() . USER_IMG_PATH . $data[$i]['profile'] : '';
                         }
                     }
 
-                    $this->db->reset_query();
-                    $this->db->from("($sub_query) r");
-                    $this->db->select('r.*');
-                    $this->db->order_by($sort, $order);
-                    $this->db->limit(3);
-                    $topThree_sql = $this->db->get();
-                    $topThreeUsersData = $topThree_sql->result_array();
+                    // Get top 3
+                    $top3_sql = "SELECT r.* FROM (
+                        SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+                        FROM (
+                            SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.profile, SUM(m.score) as score, MAX(m.last_updated) as last_updated 
+                            FROM tbl_leaderboard_monthly m 
+                            JOIN tbl_users u ON u.id = m.user_id 
+                            WHERE u.status = 1 AND YEAR(m.last_updated) = ? AND MONTH(m.last_updated) = ?
+                            GROUP BY m.user_id, u.email, u.name, u.profile
+                            ORDER BY score DESC, last_updated ASC
+                        ) s, (SELECT @user_rank := 0) init
+                    ) r ORDER BY r.user_rank ASC LIMIT 3";
+                    $top3_result = $this->db->query($top3_sql, array($year, $month));
+                    $topThreeUsersData = $top3_result->result_array();
 
                     for ($i = 0; $i < count($topThreeUsersData); $i++) {
                         if (filter_var($topThreeUsersData[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $topThreeUsersData[$i]['profile'] = ($topThreeUsersData[$i]['profile']) ? base_url() . USER_IMG_PATH . $topThreeUsersData[$i]['profile'] : '';
                         }
                     }
 
-                    $this->db->reset_query();
-                    $this->db->from("($sub_query) r");
-                    $this->db->select('r.*');
-                    $this->db->where('r.user_id', $user_id);
-                    $this->db->limit(1);
-                    $user_rank_sql = $this->db->get();
-                    $my_rank = $user_rank_sql->row_array();
+                    // Get current user's rank
+                    $my_rank_sql = "SELECT r.* FROM (
+                        SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+                        FROM (
+                            SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.profile, SUM(m.score) as score, MAX(m.last_updated) as last_updated 
+                            FROM tbl_leaderboard_monthly m 
+                            JOIN tbl_users u ON u.id = m.user_id 
+                            WHERE u.status = 1 AND YEAR(m.last_updated) = ? AND MONTH(m.last_updated) = ?
+                            GROUP BY m.user_id, u.email, u.name, u.profile
+                            ORDER BY score DESC, last_updated ASC
+                        ) s, (SELECT @user_rank := 0) init
+                    ) r WHERE r.user_id = ? LIMIT 1";
+                    $my_rank_result = $this->db->query($my_rank_sql, array($year, $month, $user_id));
+                    $my_rank = $my_rank_result->row_array();
 
                     if (!empty($my_rank)) {
                         if (filter_var($my_rank['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
                     }
                 }
+
                 $response['error'] = false;
                 $response['total'] = "$total";
-                // making user's rank and other user's rank in seperate indexes
                 $response['data'] = array(
                     'my_rank' => $user_rank,
                     'other_users_rank' => $data,
@@ -1585,6 +1607,8 @@ class Api extends REST_Controller
             $response['error'] = true;
             $response['message'] = "122";
             $response['error_msg'] = $e->getMessage();
+            $response['debug_trace'] = $e->getTraceAsString();
+            $response['debug_line'] = $e->getLine();
         }
 
         $this->response($response, REST_Controller::HTTP_OK);
@@ -1605,32 +1629,11 @@ class Api extends REST_Controller
             $offset = ($this->post('offset')) ? $this->post('offset') : 0;
             $limit = ($this->post('limit')) ? $this->post('limit') : 25;
 
-            $sort = 'r.user_rank';
+            $sort = 'user_rank';
             $order = 'ASC';
 
-            $this->db->select('d.id, user_id, u.email, u.name, u.profile,score, date_created, @user_rank := @user_rank + 1 AS user_rank', false);
-            $this->db->from("(SELECT @user_rank := 0) init, tbl_leaderboard_daily d");
-            $this->db->join('tbl_users u', 'u.id = d.user_id');
-            $this->db->where('u.status', 1);
-            $this->db->where('DATE(date_created)', $this->toDate);
-            $this->db->order_by('score', 'DESC');
-            $this->db->order_by('date_created', 'ASC');
-            $subQuery = $this->db->get_compiled_select();
-
-            $this->db->reset_query();
-            $this->db->from("($subQuery) r");
-
-            $total = $this->db->count_all_results('', false);
-
-            $this->db->select('r.*');
-            $this->db->order_by($sort, $order);
-            if ($limit) {
-                $this->db->limit($limit, $offset);
-            }
-            $query = $this->db->get();
-            $data = $query->result_array();
-            
-            // Initialize default values for empty leaderboard
+            // Initialize default values
+            $data = array();
             $topThreeUsersData = array();
             $user_rank = array(
                 'user_id' => $user_id,
@@ -1640,46 +1643,82 @@ class Api extends REST_Controller
                 'name' => '',
                 'profile' => '',
             );
-            
-            if ($user_id) {
-                if (!empty($data)) {
+            $total = 0;
+
+            // Base query for daily leaderboard - first order, then assign ranks
+            $base_query_sql = "
+                SELECT d.id, d.user_id, u.email, u.name, u.profile, d.score, d.date_created
+                FROM tbl_leaderboard_daily d 
+                JOIN tbl_users u ON u.id = d.user_id 
+                WHERE u.status=1 AND DATE(d.date_created)=? 
+                ORDER BY d.score DESC, d.date_created ASC
+            ";
+
+            // Get total count
+            $total_query = $this->db->query("SELECT COUNT(*) as total FROM ($base_query_sql) as sub", array($this->toDate));
+            $total = $total_query->row()->total;
+
+            if ($user_id && $total > 0) {
+                // Get paginated data with ranks - ranks assigned AFTER ordering
+                $paginated_query_sql = "
+                    SELECT r.*, @user_rank := @user_rank + 1 AS user_rank 
+                    FROM ($base_query_sql) r, (SELECT @user_rank := 0) init 
+                    ORDER BY $sort $order 
+                    LIMIT ?, ?
+                ";
+                $query = $this->db->query($paginated_query_sql, array($this->toDate, (int)$offset, (int)$limit));
+            $data = $query->result_array();
+
+                // Process profile URLs
                     for ($i = 0; $i < count($data); $i++) {
                         if (filter_var($data[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $data[$i]['profile'] = ($data[$i]['profile']) ? base_url() . USER_IMG_PATH . $data[$i]['profile'] : '';
                         }
                     }
 
-                    $this->db->reset_query();
-                    $this->db->from("($subQuery) r");
-                    $this->db->select('r.*');
-                    $this->db->order_by($sort, $order);
-                    $this->db->limit(3);
-                    $topThree_sql = $this->db->get();
+                // Get top 3
+                $top_three_query_sql = "
+                    SELECT r.*, @user_rank := @user_rank + 1 AS user_rank 
+                    FROM ($base_query_sql) r, (SELECT @user_rank := 0) init 
+                    ORDER BY $sort $order 
+                    LIMIT 3
+                ";
+                $topThree_sql = $this->db->query($top_three_query_sql, array($this->toDate));
                     $topThreeUsersData = $topThree_sql->result_array();
+
                     for ($i = 0; $i < count($topThreeUsersData); $i++) {
                         if (filter_var($topThreeUsersData[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $topThreeUsersData[$i]['profile'] = ($topThreeUsersData[$i]['profile']) ? base_url() . USER_IMG_PATH . $topThreeUsersData[$i]['profile'] : '';
                         }
                     }
 
-                    $this->db->reset_query();
-                    $this->db->from("($subQuery) r");
-                    $this->db->where('r.user_id', $user_id);
-                    $this->db->select('r.*');
-                    $this->db->limit(1);
-                    $my_rank_sql = $this->db->get();
-                    $my_rank = $my_rank_sql->row_array();
+                // Get current user's rank
+                $user_rank_query_sql = "
+                    SELECT * FROM (
+                        SELECT r.*, @user_rank := @user_rank + 1 AS user_rank 
+                        FROM ($base_query_sql) r, (SELECT @user_rank := 0) init
+                    ) ranked 
+                    WHERE ranked.user_id = ?
+                    LIMIT 1
+                ";
+                $user_rank_sql = $this->db->query($user_rank_query_sql, array($this->toDate, $user_id));
+                $my_rank = $user_rank_sql->row_array();
 
                     if (!empty($my_rank)) {
                         if (filter_var($my_rank['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
-                    }
                 }
+
+                $response['error'] = false;
+                $response['total'] = "$total";
+                $response['data'] = array(
+                    'my_rank' => $user_rank,
+                    'other_users_rank' => $data,
+                    'top_three_ranks' => $topThreeUsersData
+                );
+            } else if ($user_id) {
                 $response['error'] = false;
                 $response['total'] = "$total";
                 $response['data'] = array(
@@ -1715,23 +1754,8 @@ class Api extends REST_Controller
             $offset = ($this->post('offset')) ? $this->post('offset') : 0;
             $limit = ($this->post('limit')) ? $this->post('limit') : 25;
 
-            $sort = 'r.user_rank';
-            $order = 'ASC';
-
-            $sub_query = "SELECT s.*, @user_rank := @user_rank + 1 AS user_rank FROM (SELECT m.id, m.user_id,u.email, u.name,u.profile, SUM(m.score) AS score,MAX(m.last_updated) as last_updated FROM tbl_leaderboard_monthly m JOIN tbl_users u ON u.id = m.user_id WHERE u.status = 1 GROUP BY m.user_id) s, (SELECT @user_rank := 0) init ORDER BY s.score DESC, s.last_updated ASC";
-            $this->db->select('r.*');
-            $this->db->from("($sub_query) r", false);
-
-            $total = $this->db->count_all_results('', false);
-            $this->db->order_by($sort, $order);
-            if ($limit) {
-                $this->db->limit($limit, $offset);
-            }
-
-            $other_user_rank_sql = $this->db->get();
-            $data = $other_user_rank_sql->result_array();
-            
-            // Initialize default values for empty leaderboard
+            // Initialize default values
+            $data = array();
             $topThreeUsersData = array();
             $user_rank = array(
                 'user_id' => $user_id,
@@ -1741,41 +1765,77 @@ class Api extends REST_Controller
                 'name' => '',
                 'profile' => '',
             );
-            
+            $total = 0;
+
             if ($user_id) {
+                // Use raw query for complex ranking (similar to myGlobalRank approach)
+                // Note: Using MAX(m.id) to satisfy only_full_group_by mode
+                $sql = "SELECT r.* FROM (
+                    SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+                    FROM (
+                        SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.profile, SUM(m.score) as score, MAX(m.last_updated) as last_updated 
+                        FROM tbl_leaderboard_monthly m 
+                        JOIN tbl_users u ON u.id = m.user_id 
+                        WHERE u.status = 1
+                        GROUP BY m.user_id, u.email, u.name, u.profile
+                        ORDER BY score DESC, last_updated ASC
+                    ) s, (SELECT @user_rank := 0) init
+                ) r ORDER BY r.user_rank ASC LIMIT ? OFFSET ?";
+                
+                $result = $this->db->query($sql, array((int)$limit, (int)$offset));
+                $data = $result->result_array();
+
+                // Get total count
+                $count_sql = "SELECT COUNT(*) as cnt FROM (
+                    SELECT m.user_id FROM tbl_leaderboard_monthly m 
+                    JOIN tbl_users u ON u.id = m.user_id 
+                    WHERE u.status = 1
+                    GROUP BY m.user_id
+                ) t";
+                $count_result = $this->db->query($count_sql);
+                $count_row = $count_result->row_array();
+                $total = $count_row ? (int)$count_row['cnt'] : 0;
+
                 if (!empty($data)) {
+                    // Process profile URLs
                     for ($i = 0; $i < count($data); $i++) {
                         if (filter_var($data[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $data[$i]['profile'] = ($data[$i]['profile']) ? base_url() . USER_IMG_PATH . $data[$i]['profile'] : '';
                         }
                     }
 
-                    $this->db->reset_query();
-                    $this->db->from("($sub_query) r");
-                    $this->db->select('r.*');
-                    $this->db->order_by($sort, $order);
-                    $this->db->limit(3);
-                    $top_three_user_rank_sql = $this->db->get();
-                    $topThreeUsersData = $top_three_user_rank_sql->result_array();
+                    // Get top 3
+                    $top3_sql = "SELECT r.* FROM (
+                        SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+                        FROM (
+                            SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.profile, SUM(m.score) as score, MAX(m.last_updated) as last_updated 
+                            FROM tbl_leaderboard_monthly m 
+                            JOIN tbl_users u ON u.id = m.user_id 
+                            WHERE u.status = 1
+                            GROUP BY m.user_id, u.email, u.name, u.profile
+                            ORDER BY score DESC, last_updated ASC
+                        ) s, (SELECT @user_rank := 0) init
+                    ) r ORDER BY r.user_rank ASC LIMIT 3";
+                    $top3_result = $this->db->query($top3_sql);
+                    $topThreeUsersData = $top3_result->result_array();
 
                     for ($i = 0; $i < count($topThreeUsersData); $i++) {
                         if (filter_var($topThreeUsersData[$i]['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $topThreeUsersData[$i]['profile'] = ($topThreeUsersData[$i]['profile']) ? base_url() . USER_IMG_PATH . $topThreeUsersData[$i]['profile'] : '';
                         }
                     }
 
+                    // Get current user's rank
                     $my_rank = $this->myGlobalRank($user_id);
 
                     if (!empty($my_rank)) {
                         if (filter_var($my_rank['profile'], FILTER_VALIDATE_URL) === false) {
-                            // Not a valid URL. Its a image only or empty
                             $my_rank['profile'] = (!empty($my_rank['profile'])) ? base_url() . USER_IMG_PATH . $my_rank['profile'] : '';
                         }
                         $user_rank = $my_rank;
                     }
                 }
+
                 $response['error'] = false;
                 $response['total'] = "$total";
                 $response['data'] = array(
@@ -1791,6 +1851,9 @@ class Api extends REST_Controller
             $response['error'] = true;
             $response['message'] = "122";
             $response['error_msg'] = $e->getMessage();
+            $response['debug_trace'] = $e->getTraceAsString();
+            $response['debug_line'] = $e->getLine();
+            $response['debug_file'] = $e->getFile();
         }
 
 
@@ -2735,10 +2798,23 @@ class Api extends REST_Controller
                 $this->db->order_by($this->Order_By);
                 $data = $this->db->get('tbl_question')->result_array();
                 if (!empty($data)) {
+                    $questionData = [];
                     for ($i = 0; $i < count($data); $i++) {
                         $data[$i]['image'] = ($data[$i]['image']) ? base_url() . QUESTION_IMG_PATH . $data[$i]['image'] : '';
                         $data[$i] = $this->suffleOptions($data[$i], $firebase_id);
+                        // Store answer for session validation
+                        $questionData[] = [
+                            'id' => $data[$i]['id'],
+                            'answer' => $data[$i]['session_answer'],
+                            'category' => $data[$i]['category'],
+                            'subcategory' => $data[$i]['subcategory'],
+                            'level' => $data[$i]['level'] ?? '0'
+                        ];
                         unset($data[$i]['session_answer']);
+                    }
+                    // Create session for quiz result validation
+                    if ($questionData && $user_id) {
+                        $this->set_user_session($user_id, $questionData, 'tbl_user_quiz_zone_session');
                     }
                     $response['error'] = false;
                     $response['data'] = $data;
@@ -5056,7 +5132,7 @@ class Api extends REST_Controller
                     }
                 }
                 $earnCoin = $userScore = 0;
-                $wrongAnswer = $total_questions - $correctAnswer;
+                    $wrongAnswer = $total_questions - $correctAnswer;
 
                 // NEW COIN RULE: Award 1 coin only for 100% correct (perfect score)
                 if ($correctAnswer == $total_questions && $total_questions > 0) {
@@ -5071,19 +5147,22 @@ class Api extends REST_Controller
                 }
 
                 // Calculate user score for statistics (not for coins)
-                $quiz_zone_correct_answer_credit_score = is_settings('quiz_zone_correct_answer_credit_score');
-                $quiz_zone_wrong_answer_deduct_score = is_settings('quiz_zone_wrong_answer_deduct_score');
-                $userScore = ($correctAnswer * $quiz_zone_correct_answer_credit_score) - ($wrongAnswer * $quiz_zone_wrong_answer_deduct_score);
-                
+                    $quiz_zone_correct_answer_credit_score = is_settings('quiz_zone_correct_answer_credit_score');
+                    $quiz_zone_wrong_answer_deduct_score = is_settings('quiz_zone_wrong_answer_deduct_score');
+                    $userScore = ($correctAnswer * $quiz_zone_correct_answer_credit_score) - ($wrongAnswer * $quiz_zone_wrong_answer_deduct_score);
+
                 $getLevelData = $this->db->select('level')->where('user_id', $user_id)->where('category', $category)->where('subcategory', $subcategory)->get('tbl_level')->row_array();
-                $nextUnlockLevel = $getLevelData['level'] ?? 0;
-                
+                    $nextUnlockLevel = $getLevelData['level'] ?? 0;
+
                 if ($winningPer >= $quiz_winning_percentage) {
                     $ratio = $winningPer;
 
-                    if ($userScore) {
-                        $this->set_monthly_leaderboard($user_id, $userScore);
-                    }
+                    // NOTE: Leaderboard points are ONLY for Daily Rhapsody Contest (not regular training quizzes)
+                    // set_monthly_leaderboard should be called from daily_contest endpoint when implemented
+                    // if ($userScore) {
+                    //     $this->set_monthly_leaderboard($user_id, $userScore);
+                    // }
+                    
                     $this->set_users_statistics($user_id, $category, $questions_answered, $correctAnswer, $ratio);
 
                     $updateLevel = $currentLevel + 1;
@@ -6721,14 +6800,21 @@ class Api extends REST_Controller
 
     function myGlobalRank($user_id)
     {
-        $this->db->reset_query();
-        $this->db->select('r.*');
-        $this->db->from("(SELECT s.*, @user_rank := @user_rank + 1 AS user_rank FROM (SELECT m.id, m.user_id,u.email, u.name,u.status,u.profile, SUM(m.score) AS score,MAX(last_updated) as last_updated FROM tbl_leaderboard_monthly m JOIN tbl_users u ON u.id = m.user_id WHERE u.status=1 GROUP BY m.user_id) s, (SELECT @user_rank := 0) init ORDER BY s.score DESC,s.last_updated ASC) r", false);
-        $this->db->where('r.user_id', $user_id);
-        $this->db->limit(1);
-        $my_rank_sql = $this->db->get();
-        $my_rank = $my_rank_sql->row_array();
-        return  $my_rank;
+        // Using raw query to handle only_full_group_by mode properly
+        $sql = "SELECT r.* FROM (
+            SELECT s.*, @user_rank := @user_rank + 1 AS user_rank 
+            FROM (
+                SELECT MAX(m.id) as id, m.user_id, u.email, u.name, u.status, u.profile, SUM(m.score) AS score, MAX(m.last_updated) as last_updated 
+                FROM tbl_leaderboard_monthly m 
+                JOIN tbl_users u ON u.id = m.user_id 
+                WHERE u.status = 1 
+                GROUP BY m.user_id, u.email, u.name, u.status, u.profile
+                ORDER BY score DESC, last_updated ASC
+            ) s, (SELECT @user_rank := 0) init
+        ) r WHERE r.user_id = ? LIMIT 1";
+        
+        $result = $this->db->query($sql, array($user_id));
+        return $result->row_array();
     }
 
     // ============================================
