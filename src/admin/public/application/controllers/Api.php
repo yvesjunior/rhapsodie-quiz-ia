@@ -1951,11 +1951,11 @@ class Api extends REST_Controller
 
                 $language_id = ($this->post('language_id') && is_numeric($this->post('language_id'))) ? $this->post('language_id') : '0';
 
-                /* selecting live quiz ids */
+                /* selecting live quiz ids (excluding daily contests which are shown separately) */
                 if ($language_id) {
-                    $result = $this->db->query("SELECT id FROM tbl_contest WHERE status=1 AND language_id = $language_id AND (CONVERT_TZ('" . $toDateTime . "', '+00:00', '" . $gmt_format . "') BETWEEN CONVERT_TZ(start_date, '+00:00', '" . $gmt_format . "') AND CONVERT_TZ(end_date, '+00:00', '" . $gmt_format . "'))")->result_array();
+                    $result = $this->db->query("SELECT id FROM tbl_contest WHERE status=1 AND language_id = $language_id AND contest_type != 'daily' AND (CONVERT_TZ('" . $toDateTime . "', '+00:00', '" . $gmt_format . "') BETWEEN CONVERT_TZ(start_date, '+00:00', '" . $gmt_format . "') AND CONVERT_TZ(end_date, '+00:00', '" . $gmt_format . "'))")->result_array();
                 } else {
-                    $result = $this->db->query("SELECT id FROM tbl_contest WHERE status=1 AND (CONVERT_TZ('" . $toDateTime . "', '+00:00', '" . $gmt_format . "') BETWEEN CONVERT_TZ(start_date, '+00:00', '" . $gmt_format . "') AND CONVERT_TZ(end_date, '+00:00', '" . $gmt_format . "'))")->result_array();
+                    $result = $this->db->query("SELECT id FROM tbl_contest WHERE status=1 AND contest_type != 'daily' AND (CONVERT_TZ('" . $toDateTime . "', '+00:00', '" . $gmt_format . "') BETWEEN CONVERT_TZ(start_date, '+00:00', '" . $gmt_format . "') AND CONVERT_TZ(end_date, '+00:00', '" . $gmt_format . "'))")->result_array();
                 }
 
 
@@ -1991,9 +1991,9 @@ class Api extends REST_Controller
                         $response['past_contest']['data'] = (!empty($past_result)) ? $past_result : '';
                     } else {
                         if ($language_id) {
-                            $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id = '$user_id' and l.contest_id = c.id and c.language_id = $language_id ORDER BY c.id DESC")->result_array();
+                            $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id = '$user_id' and l.contest_id = c.id and c.language_id = $language_id AND c.contest_type != 'daily' ORDER BY c.id DESC")->result_array();
                         } else {
-                            $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id = '$user_id' and l.contest_id = c.id ORDER BY c.id DESC")->result_array();
+                            $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id = '$user_id' and l.contest_id = c.id AND c.contest_type != 'daily' ORDER BY c.id DESC")->result_array();
                         }
                         if (!empty($past_result)) {
                             foreach ($past_result as $quiz) {
@@ -2042,9 +2042,9 @@ class Api extends REST_Controller
                     }
                 } else {
                     if ($language_id) {
-                        $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id='$user_id' and l.contest_id=c.id and c.language_id = $language_id ORDER BY c.id DESC")->result_array();
+                        $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id='$user_id' and l.contest_id=c.id and c.language_id = $language_id AND c.contest_type != 'daily' ORDER BY c.id DESC")->result_array();
                     } else {
-                        $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id='$user_id' and l.contest_id=c.id ORDER BY c.id DESC")->result_array();
+                        $past_result = $this->db->query("SELECT c.*, (select SUM(points) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as points, (select count(contest_id) FROM tbl_contest_prize tcp WHERE tcp.contest_id=c.id) as top_users,(SELECT COUNT(*) from tbl_contest_leaderboard tcl where tcl.contest_id=c.id ) as participants FROM tbl_contest_leaderboard as l, tbl_contest as c WHERE l.user_id='$user_id' and l.contest_id=c.id AND c.contest_type != 'daily' ORDER BY c.id DESC")->result_array();
                     }
                     if (!empty($past_result)) {
                         foreach ($past_result as $quiz) {
@@ -2068,11 +2068,11 @@ class Api extends REST_Controller
                     $response['live_contest']['message'] = "115";
                 }
 
-                /* selecting upcoming quiz ids */
+                /* selecting upcoming quiz ids (excluding daily contests) */
                 if ($language_id) {
-                    $result = $this->db->query("SELECT id FROM tbl_contest where language_id = $language_id and ((start_date) > '$this->toContestDateTime')")->result_array();
+                    $result = $this->db->query("SELECT id FROM tbl_contest where language_id = $language_id AND contest_type != 'daily' and ((start_date) > '$this->toContestDateTime')")->result_array();
                 } else {
-                    $result = $this->db->query("SELECT id FROM tbl_contest where (CAST(start_date AS DATE) > '$this->toDate')")->result_array();
+                    $result = $this->db->query("SELECT id FROM tbl_contest where contest_type != 'daily' and (CAST(start_date AS DATE) > '$this->toDate')")->result_array();
                 }
                 $upcoming_type_ids = '';
                 if (!empty($result)) {
@@ -2264,6 +2264,522 @@ class Api extends REST_Controller
 
         $this->response($response, REST_Controller::HTTP_OK);
     }
+
+    /**
+     * ============================================
+     * DAILY CONTEST API ENDPOINTS
+     * ============================================
+     * Daily Contest is based on today's Rhapsody content
+     * Points: 5 (reading) + 5 (quiz - 5 questions) = 10 max
+     */
+
+    /**
+     * Check if user has completed today's daily contest
+     * Returns: { has_pending_contest: bool, contest_id: int|null, date: string }
+     */
+    public function get_daily_contest_status_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if (!$is_user['error']) {
+                $user_id = $is_user['user_id'];
+            } else {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return false;
+            }
+
+            $now = date('Y-m-d H:i:s');
+            $today = date('Y-m-d');
+            
+            // First, mark any expired daily contests as completed for users who didn't participate
+            // Find expired daily contests (end_date < now) that user hasn't participated in
+            $expired_contests = $this->db->select('c.id')
+                ->from('tbl_contest c')
+                ->where('c.contest_type', 'daily')
+                ->where('c.status', 1)
+                ->where('c.end_date <', $now)
+                ->get()
+                ->result_array();
+            
+            foreach ($expired_contests as $expired) {
+                // Check if user participated
+                $participated = $this->db->where('contest_id', $expired['id'])
+                    ->where('user_id', $user_id)
+                    ->get('tbl_contest_leaderboard')
+                    ->row_array();
+                
+                // If not participated, mark as expired (0 points)
+                if (empty($participated)) {
+                    $this->db->insert('tbl_contest_leaderboard', [
+                        'contest_id' => $expired['id'],
+                        'user_id' => $user_id,
+                        'score' => 0,
+                        'last_updated' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+            
+            // Check if there's a daily contest for today that hasn't expired yet
+            $daily_contest = $this->db->select('id, name, start_date, end_date, rhapsody_category_id')
+                ->where('DATE(start_date)', $today)
+                ->where('contest_type', 'daily')
+                ->where('status', 1)
+                ->where('end_date >=', $now)
+                ->get('tbl_contest')
+                ->row_array();
+
+            if (empty($daily_contest)) {
+                // No active daily contest exists for today
+                $response['error'] = false;
+                $response['has_pending_contest'] = false;
+                $response['contest_id'] = null;
+                $response['message'] = 'No daily contest available today';
+            } else {
+                // Check if user has already participated
+                $user_participation = $this->db->where('contest_id', $daily_contest['id'])
+                    ->where('user_id', $user_id)
+                    ->get('tbl_contest_leaderboard')
+                    ->row_array();
+
+                $has_completed = !empty($user_participation);
+                
+                $response['error'] = false;
+                $response['has_pending_contest'] = !$has_completed;
+                $response['has_completed'] = $has_completed;
+                $response['contest_id'] = $daily_contest['id'];
+                $response['contest_name'] = $daily_contest['name'];
+                $response['start_date'] = $daily_contest['start_date'];
+                $response['end_date'] = $daily_contest['end_date'];
+                $response['date'] = $today;
+                
+                if ($has_completed) {
+                    $response['user_score'] = $user_participation['score'];
+                    $response['message'] = 'Daily contest already completed';
+                } else {
+                    $response['message'] = 'Daily contest pending';
+                }
+            }
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Get today's daily contest details
+     * Includes Rhapsody text and questions (5 questions)
+     */
+    public function get_today_daily_contest_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if (!$is_user['error']) {
+                $user_id = $is_user['user_id'];
+            } else {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return false;
+            }
+
+            $today = date('Y-m-d');
+            $now = date('Y-m-d H:i:s');
+            
+            // Get today's daily contest that hasn't expired yet
+            $daily_contest = $this->db->select('c.*, cat.category_name, cat.image as category_image')
+                ->from('tbl_contest c')
+                ->join('tbl_category cat', 'cat.id = c.rhapsody_category_id', 'left')
+                ->where('DATE(c.start_date)', $today)
+                ->where('c.contest_type', 'daily')
+                ->where('c.status', 1)
+                ->where('c.end_date >=', $now)
+                ->get()
+                ->row_array();
+
+            if (empty($daily_contest)) {
+                $response['error'] = true;
+                $response['message'] = 'No daily contest available today or contest has expired';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if user already participated
+            $user_participation = $this->db->where('contest_id', $daily_contest['id'])
+                ->where('user_id', $user_id)
+                ->get('tbl_contest_leaderboard')
+                ->row_array();
+
+            if (!empty($user_participation)) {
+                $response['error'] = true;
+                $response['already_completed'] = true;
+                $response['user_score'] = $user_participation['score'];
+                $response['message'] = 'You have already completed today\'s contest';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Get Rhapsody content from the linked category
+            $rhapsody_content = '';
+            $rhapsody_verse = '';
+            $rhapsody_prayer = '';
+            $scripture_ref = '';
+            $further_study = '';
+            if ($daily_contest['rhapsody_category_id']) {
+                $category = $this->db->where('id', $daily_contest['rhapsody_category_id'])
+                    ->get('tbl_category')
+                    ->row_array();
+                if ($category) {
+                    $rhapsody_verse = $category['daily_text'] ?? '';
+                    $rhapsody_content = $category['content_text'] ?? '';
+                    $rhapsody_prayer = $category['prayer_text'] ?? '';
+                    $scripture_ref = $category['scripture_ref'] ?? '';
+                    $further_study = $category['further_study'] ?? '';
+                }
+            }
+
+            // Get 5 questions for this contest
+            $questions = $this->db->select('q.*')
+                ->from('tbl_contest_question q')
+                ->where('q.contest_id', $daily_contest['id'])
+                ->order_by('RAND()')
+                ->limit(5)
+                ->get()
+                ->result_array();
+
+            // Format questions
+            for ($i = 0; $i < count($questions); $i++) {
+                if (!empty($questions[$i]['image']) && filter_var($questions[$i]['image'], FILTER_VALIDATE_URL) === false) {
+                    $questions[$i]['image'] = base_url() . CONTEST_QUESTION_IMG_PATH . $questions[$i]['image'];
+                }
+            }
+
+            $response['error'] = false;
+            $response['data'] = [
+                'contest_id' => $daily_contest['id'],
+                'name' => $daily_contest['name'],
+                'description' => $daily_contest['description'],
+                'date' => $today,
+                'scripture_ref' => $scripture_ref,
+                'rhapsody_verse' => $rhapsody_verse,
+                'rhapsody_text' => $rhapsody_content,
+                'rhapsody_prayer' => $rhapsody_prayer,
+                'further_study' => $further_study,
+                'reading_points' => 5,
+                'quiz_points_per_question' => 1,
+                'total_questions' => count($questions),
+                'questions' => $questions
+            ];
+            $response['message'] = 'Daily contest loaded successfully';
+
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Submit daily contest answers
+     * Awards: 5 points for reading + 1 point per correct answer (max 5)
+     */
+    public function submit_daily_contest_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if (!$is_user['error']) {
+                $user_id = $is_user['user_id'];
+            } else {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return false;
+            }
+
+            $contest_id = $this->post('contest_id');
+            $answers = $this->post('answers'); // Array of {question_id, answer}
+            $read_text = $this->post('read_text'); // Boolean - did user read the text
+
+            if (!$contest_id) {
+                $response['error'] = true;
+                $response['message'] = 'Contest ID is required';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if contest exists and is daily type
+            $contest = $this->db->where('id', $contest_id)
+                ->where('contest_type', 'daily')
+                ->where('status', 1)
+                ->get('tbl_contest')
+                ->row_array();
+
+            if (empty($contest)) {
+                $response['error'] = true;
+                $response['message'] = 'Invalid contest';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+            
+            // Check if contest has expired
+            $now = date('Y-m-d H:i:s');
+            if ($contest['end_date'] < $now) {
+                // Contest expired - mark as completed with 0 points
+                $this->db->insert('tbl_contest_leaderboard', [
+                    'contest_id' => $contest_id,
+                    'user_id' => $user_id,
+                    'score' => 0,
+                    'last_updated' => date('Y-m-d H:i:s'),
+                ]);
+                
+                $response['error'] = true;
+                $response['expired'] = true;
+                $response['message'] = 'This contest has expired';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Check if user already participated
+            $existing = $this->db->where('contest_id', $contest_id)
+                ->where('user_id', $user_id)
+                ->get('tbl_contest_leaderboard')
+                ->row_array();
+
+            if (!empty($existing)) {
+                $response['error'] = true;
+                $response['message'] = 'You have already completed this contest';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Calculate score
+            $reading_points = ($read_text == '1' || $read_text === true) ? 5 : 0;
+            $quiz_points = 0;
+            $correct_answers = 0;
+
+            if (!empty($answers) && is_array($answers)) {
+                foreach ($answers as $answer) {
+                    $question_id = $answer['question_id'];
+                    $user_answer = $answer['answer'];
+
+                    // Get correct answer
+                    $question = $this->db->select('answer')
+                        ->where('id', $question_id)
+                        ->get('tbl_contest_question')
+                        ->row_array();
+
+                    if ($question && strtolower(trim($question['answer'])) == strtolower(trim($user_answer))) {
+                        $quiz_points += 1;
+                        $correct_answers++;
+                    }
+                }
+            }
+
+            $total_score = $reading_points + $quiz_points;
+
+            // Save to leaderboard
+            $leaderboard_data = [
+                'contest_id' => $contest_id,
+                'user_id' => $user_id,
+                'score' => $total_score,
+                'last_updated' => date('Y-m-d H:i:s')
+            ];
+            $this->db->insert('tbl_contest_leaderboard', $leaderboard_data);
+
+            // Update daily leaderboard for ranking
+            $this->set_daily_leaderboard($user_id, $total_score);
+
+            $response['error'] = false;
+            $response['data'] = [
+                'reading_points' => $reading_points,
+                'quiz_points' => $quiz_points,
+                'correct_answers' => $correct_answers,
+                'total_questions' => count($answers),
+                'total_score' => $total_score,
+                'max_score' => 10
+            ];
+            $response['message'] = 'Contest submitted successfully';
+
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Create daily contest from today's Rhapsody (for testing/manual trigger)
+     * In production, this is called by cron at 00:00 AM
+     * ENV: DAILY_CONTEST_AUTO_CREATE controls automatic creation
+     */
+    public function create_daily_contest_post()
+    {
+        try {
+            // This endpoint can be restricted to admin in production
+            $is_user = $this->verify_token();
+            if ($is_user['error']) {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return false;
+            }
+
+            $today = date('Y-m-d');
+            $now = new DateTime();
+            $day = $now->format('j');
+            $month = $now->format('n');
+            $year = $now->format('Y');
+            $month_name = $now->format('F');
+
+            // Check if daily contest already exists for today
+            $existing = $this->db->where('DATE(start_date)', $today)
+                ->where('contest_type', 'daily')
+                ->get('tbl_contest')
+                ->row_array();
+
+            if (!empty($existing)) {
+                $response['error'] = false;
+                $response['message'] = 'Daily contest already exists for today';
+                $response['contest_id'] = $existing['id'];
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Find today's Rhapsody category (Year -> Month -> Day structure)
+            // First find the Rhapsody topic
+            $rhapsody_topic = $this->db->where('topic_type', 'rhapsody')
+                ->where('status', 1)
+                ->get('tbl_topics')
+                ->row_array();
+
+            if (empty($rhapsody_topic)) {
+                $response['error'] = true;
+                $response['message'] = 'Rhapsody topic not found';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Find the day category for today's date
+            // Category structure: Year (2025) -> Month (January) -> Day (1, 2, 3...)
+            $day_category = $this->db->select('c.*')
+                ->from('tbl_category c')
+                ->where('c.topic_id', $rhapsody_topic['id'])
+                ->where('c.rhapsody_day', $day)
+                ->where('c.rhapsody_month', $month)
+                ->where('c.rhapsody_year', $year)
+                ->where('c.status', 1)
+                ->get()
+                ->row_array();
+
+            if (empty($day_category)) {
+                $response['error'] = true;
+                $response['message'] = "No Rhapsody content found for $month_name $day, $year";
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Get questions from this category (random 5)
+            $questions = $this->db->where('category', $day_category['id'])
+                ->order_by('RAND()')
+                ->limit(5)
+                ->get('tbl_question')
+                ->result_array();
+
+            if (count($questions) < 5) {
+                $response['error'] = true;
+                $response['message'] = 'Not enough questions for daily contest (need 5, found ' . count($questions) . ')';
+                $this->response($response, REST_Controller::HTTP_OK);
+                return;
+            }
+
+            // Create the daily contest
+            $contest_data = [
+                'language_id' => $day_category['language_id'] ?? 14,
+                'name' => "Daily Rhapsody - $month_name $day, $year",
+                'description' => 'Complete today\'s Rhapsody quiz to earn ranking points!',
+                'start_date' => $today . ' 00:00:00',
+                'end_date' => $today . ' 23:59:59',
+                'image' => '',
+                'entry' => 0,
+                'prize_status' => 0,
+                'date_created' => date('Y-m-d H:i:s'),
+                'status' => 1,
+                'contest_type' => 'daily',
+                'rhapsody_category_id' => $day_category['id']
+            ];
+            $this->db->insert('tbl_contest', $contest_data);
+            $contest_id = $this->db->insert_id();
+
+            // Copy questions to contest_question table
+            foreach ($questions as $q) {
+                $contest_question = [
+                    'contest_id' => $contest_id,
+                    'langauge_id' => $q['language_id'] ?? 14,
+                    'image' => $q['image'] ?? '',
+                    'question' => $q['question'],
+                    'question_type' => $q['question_type'] ?? 1,
+                    'optiona' => $q['optiona'],
+                    'optionb' => $q['optionb'],
+                    'optionc' => $q['optionc'],
+                    'optiond' => $q['optiond'],
+                    'optione' => $q['optione'] ?? '',
+                    'answer' => $q['answer'],
+                    'note' => $q['note'] ?? '',
+                    'date_created' => date('Y-m-d H:i:s')
+                ];
+                $this->db->insert('tbl_contest_question', $contest_question);
+            }
+
+            $response['error'] = false;
+            $response['message'] = 'Daily contest created successfully';
+            $response['data'] = [
+                'contest_id' => $contest_id,
+                'name' => $contest_data['name'],
+                'questions_count' => count($questions),
+                'rhapsody_category' => $day_category['category_name']
+            ];
+
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = $e->getMessage();
+        }
+
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Helper: Update daily leaderboard with points
+     */
+    private function set_daily_leaderboard($user_id, $score)
+    {
+        $today = date('Y-m-d');
+        
+        // Check if entry exists for today
+        $existing = $this->db->where('user_id', $user_id)
+            ->where('DATE(date_created)', $today)
+            ->get('tbl_leaderboard_daily')
+            ->row_array();
+
+        if ($existing) {
+            // Update existing score
+            $new_score = $existing['score'] + $score;
+            $this->db->where('id', $existing['id'])
+                ->update('tbl_leaderboard_daily', ['score' => $new_score]);
+        } else {
+            // Insert new entry
+            $this->db->insert('tbl_leaderboard_daily', [
+                'user_id' => $user_id,
+                'score' => $score,
+                'date_created' => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        // Also update monthly leaderboard
+        $this->set_monthly_leaderboard($user_id, $score);
+    }
+
+    /**
+     * ============================================
+     * END DAILY CONTEST API ENDPOINTS
+     * ============================================
+     */
 
     public function get_fun_n_learn_post()
     {

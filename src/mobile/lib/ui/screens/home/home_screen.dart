@@ -21,7 +21,9 @@ import 'package:flutterquiz/features/profile_management/cubits/user_details_cubi
 import 'package:flutterquiz/features/profile_management/profile_management_local_data_source.dart';
 import 'package:flutterquiz/features/profile_management/profile_management_repository.dart';
 import 'package:flutterquiz/features/quiz/cubits/contest_cubit.dart';
+import 'package:flutterquiz/features/quiz/cubits/daily_contest_cubit.dart';
 import 'package:flutterquiz/features/quiz/cubits/quiz_category_cubit.dart';
+import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 import 'package:flutterquiz/features/quiz/cubits/subcategory_cubit.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
@@ -94,6 +96,10 @@ class HomeScreenState extends State<HomeScreen>
   ///
   late String _currLangId;
   late final SystemConfigCubit _sysConfigCubit;
+  
+  /// Daily Contest status
+  bool _hasPendingDailyContest = false;
+  late final DailyContestCubit _dailyContestCubit;
 
   @override
   void initState() {
@@ -102,6 +108,10 @@ class HomeScreenState extends State<HomeScreen>
     showAppUnderMaintenanceDialog();
 
     _sysConfigCubit = context.read<SystemConfigCubit>();
+    
+    // Initialize daily contest cubit
+    _dailyContestCubit = DailyContestCubit(QuizRepository());
+    _checkDailyContestStatus();
 
     setQuizMenu();
     _initLocalNotification();
@@ -382,9 +392,26 @@ class HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _scrollController.dispose();
+    _dailyContestCubit.close();
     ProfileManagementLocalDataSource().updateReversedCoins(0);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Check if user has a pending daily contest
+  Future<void> _checkDailyContestStatus() async {
+    if (_isGuest) return;
+    
+    try {
+      await _dailyContestCubit.checkDailyContestStatus();
+      if (mounted) {
+        setState(() {
+          _hasPendingDailyContest = _dailyContestCubit.hasPendingContest;
+        });
+      }
+    } catch (e) {
+      log('Error checking daily contest status: $e', name: 'HomeScreen');
+    }
   }
 
   @override
@@ -708,80 +735,129 @@ class HomeScreenState extends State<HomeScreen>
             return;
           }
           if (_sysConfigCubit.isContestEnabled) {
-            Navigator.of(context).pushNamed(Routes.contest);
+            Navigator.of(context).pushNamed(Routes.contest).then((_) {
+              // Refresh daily contest status when returning from contest screen
+              _checkDailyContestStatus();
+            });
           } else {
             context.showSnack(context.tr(currentlyNotAvailableKey)!);
           }
         },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1565C0).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Trophy Image
+                  Image.asset(
+                    'assets/images/cup-contest.png',
+                    height: 80,
+                    width: 80,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 16),
+                  // Text Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr(contest) ?? 'Contest',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Compete and win prizes!',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            context.tr('playnowLbl') ?? 'Play Now',
+                            style: const TextStyle(
+                              color: Color(0xFF1565C0),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1565C0).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Trophy Image
-              Image.asset(
-                'assets/images/cup-contest.png',
-                height: 80,
-                width: 80,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 16),
-              // Text Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr(contest) ?? 'Contest',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+            // Notification Badge - shows when daily contest is pending (with jiggle animation)
+            if (_hasPendingDailyContest)
+              Positioned(
+                top: -8,
+                right: -8,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 500),
+                  builder: (context, value, child) {
+                    // Continuous jiggle using a repeating animation
+                    return _JigglingBadge(child: child!);
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Compete and win prizes!',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    child: const Center(
                       child: Text(
-                        context.tr('playnowLbl') ?? 'Play Now',
-                        style: const TextStyle(
-                          color: Color(0xFF1565C0),
-                          fontSize: 12,
+                        '!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -1138,6 +1214,9 @@ class HomeScreenState extends State<HomeScreen>
               await context.read<ContestCubit>().getContest(
                 languageId: _currLangId,
               );
+              
+              // Refresh daily contest status for notification badge
+              await _checkDailyContestStatus();
             }
             setState(() {});
           },
@@ -1563,6 +1642,14 @@ class HomeScreenState extends State<HomeScreen>
     context.read<UserDetailsCubit>().fetchUserDetails();
   }
 
+  /// Public method to refresh all home screen data
+  /// Called when returning from other screens (Contest, Daily Contest, etc.)
+  void refreshHomeData() {
+    fetchUserDetails();
+    // Refresh daily contest status to update notification badge
+    _checkDailyContestStatus();
+  }
+
   bool profileComplete = false;
 
   @override
@@ -1654,4 +1741,79 @@ class HomeScreenState extends State<HomeScreen>
 
   @override
   bool get wantKeepAlive => true;
+}
+
+/// Jiggling badge widget with continuous shake animation
+class _JigglingBadge extends StatefulWidget {
+  const _JigglingBadge({required this.child});
+  
+  final Widget child;
+
+  @override
+  State<_JigglingBadge> createState() => _JigglingBadgeState();
+}
+
+class _JigglingBadgeState extends State<_JigglingBadge> {
+  double _angle = 0;
+  Timer? _timer;
+  int _step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startJiggle();
+  }
+
+  void _startJiggle() {
+    // Very fast timer for intense vibration (20ms)
+    _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      setState(() {
+        // Very intense shake pattern - rapid back and forth
+        final cycleStep = _step % 50;
+        
+        if (cycleStep < 24) {
+          // Active shaking phase - 12 rapid shakes
+          switch (cycleStep % 4) {
+            case 0:
+              _angle = 0.35; // Right (stronger angle)
+              break;
+            case 1:
+              _angle = -0.35; // Left immediately
+              break;
+            case 2:
+              _angle = 0.35; // Right
+              break;
+            case 3:
+              _angle = -0.35; // Left
+              break;
+          }
+        } else {
+          // Pause phase
+          _angle = 0;
+        }
+        
+        _step++;
+        if (_step >= 100) _step = 0; // Reset after ~2 seconds
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: _angle,
+      child: widget.child,
+    );
+  }
 }

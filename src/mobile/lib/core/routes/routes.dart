@@ -28,6 +28,7 @@ import 'package:flutterquiz/ui/screens/quiz/bookmark_quiz_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/category_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/contest_leaderboard_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/contest_screen.dart';
+import 'package:flutterquiz/ui/screens/quiz/daily_contest_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/fun_and_learn_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/fun_and_learn_title_screen.dart';
 import 'package:flutterquiz/ui/screens/quiz/guess_the_word_quiz_screen.dart';
@@ -97,6 +98,7 @@ class Routes {
 
   static const contest = '/contest';
   static const contestLeaderboard = '/contestLeaderboard';
+  static const dailyContest = '/dailyContest';
   static const funAndLearnTitle = '/funAndLearnTitle';
   static const funAndLearn = 'funAndLearn';
   static const guessTheWord = '/guessTheWord';
@@ -197,6 +199,8 @@ class Routes {
         return MultiUserBattleRoomQuizScreen.route(rs);
       case contest:
         return ContestScreen.route(rs);
+      case dailyContest:
+        return DailyContestScreen.route(rs);
       case guessTheWord:
         return GuessTheWordQuizScreen.route(rs);
       case multiUserBattleRoomQuizResult:

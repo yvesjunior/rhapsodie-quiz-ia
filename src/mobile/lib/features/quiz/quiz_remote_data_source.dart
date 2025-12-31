@@ -687,4 +687,122 @@ final class QuizRemoteDataSource {
       throw const ApiException(errorCodeDefaultMessage);
     }
   }
+
+  // ============================================
+  // DAILY CONTEST API METHODS
+  // ============================================
+
+  /// Check if user has a pending daily contest
+  Future<Map<String, dynamic>> getDailyContestStatus() async {
+    try {
+      final response = await http.post(
+        Uri.parse(getDailyContestStatusUrl),
+        body: <String, String>{},
+        headers: await ApiUtils.getHeaders(),
+      );
+
+      final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (responseJson['error'] as bool) {
+        throw ApiException(responseJson['message'].toString());
+      }
+
+      return responseJson;
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      log('getDailyContestStatus error: $e', name: 'DailyContest');
+      throw const ApiException(errorCodeDefaultMessage);
+    }
+  }
+
+  /// Get today's daily contest details
+  Future<Map<String, dynamic>> getTodayDailyContest() async {
+    try {
+      final response = await http.post(
+        Uri.parse(getTodayDailyContestUrl),
+        body: <String, String>{},
+        headers: await ApiUtils.getHeaders(),
+      );
+
+      final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (responseJson['error'] as bool) {
+        throw ApiException(responseJson['message'].toString());
+      }
+
+      return responseJson['data'] as Map<String, dynamic>;
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      log('getTodayDailyContest error: $e', name: 'DailyContest');
+      throw const ApiException(errorCodeDefaultMessage);
+    }
+  }
+
+  /// Submit daily contest answers
+  Future<Map<String, dynamic>> submitDailyContest({
+    required String contestId,
+    required List<Map<String, dynamic>> answers,
+    required bool readText,
+  }) async {
+    try {
+      final body = <String, String>{
+        'contest_id': contestId,
+        'answers': jsonEncode(answers),
+        'read_text': readText ? '1' : '0',
+      };
+
+      final response = await http.post(
+        Uri.parse(submitDailyContestUrl),
+        body: body,
+        headers: await ApiUtils.getHeaders(),
+      );
+
+      final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (responseJson['error'] as bool) {
+        throw ApiException(responseJson['message'].toString());
+      }
+
+      return responseJson['data'] as Map<String, dynamic>;
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      log('submitDailyContest error: $e', name: 'DailyContest');
+      throw const ApiException(errorCodeDefaultMessage);
+    }
+  }
+
+  /// Create daily contest (for testing/admin)
+  Future<Map<String, dynamic>> createDailyContest() async {
+    try {
+      final response = await http.post(
+        Uri.parse(createDailyContestUrl),
+        body: <String, String>{},
+        headers: await ApiUtils.getHeaders(),
+      );
+
+      final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (responseJson['error'] as bool) {
+        throw ApiException(responseJson['message'].toString());
+      }
+
+      return responseJson['data'] as Map<String, dynamic>;
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      log('createDailyContest error: $e', name: 'DailyContest');
+      throw const ApiException(errorCodeDefaultMessage);
+    }
+  }
 }

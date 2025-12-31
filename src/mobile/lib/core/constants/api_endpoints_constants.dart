@@ -139,3 +139,11 @@ const getGroupBattlesUrl = '$_api/get_group_battles';
 const getSoloTopicsUrl = '$_api/get_solo_topics';
 const getSoloQuestionsUrl = '$_api/get_solo_questions';
 const submitSoloQuizUrl = '$_api/submit_solo_quiz';
+
+// ============================================
+// NEW: Daily Contest (Rhapsody-based daily quiz)
+// ============================================
+const getDailyContestStatusUrl = '$_api/get_daily_contest_status';
+const getTodayDailyContestUrl = '$_api/get_today_daily_contest';
+const submitDailyContestUrl = '$_api/submit_daily_contest';
+const createDailyContestUrl = '$_api/create_daily_contest';

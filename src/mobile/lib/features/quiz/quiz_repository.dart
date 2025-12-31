@@ -233,4 +233,36 @@ final class QuizRepository {
       joinedUsersCount: joinedUsersCount,
     );
   }
+
+  // ============================================
+  // DAILY CONTEST METHODS
+  // ============================================
+
+  /// Check if user has a pending daily contest
+  Future<Map<String, dynamic>> getDailyContestStatus() async {
+    return _quizRemoteDataSource.getDailyContestStatus();
+  }
+
+  /// Get today's daily contest details (text + questions)
+  Future<Map<String, dynamic>> getTodayDailyContest() async {
+    return _quizRemoteDataSource.getTodayDailyContest();
+  }
+
+  /// Submit daily contest answers
+  Future<Map<String, dynamic>> submitDailyContest({
+    required String contestId,
+    required List<Map<String, dynamic>> answers,
+    required bool readText,
+  }) async {
+    return _quizRemoteDataSource.submitDailyContest(
+      contestId: contestId,
+      answers: answers,
+      readText: readText,
+    );
+  }
+
+  /// Create daily contest (for testing/admin)
+  Future<Map<String, dynamic>> createDailyContest() async {
+    return _quizRemoteDataSource.createDailyContest();
+  }
 }

@@ -62,6 +62,14 @@ class DashboardScreenState extends State<DashboardScreen> {
     _pageController.jumpToPage(index);
   }
 
+  /// Refresh home screen data (called when returning from other screens)
+  void refreshHomeData() {
+    final homeKey = navTabsKeys[NavTabType.home];
+    if (homeKey?.currentState != null) {
+      (homeKey!.currentState as dynamic).refreshHomeData();
+    }
+  }
+
   final Map<NavTabType, GlobalKey<dynamic>> navTabsKeys = {
     NavTabType.home: GlobalKey<HomeScreenState>(debugLabel: 'Home'),
     NavTabType.leaderboard: GlobalKey<LeaderBoardScreenState>(
@@ -128,13 +136,15 @@ class DashboardScreenState extends State<DashboardScreen> {
         child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
       ),
     ),
-    NavTab(
-      tab: NavTabType.playZone,
-      title: 'navPlayZone',
-      icon: Assets.playZoneNavIcon,
-      activeIcon: Assets.playZoneActiveNavIcon,
-      child: PlayZoneTabScreen(key: navTabsKeys[NavTabType.playZone]),
-    ),
+    // Play Zone hidden for now - not ready
+    // NavTab(
+    //   tab: NavTabType.playZone,
+    //   title: 'navPlayZone',
+    //   icon: Assets.playZoneNavIcon,
+    //   activeIcon: Assets.playZoneActiveNavIcon,
+    //   iconData: Icons.sports_esports_outlined,
+    //   child: PlayZoneTabScreen(key: navTabsKeys[NavTabType.playZone]),
+    // ),
 
     NavTab(
       tab: NavTabType.profile,
@@ -245,14 +255,16 @@ class DashboardScreenState extends State<DashboardScreen> {
             child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
           ),
         ),
-      if (config.isPlayZoneEnabled)
-        NavTab(
-          tab: NavTabType.playZone,
-          title: 'navPlayZone',
-          icon: Assets.playZoneNavIcon,
-          activeIcon: Assets.playZoneActiveNavIcon,
-          child: PlayZoneTabScreen(key: navTabsKeys[NavTabType.playZone]),
-        ),
+      // Play Zone hidden for now - not ready
+      // if (config.isPlayZoneEnabled)
+      //   NavTab(
+      //     tab: NavTabType.playZone,
+      //     title: 'navPlayZone',
+      //     icon: Assets.playZoneNavIcon,
+      //     activeIcon: Assets.playZoneActiveNavIcon,
+      //     iconData: Icons.sports_esports_outlined,
+      //     child: PlayZoneTabScreen(key: navTabsKeys[NavTabType.playZone]),
+      //   ),
       NavTab(
         tab: NavTabType.profile,
         title: 'navProfile',

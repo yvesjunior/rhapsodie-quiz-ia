@@ -92,10 +92,11 @@ class UserAchievements extends StatelessWidget {
         color: const Color(0xFFFFC107).withValues(alpha: 0.2),
         shape: BoxShape.circle,
       ),
-      child: const Icon(
-        Icons.monetization_on_rounded,
-        color: Color(0xFFFFC107),
-        size: 24,
+      padding: const EdgeInsets.all(8),
+      child: SvgPicture.asset(
+        Assets.coin,
+        width: 24,
+        height: 24,
       ),
     );
   }

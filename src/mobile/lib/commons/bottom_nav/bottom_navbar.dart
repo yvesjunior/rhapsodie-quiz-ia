@@ -47,40 +47,40 @@ class BottomNavBar extends StatelessWidget {
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: AnimatedScale(
-                        scale: isSelected ? 1.2 : 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: navTab.iconData != null
-                            ? Icon(
+                    AnimatedScale(
+                      scale: isSelected ? 1.2 : 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      child: navTab.iconData != null
+                          ? Transform.translate(
+                              offset: const Offset(0, -2),
+                              child: Icon(
                                 navTab.iconData,
                                 color: color,
                                 size: 24,
-                              )
-                            : QImage(
-                                imageUrl: isSelected
-                                    ? navTab.activeIcon
-                                    : navTab.icon,
-                                color: color,
                               ),
-                      ),
+                            )
+                          : QImage(
+                              imageUrl: isSelected
+                                  ? navTab.activeIcon
+                                  : navTab.icon,
+                              color: color,
+                            ),
                     ),
-                    const Flexible(child: SizedBox(height: 4)),
-                    Flexible(
-                      child: Text(
-                        context.trWithFallback(navTab.title, navTab.title),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.15,
-                          color: color,
-                          fontWeight: isSelected
-                              ? FontWeight.w500
-                              : FontWeight.normal,
-                        ),
+                    SizedBox(height: navTab.iconData != null ? 0 : 4),
+                    Text(
+                      context.trWithFallback(navTab.title, navTab.title),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.15,
+                        color: color,
+                        fontWeight: isSelected
+                            ? FontWeight.w500
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

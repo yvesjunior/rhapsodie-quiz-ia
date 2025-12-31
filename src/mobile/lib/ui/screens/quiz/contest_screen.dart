@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/commons/commons.dart';
+import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/features/profile_management/cubits/update_score_and_coins_cubit.dart';
 import 'package:flutterquiz/features/profile_management/cubits/user_details_cubit.dart';
@@ -15,13 +16,14 @@ import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
 import 'package:flutterquiz/ui/widgets/custom_back_button.dart';
 import 'package:flutterquiz/ui/widgets/error_container.dart';
+import 'package:flutterquiz/commons/widgets/custom_image.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 import 'package:flutterquiz/utils/ui_utils.dart';
 
-/// Contest Type
-const int _past = 0;
-const int _live = 1;
-const int _upcoming = 2;
+/// Contest Type - Tab order: Ongoing, Upcoming, Finished
+const int _live = 0;      // Ongoing
+const int _upcoming = 1;  // Upcoming
+const int _past = 2;      // Finished
 
 class ContestScreen extends StatefulWidget {
   const ContestScreen({super.key});
@@ -48,19 +50,31 @@ class ContestScreen extends StatefulWidget {
 
 class _ContestScreen extends State<ContestScreen>
     with SingleTickerProviderStateMixin {
+  // Key to force rebuild of daily contest cards when data changes
+  final GlobalKey<_DailyRhapsodyCardState> _dailyCardKey = GlobalKey();
+  final GlobalKey<_CompletedDailyContestsCardState> _completedCardKey =
+      GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    _refreshData();
+  }
+
+  Future<void> _refreshData() async {
     context.read<ContestCubit>().getContest(
       languageId: UiUtils.getCurrentQuizLanguageId(context),
     );
+    // Force refresh of daily contest cards
+    _dailyCardKey.currentState?._checkDailyContestStatus();
+    _completedCardKey.currentState?._checkDailyContestStatus();
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
-      initialIndex: 1,
+      initialIndex: 0, // Start on Ongoing tab
       child: Builder(
         builder: (BuildContext context) {
           return Scaffold(
@@ -76,8 +90,15 @@ class _ContestScreen extends State<ContestScreen>
                   color: Theme.of(context).colorScheme.onTertiary,
                 ),
               ),
-              leading: const CustomBackButton(),
+              leading: CustomBackButton(
+                onTap: () {
+                  // Refresh home data before popping
+                  dashboardScreenKey.currentState?.refreshHomeData();
+                  Navigator.pop(context);
+                },
+              ),
               centerTitle: true,
+              automaticallyImplyLeading: false,
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(50),
                 child: Container(
@@ -88,12 +109,12 @@ class _ContestScreen extends State<ContestScreen>
                       context,
                     ).colorScheme.onTertiary.withValues(alpha: 0.08),
                   ),
-                  child: TabBar(
+                  child: const TabBar(
                     tabAlignment: TabAlignment.fill,
                     tabs: [
-                      Tab(text: context.tr('pastLbl')),
-                      Tab(text: context.tr('liveLbl')),
-                      Tab(text: context.tr('upcomingLbl')),
+                      Tab(text: 'Ongoing'),
+                      Tab(text: 'Upcoming'),
+                      Tab(text: 'Finished'),
                     ],
                   ),
                 ),
@@ -128,56 +149,183 @@ class _ContestScreen extends State<ContestScreen>
                 final contestList = (state as ContestSuccess).contestList;
                 return TabBarView(
                   children: [
-                    past(contestList.past),
-                    live(contestList.live),
-                    future(contestList.upcoming),
+                    live(contestList.live),       // Ongoing
+                    future(contestList.upcoming), // Upcoming
+                    past(contestList.past),       // Finished
                   ],
                 );
               },
             ),
+            bottomNavigationBar: _buildBottomNav(context),
           );
         },
       ),
     );
   }
 
+  Widget _buildBottomNav(BuildContext context) {
+    return Container(
+      height: kBottomNavigationBarHeight + 26,
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: const [
+          BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
+          _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
+          _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
+          _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
+          _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: QImage(imageUrl: iconAsset, color: color)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
+    final color = context.primaryTextColor.withValues(alpha: 0.8);
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          dashboardScreenKey.currentState?.changeTab(tabType);
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Icon(icon, color: color, size: 24)),
+              const Flexible(child: SizedBox(height: 4)),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget past(Contest data) {
-    return data.errorMessage.isNotEmpty
-        ? contestErrorContainer(data)
-        : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: data.contestDetails.length,
-            itemBuilder: (_, i) => _ContestCard(
-              contestDetails: data.contestDetails[i],
-              contestType: _past,
-            ),
+    // Show completed daily contests + regular finished contests
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: data.contestDetails.length + 1, // +1 for completed Daily Rhapsody
+        itemBuilder: (_, i) {
+          // First item: Completed Daily Rhapsody contests
+          if (i == 0) {
+            return _CompletedDailyContestsCard(key: _completedCardKey);
+          }
+          // Regular finished contest cards
+          return _ContestCard(
+            contestDetails: data.contestDetails[i - 1],
+            contestType: _past,
           );
+        },
+      ),
+    );
   }
 
   Widget live(Contest data) {
-    return data.errorMessage.isNotEmpty
-        ? contestErrorContainer(data)
-        : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: data.contestDetails.length,
-            itemBuilder: (_, i) => _ContestCard(
-              contestDetails: data.contestDetails[i],
-              contestType: _live,
-            ),
+    // Always show the Daily Rhapsody card, even if no regular contests exist
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: data.contestDetails.length + 1, // +1 for Daily Rhapsody card
+        itemBuilder: (_, i) {
+          // First item: Daily Rhapsody Contest card (always shown)
+          if (i == 0) {
+            return _DailyRhapsodyCard(
+              key: _dailyCardKey,
+              onContestCompleted: _refreshData,
+            );
+          }
+          // Regular contest cards (if any)
+          return _ContestCard(
+            contestDetails: data.contestDetails[i - 1],
+            contestType: _live,
           );
+        },
+      ),
+    );
   }
 
   Widget future(Contest data) {
-    return data.errorMessage.isNotEmpty
-        ? contestErrorContainer(data)
-        : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: data.contestDetails.length,
-            itemBuilder: (_, i) => _ContestCard(
-              contestDetails: data.contestDetails[i],
-              contestType: _upcoming,
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: data.contestDetails.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Center(
+                    child: Text(
+                      context.tr('noUpcomingContestsLbl') ?? 'No upcoming contests',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onTertiary.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: data.contestDetails.length,
+              itemBuilder: (_, i) => _ContestCard(
+                contestDetails: data.contestDetails[i],
+                contestType: _upcoming,
+              ),
             ),
-          );
+    );
   }
 
   ErrorContainer contestErrorContainer(Contest data) {
@@ -415,5 +563,467 @@ class _ContestCardState extends State<_ContestCard> {
         ),
       ),
     );
+  }
+}
+
+/// Daily Rhapsody Contest Card
+/// Shows the daily contest based on today's Rhapsody
+class _DailyRhapsodyCard extends StatefulWidget {
+  const _DailyRhapsodyCard({super.key, this.onContestCompleted});
+
+  final VoidCallback? onContestCompleted;
+
+  @override
+  State<_DailyRhapsodyCard> createState() => _DailyRhapsodyCardState();
+}
+
+class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
+  bool _isLoading = true;
+  bool _hasPendingContest = false;
+  bool _hasCompleted = false;
+  String? _contestName;
+  int? _userScore;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDailyContestStatus();
+  }
+
+  Future<void> _checkDailyContestStatus() async {
+    try {
+      final result = await QuizRepository().getDailyContestStatus();
+      if (mounted) {
+        setState(() {
+          _hasPendingContest = result['has_pending_contest'] ?? false;
+          _hasCompleted = result['has_completed'] ?? false;
+          _contestName = result['contest_name'];
+          _userScore = result['user_score'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Hide this card in Ongoing tab if contest is completed
+    // (It will show in Finished tab instead)
+    if (_hasCompleted && !_isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    final today = DateTime.now();
+    final dateStr = '${today.day} ${_getMonthName(today.month)} ${today.year}';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isLoading ? null : _onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.menu_book,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Daily Rhapsody',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (_hasPendingContest && !_isLoading)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'NEW',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          if (_hasCompleted && !_isLoading)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_userScore ?? 0} pts',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        dateStr,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.stars,
+                            color: Colors.amber.shade300,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '10 points max',
+                            style: TextStyle(
+                              color: Colors.amber.shade200,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.quiz,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '5 questions',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Expiration time
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            color: Colors.orange.shade200,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Expires: ${_getExpirationTime()}',
+                            style: TextStyle(
+                              color: Colors.orange.shade200,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Arrow
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withOpacity(0.7),
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _onTap() {
+    if (_hasCompleted) {
+      // Already completed - go back to home
+      Navigator.of(context).pop();
+    } else if (_hasPendingContest) {
+      // Start daily contest
+      Navigator.of(context).pushNamed(Routes.dailyContest).then((_) {
+        // Refresh status when returning
+        _checkDailyContestStatus();
+        // Notify parent to refresh all data
+        widget.onContestCompleted?.call();
+      });
+    } else {
+      // No contest available
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No daily contest available. Try again later.'),
+        ),
+      );
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
+  }
+
+  String _getExpirationTime() {
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final remaining = midnight.difference(now);
+
+    if (remaining.isNegative) {
+      return 'Expired';
+    }
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes % 60;
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m left';
+    } else {
+      return '${minutes}m left';
+    }
+  }
+}
+
+/// Card showing completed Daily Rhapsody contests in the Finished tab
+class _CompletedDailyContestsCard extends StatefulWidget {
+  const _CompletedDailyContestsCard({super.key});
+
+  @override
+  State<_CompletedDailyContestsCard> createState() =>
+      _CompletedDailyContestsCardState();
+}
+
+class _CompletedDailyContestsCardState
+    extends State<_CompletedDailyContestsCard> {
+  bool _isLoading = true;
+  bool _hasCompleted = false;
+  String? _contestName;
+  int? _userScore;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDailyContestStatus();
+  }
+
+  Future<void> _checkDailyContestStatus() async {
+    try {
+      final result = await QuizRepository().getDailyContestStatus();
+      if (mounted) {
+        setState(() {
+          _hasCompleted = result['has_completed'] ?? false;
+          _contestName = result['contest_name'];
+          _userScore = result['user_score'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Only show if user has completed today's daily contest
+    if (_isLoading) {
+      return const SizedBox.shrink();
+    }
+
+    if (!_hasCompleted) {
+      return const SizedBox.shrink();
+    }
+
+    final today = DateTime.now();
+    final dateStr =
+        '${today.day} ${_getMonthName(today.month)} ${today.year}';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF9E9E9E), // Solid gray for completed
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF9E9E9E).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Daily Rhapsody',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_userScore ?? 0} pts',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Completed',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
   }
 }
