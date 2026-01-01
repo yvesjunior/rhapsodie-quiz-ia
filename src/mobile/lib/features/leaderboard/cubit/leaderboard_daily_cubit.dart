@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/core/constants/api_exception.dart';
 import 'package:flutterquiz/core/constants/constants.dart';
+import 'package:flutterquiz/core/constants/error_message_keys.dart' show errorCodeNoInternet;
+import 'package:flutterquiz/features/leaderboard/leaderboard_local_data_source.dart';
 import 'package:flutterquiz/utils/api_utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,11 +27,13 @@ final class LeaderBoardDailySuccess extends LeaderBoardDailyState {
     this.leaderBoardDetails,
     this.totalData, {
     required this.hasMore,
+    this.isOffline = false,
   });
 
   final List<Map<String, dynamic>> leaderBoardDetails;
   final int totalData;
   final bool hasMore;
+  final bool isOffline;
 }
 
 final class LeaderBoardDailyFailure extends LeaderBoardDailyState {
@@ -39,6 +44,8 @@ final class LeaderBoardDailyFailure extends LeaderBoardDailyState {
 
 final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
   LeaderBoardDailyCubit() : super(const LeaderBoardDailyInitial());
+
+  final LeaderboardLocalDataSource _localDataSource = LeaderboardLocalDataSource();
 
   static late String profileD;
   static late String nameD;
@@ -67,6 +74,7 @@ final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
 
       final total = int.parse(responseJson['total'] as String? ?? '0');
       final data = responseJson['data'] as Map<String, dynamic>;
+      final otherUsersRanks = (data['other_users_rank'] as List).cast<Map<String, dynamic>>();
 
       if (total != 0) {
         final myRank = data['my_rank'] as Map<String, dynamic>;
@@ -75,6 +83,9 @@ final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
         rankD = myRank['user_rank'].toString();
         profileD = myRank[profileKey].toString();
         scoreD = myRank['score'].toString();
+
+        // Cache the data
+        await _localDataSource.cacheDailyLeaderboard(otherUsersRanks, myRank, total);
       } else {
         nameD = '';
         rankD = '';
@@ -82,11 +93,7 @@ final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
         scoreD = '0';
       }
 
-      return (
-        total: total,
-        otherUsersRanks: (data['other_users_rank'] as List)
-            .cast<Map<String, dynamic>>(),
-      );
+      return (total: total, otherUsersRanks: otherUsersRanks);
     } on SocketException {
       throw const ApiException(errorCodeNoInternet);
     } catch (e) {
@@ -107,8 +114,47 @@ final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
           );
         })
         .catchError((dynamic e) {
-          emit(LeaderBoardDailyFailure(e.toString()));
+          // Try to load from cache on error
+          _loadFromCache().then((cached) {
+            if (cached != null) {
+              emit(
+                LeaderBoardDailySuccess(
+                  cached.otherUsersRanks,
+                  cached.total,
+                  hasMore: cached.total > cached.otherUsersRanks.length,
+                  isOffline: true,
+                ),
+              );
+            } else {
+              emit(const LeaderBoardDailyFailure(errorCodeNoInternet));
+            }
+          });
         });
+  }
+
+  Future<({int total, List<Map<String, dynamic>> otherUsersRanks})?> _loadFromCache() async {
+    try {
+      final cached = await _localDataSource.getCachedDailyLeaderboard();
+      final myRankCached = await _localDataSource.getCachedDailyMyRank();
+
+      if (cached != null && cached['data'] != null) {
+        final data = (cached['data'] as List).cast<Map<String, dynamic>>();
+        final total = cached['total'] as int? ?? 0;
+
+        if (myRankCached != null) {
+          nameD = myRankCached['name']?.toString() ?? '';
+          rankD = myRankCached['user_rank']?.toString() ?? '';
+          profileD = myRankCached['profile']?.toString() ?? '';
+          scoreD = myRankCached['score']?.toString() ?? '0';
+        }
+
+        log('Loaded daily leaderboard from cache: ${data.length} entries');
+        return (total: total, otherUsersRanks: data);
+      }
+    } catch (e) {
+      log('Error loading daily leaderboard from cache: $e');
+    }
+    return null;
   }
 
   void fetchMoreLeaderBoardData(String limit) {
@@ -131,7 +177,7 @@ final class LeaderBoardDailyCubit extends Cubit<LeaderBoardDailyState> {
           );
         })
         .catchError((dynamic e) {
-          emit(LeaderBoardDailyFailure(e.toString()));
+          emit(const LeaderBoardDailyFailure(errorCodeNoInternet));
         });
   }
 

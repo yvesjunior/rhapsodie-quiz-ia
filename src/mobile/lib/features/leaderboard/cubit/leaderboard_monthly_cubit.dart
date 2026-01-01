@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/core/constants/api_exception.dart';
 import 'package:flutterquiz/core/constants/constants.dart';
+import 'package:flutterquiz/core/constants/error_message_keys.dart' show errorCodeNoInternet;
+import 'package:flutterquiz/features/leaderboard/leaderboard_local_data_source.dart';
 import 'package:flutterquiz/utils/api_utils.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,11 +27,13 @@ final class LeaderBoardMonthlySuccess extends LeaderBoardMonthlyState {
     this.leaderBoardDetails,
     this.totalData, {
     required this.hasMore,
+    this.isOffline = false,
   });
 
   final List<Map<String, dynamic>> leaderBoardDetails;
   final int totalData;
   final bool hasMore;
+  final bool isOffline;
 }
 
 final class LeaderBoardMonthlyFailure extends LeaderBoardMonthlyState {
@@ -39,6 +44,8 @@ final class LeaderBoardMonthlyFailure extends LeaderBoardMonthlyState {
 
 final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
   LeaderBoardMonthlyCubit() : super(const LeaderBoardMonthlyInitial());
+
+  final LeaderboardLocalDataSource _localDataSource = LeaderboardLocalDataSource();
 
   static late String profileM;
   static late String nameM;
@@ -68,6 +75,7 @@ final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
 
       final total = int.parse(responseJson['total'] as String? ?? '0');
       final data = responseJson['data'] as Map<String, dynamic>;
+      final otherUsersRanks = (data['other_users_rank'] as List).cast<Map<String, dynamic>>();
 
       if (total != 0) {
         final myRank = data['my_rank'] as Map<String, dynamic>;
@@ -76,6 +84,9 @@ final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
         rankM = myRank[userRankKey].toString();
         profileM = myRank[profileKey].toString();
         scoreM = myRank[scoreKey].toString();
+
+        // Cache the data
+        await _localDataSource.cacheMonthlyLeaderboard(otherUsersRanks, myRank, total);
       } else {
         nameM = '';
         rankM = '';
@@ -83,11 +94,7 @@ final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
         scoreM = '0';
       }
 
-      return (
-        total: total,
-        otherUsersRanks: (data['other_users_rank'] as List)
-            .cast<Map<String, dynamic>>(),
-      );
+      return (total: total, otherUsersRanks: otherUsersRanks);
     } on SocketException {
       throw const ApiException(errorCodeNoInternet);
     } catch (e) {
@@ -108,8 +115,47 @@ final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
           );
         })
         .catchError((dynamic e) {
-          emit(LeaderBoardMonthlyFailure(e.toString()));
+          // Try to load from cache on error
+          _loadFromCache().then((cached) {
+            if (cached != null) {
+              emit(
+                LeaderBoardMonthlySuccess(
+                  cached.otherUsersRanks,
+                  cached.total,
+                  hasMore: cached.total > cached.otherUsersRanks.length,
+                  isOffline: true,
+                ),
+              );
+            } else {
+              emit(const LeaderBoardMonthlyFailure(errorCodeNoInternet));
+            }
+          });
         });
+  }
+
+  Future<({int total, List<Map<String, dynamic>> otherUsersRanks})?> _loadFromCache() async {
+    try {
+      final cached = await _localDataSource.getCachedMonthlyLeaderboard();
+      final myRankCached = await _localDataSource.getCachedMonthlyMyRank();
+
+      if (cached != null && cached['data'] != null) {
+        final data = (cached['data'] as List).cast<Map<String, dynamic>>();
+        final total = cached['total'] as int? ?? 0;
+
+        if (myRankCached != null) {
+          nameM = myRankCached['name']?.toString() ?? '';
+          rankM = myRankCached['user_rank']?.toString() ?? '';
+          profileM = myRankCached['profile']?.toString() ?? '';
+          scoreM = myRankCached['score']?.toString() ?? '0';
+        }
+
+        log('Loaded monthly leaderboard from cache: ${data.length} entries');
+        return (total: total, otherUsersRanks: data);
+      }
+    } catch (e) {
+      log('Error loading monthly leaderboard from cache: $e');
+    }
+    return null;
   }
 
   void fetchMoreLeaderBoardData(String limit) {
@@ -133,7 +179,7 @@ final class LeaderBoardMonthlyCubit extends Cubit<LeaderBoardMonthlyState> {
           );
         })
         .catchError((dynamic e) {
-          emit(LeaderBoardMonthlyFailure(e.toString()));
+          emit(const LeaderBoardMonthlyFailure(errorCodeNoInternet));
         });
   }
 

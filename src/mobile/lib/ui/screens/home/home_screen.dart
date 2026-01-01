@@ -133,6 +133,21 @@ class HomeScreenState extends State<HomeScreen>
 
       context.read<ContestCubit>().getContest(languageId: _currLangId);
     }
+
+    // Pre-fetch all data for offline use (runs in background)
+    _prefetchDataForOffline();
+  }
+
+  /// Pre-fetch all essential data for offline use
+  void _prefetchDataForOffline() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      
+      DataPrefetcher.instance.prefetchAll(
+        connectivityCubit: context.read<ConnectivityCubit>(),
+        languageId: _currLangId,
+      );
+    });
   }
 
   void onTapTab() {
@@ -210,16 +225,45 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> setupInteractedMessage() async {
     if (Platform.isIOS) {
-      await FirebaseMessaging.instance.requestPermission(
+      // Request full notification permissions on iOS
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
         announcement: true,
-        provisional: true,
+        provisional: false, // Request full permission, not provisional
       );
+      log('iOS notification permission: ${settings.authorizationStatus}');
+      
+      // Get APNs token to verify iOS push is working
+      try {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        log('APNs token obtained: ${apnsToken != null ? "YES (${apnsToken.substring(0, 20)}...)" : "NO"}');
+      } catch (e) {
+        log('Failed to get APNs token: $e');
+      }
     } else {
       final isGranted = (await Permission.notification.status).isGranted;
       if (!isGranted) await Permission.notification.request();
     }
 
     await notificationStream?.cancel();
+
+    // Get FCM token for debugging
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      log('FCM token: ${fcmToken != null ? "${fcmToken.substring(0, 30)}..." : "NULL"}');
+    } catch (e) {
+      log('Failed to get FCM token: $e');
+    }
+
+    // Subscribe to daily_quiz topic for notifications
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic('daily_quiz');
+      log('✓ Subscribed to daily_quiz topic');
+    } catch (e) {
+      log('✗ Failed to subscribe to topic: $e');
+    }
 
     await FirebaseMessaging.instance.getInitialMessage();
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
@@ -399,15 +443,28 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   /// Check if user has a pending daily contest
+  /// Also manages local reminder notifications
   Future<void> _checkDailyContestStatus() async {
     if (_isGuest) return;
     
     try {
       await _dailyContestCubit.checkDailyContestStatus();
       if (mounted) {
+        final hasPending = _dailyContestCubit.hasPendingContest;
         setState(() {
-          _hasPendingDailyContest = _dailyContestCubit.hasPendingContest;
+          _hasPendingDailyContest = hasPending;
         });
+        
+        // Manage local reminders based on contest status
+        if (hasPending) {
+          // User hasn't completed today's contest - schedule reminders
+          log('Scheduling local reminders for pending contest', name: 'HomeScreen');
+          await LocalReminderService.instance.scheduleContestReminders();
+        } else {
+          // User completed today's contest - cancel reminders
+          log('Cancelling local reminders - contest completed', name: 'HomeScreen');
+          await LocalReminderService.instance.cancelContestReminders();
+        }
       }
     } catch (e) {
       log('Error checking daily contest status: $e', name: 'HomeScreen');
@@ -829,29 +886,25 @@ class HomeScreenState extends State<HomeScreen>
                     return _JigglingBadge(child: child!);
                   },
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
+                      border: Border.all(color: Colors.white, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.red.withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 2,
+                          color: Colors.red.withOpacity(0.4),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: const Center(
-                      child: Text(
-                        '!',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Icon(
+                        Icons.notifications_active,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -1202,31 +1255,31 @@ class HomeScreenState extends State<HomeScreen>
       },
       builder: (context, state) {
         return RefreshIndicator(
-          key: refreshKey,
+                      key: refreshKey,
           color: Colors.white,
           backgroundColor: _headerColor,
-          onRefresh: () async {
-            _currLangId = UiUtils.getCurrentQuizLanguageId(context);
+                      onRefresh: () async {
+                        _currLangId = UiUtils.getCurrentQuizLanguageId(context);
 
-            if (!_isGuest) {
-              fetchUserDetails();
+                        if (!_isGuest) {
+                          fetchUserDetails();
 
-              await context.read<ContestCubit>().getContest(
-                languageId: _currLangId,
-              );
+                          await context.read<ContestCubit>().getContest(
+                            languageId: _currLangId,
+                          );
               
               // Refresh daily contest status for notification badge
               await _checkDailyContestStatus();
-            }
-            setState(() {});
-          },
-          child: ListView(
-            controller: _scrollController,
+                        }
+                        setState(() {});
+                      },
+                      child: ListView(
+                        controller: _scrollController,
             padding: EdgeInsets.zero,
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
-            children: [
+                        children: [
               // Blue header section
               Container(
                 decoration: const BoxDecoration(
@@ -1246,11 +1299,11 @@ class HomeScreenState extends State<HomeScreen>
                       const SizedBox(height: 16),
                       
                       // Stats bar (Rank & Reward Points)
-                      UserAchievements(
-                        userRank: _userRank,
-                        userCoins: _userCoins,
-                        userScore: _userScore,
-                      ),
+                          UserAchievements(
+                            userRank: _userRank,
+                            userCoins: _userCoins,
+                            userScore: _userScore,
+                          ),
                       
                       // Extra space for game modes to overlap into
                       const SizedBox(height: 100),
@@ -1319,11 +1372,11 @@ class HomeScreenState extends State<HomeScreen>
               const SizedBox(height: 24),
               
               // Daily Ads
-              if (!_isGuest &&
-                  _sysConfigCubit.isAdsEnable &&
-                  _sysConfigCubit.isDailyAdsEnabled) ...[
-                _buildDailyAds(),
-              ],
+                          if (!_isGuest &&
+                              _sysConfigCubit.isAdsEnable &&
+                              _sysConfigCubit.isDailyAdsEnabled) ...[
+                            _buildDailyAds(),
+                          ],
               
               
               const SizedBox(height: 100), // Bottom padding for nav bar
@@ -1437,45 +1490,66 @@ class HomeScreenState extends State<HomeScreen>
             ),
           ),
           
-          // Groups Button
-          GestureDetector(
-            onTap: () {
-              if (_isGuest) {
-                showLoginRequiredDialog(context);
-              } else {
-                globalCtx.pushNamed(Routes.groups);
-              }
-            },
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.groups_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Notification Bell
+          // TODO: Enable Groups Button in next release
+          // Groups Button - Hidden for now
+          // GestureDetector(
+          //   onTap: () {
+          //     if (_isGuest) {
+          //       showLoginRequiredDialog(context);
+          //     } else {
+          //       globalCtx.pushNamed(Routes.groups);
+          //     }
+          //   },
+          //   child: Container(
+          //     width: 44,
+          //     height: 44,
+          //     decoration: BoxDecoration(
+          //       color: Colors.white.withValues(alpha: 0.2),
+          //       shape: BoxShape.circle,
+          //     ),
+          //     child: const Icon(
+          //       Icons.groups_rounded,
+          //       color: Colors.white,
+          //       size: 22,
+          //     ),
+          //   ),
+          // ),
+          // const SizedBox(width: 8),
+          // Notification Bell with badge for pending daily contest
           GestureDetector(
             onTap: onTapNotification,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _isGuest ? Icons.login_rounded : Icons.notifications_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isGuest ? Icons.login_rounded : Icons.notifications_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                // Red badge when daily contest is pending
+                if (!_isGuest && _hasPendingDailyContest)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -1743,7 +1817,7 @@ class HomeScreenState extends State<HomeScreen>
   bool get wantKeepAlive => true;
 }
 
-/// Jiggling badge widget with continuous shake animation
+/// Bell badge widget with gentle swing animation
 class _JigglingBadge extends StatefulWidget {
   const _JigglingBadge({required this.child});
   
@@ -1765,40 +1839,58 @@ class _JigglingBadgeState extends State<_JigglingBadge> {
   }
 
   void _startJiggle() {
-    // Very fast timer for intense vibration (20ms)
-    _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
+    // Gentle swing animation (80ms intervals)
+    _timer = Timer.periodic(const Duration(milliseconds: 80), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
       
       setState(() {
-        // Very intense shake pattern - rapid back and forth
-        final cycleStep = _step % 50;
+        // Gentle bell swing pattern
+        final cycleStep = _step % 30;
         
-        if (cycleStep < 24) {
-          // Active shaking phase - 12 rapid shakes
-          switch (cycleStep % 4) {
+        if (cycleStep < 10) {
+          // Gentle swing phase - smooth oscillation
+          switch (cycleStep) {
             case 0:
-              _angle = 0.35; // Right (stronger angle)
+              _angle = 0.12;
               break;
             case 1:
-              _angle = -0.35; // Left immediately
+              _angle = 0.18;
               break;
             case 2:
-              _angle = 0.35; // Right
+              _angle = 0.12;
               break;
             case 3:
-              _angle = -0.35; // Left
+              _angle = 0;
+              break;
+            case 4:
+              _angle = -0.12;
+              break;
+            case 5:
+              _angle = -0.18;
+              break;
+            case 6:
+              _angle = -0.12;
+              break;
+            case 7:
+              _angle = 0;
+              break;
+            case 8:
+              _angle = 0.08;
+              break;
+            case 9:
+              _angle = -0.08;
               break;
           }
         } else {
-          // Pause phase
+          // Pause phase - rest before next swing
           _angle = 0;
         }
         
         _step++;
-        if (_step >= 100) _step = 0; // Reset after ~2 seconds
+        if (_step >= 60) _step = 0; // Reset after ~4.8 seconds
       });
     });
   }

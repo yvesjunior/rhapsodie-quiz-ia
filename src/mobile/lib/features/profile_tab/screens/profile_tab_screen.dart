@@ -40,34 +40,14 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
 
   bool get _isGuest => context.read<AuthCubit>().isGuest;
 
-  /// Cached to avoid repeated async calls across rebuilds
-  Future<bool>? _gdprFuture;
-
-  /// All menu items in fixed order - visibility determined at build time
+  /// Profile-related menu items (settings items moved to SettingsTabScreen)
   static const List<MenuItem> _allMenuItems = [
-    (name: 'wallet', image: Assets.walletMenuIcon),
     (name: 'coinHistory', image: Assets.coinHistoryMenuIcon),
     (name: 'inviteFriendsLbl', image: Assets.inviteFriendsMenuIcon),
     (name: 'badges', image: Assets.badgesMenuIcon),
     (name: 'rewardsLbl', image: Assets.rewardMenuIcon),
     (name: 'statisticsLabel', image: Assets.statisticsMenuIcon),
-    (name: 'theme', image: Assets.themeMenuIcon),
-    (name: 'quizLanguage', image: Assets.quizLanguageIcon),
-    (name: 'language', image: Assets.languageMenuIcon),
-    (name: 'soundLbl', image: Assets.volumeIcon),
-    (name: 'vibrationLbl', image: Assets.vibrationIcon),
-    (name: 'adsPreference', image: Assets.adsPreferenceIcon),
-    (name: 'aboutQuizApp', image: Assets.aboutUsMenuIcon),
-    (name: 'shareAppLbl', image: Assets.shareMenuIcon),
-    (name: 'logoutLbl', image: Assets.logoutMenuIcon),
-    (name: 'deleteAccountLbl', image: Assets.deleteAccountMenuIcon),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _gdprFuture = GdprHelper.isUnderGdpr();
-  }
 
   @override
   void dispose() {
@@ -85,71 +65,12 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
     }
   }
 
-  /// Filters menu items based on feature flags, auth state, and GDPR compliance
-  List<MenuItem> _getVisibleMenuItems({
-    required bool isAuthenticated,
-    required bool isUnderGdpr,
-  }) {
-    final config = context.read<SystemConfigCubit>();
-    final systemLanguages = context
-        .read<AppLocalizationCubit>()
-        .state
-        .systemLanguages;
-
-    return _allMenuItems.where((item) {
-      if (item.name == 'wallet' && !config.isPaymentRequestEnabled) {
-        return false;
-      }
-      if (item.name == 'quizLanguage' && !config.isLanguageModeEnabled) {
-        return false;
-      }
-      if (item.name == 'language' && systemLanguages.length == 1) {
-        return false;
-      }
-      if (item.name == 'adsPreference' && !isUnderGdpr) {
-        return false;
-      }
-      if ((item.name == 'logoutLbl' || item.name == 'deleteAccountLbl') &&
-          !isAuthenticated) {
-        return false;
-      }
-
-      return true;
-    }).toList();
+  /// Filters menu items based on feature flags
+  List<MenuItem> _getVisibleMenuItems() {
+    return _allMenuItems.toList();
   }
 
   void _onTapMenuItem(String name) {
-    /// Menus that guest can use without being logged in.
-    switch (name) {
-      case 'theme':
-        showThemeSelectorSheet(globalCtx);
-        return;
-      case 'quizLanguage':
-        showQuizLanguageSelectorSheet(globalCtx);
-        return;
-      case 'language':
-        showLanguageSelectorSheet(globalCtx, onChange: () => setState(() {}));
-        return;
-      case 'aboutQuizApp':
-        globalCtx.pushNamed(Routes.aboutApp);
-        return;
-      case 'shareAppLbl':
-        {
-          try {
-            UiUtils.share(
-              '${context.read<SystemConfigCubit>().appUrl}\n${context.read<SystemConfigCubit>().shareAppText}',
-              context: globalCtx,
-            );
-          } on Exception catch (e) {
-            context.showSnack(e.toString());
-          }
-        }
-        return;
-      case 'adsPreference':
-        GdprHelper.changePrivacyPreferences();
-        return;
-    }
-
     /// Menus that users can't use without signing in, (ex. in guest mode).
     if (_isGuest) {
       showLoginRequiredDialog(context);
@@ -159,9 +80,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
     switch (name) {
       case 'coinHistory':
         globalCtx.pushNamed(Routes.coinHistory);
-        return;
-      case 'wallet':
-        globalCtx.pushNamed(Routes.wallet);
         return;
       case 'inviteFriendsLbl':
         globalCtx.pushNamed(Routes.referAndEarn);
@@ -174,12 +92,6 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
         return;
       case 'statisticsLabel':
         globalCtx.pushNamed(Routes.statistics);
-        return;
-      case 'logoutLbl':
-        showLogoutDialog(globalCtx);
-        return;
-      case 'deleteAccountLbl':
-        showDeleteAccountDialog(globalCtx);
         return;
     }
   }
@@ -439,11 +351,9 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: GestureDetector(
-            onTap: () => globalCtx.pushNamed(Routes.wallet),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
                 color: const Color(0xFFB8E6F7),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -503,22 +413,8 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
                       color: Color(0xFF4CD964),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4CD964),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
                 ],
               ),
-            ),
           ),
         );
       },
@@ -782,85 +678,56 @@ final class ProfileTabScreenState extends State<ProfileTabScreen>
   }
 
   Widget _buildMenuSection() {
-    return BlocBuilder<AuthCubit, AuthState>(
-      buildWhen: (previous, current) =>
-          (previous is Authenticated) != (current is Authenticated),
-      builder: (context, authState) {
-        final isAuthenticated = authState is Authenticated;
+    final visibleItems = _getVisibleMenuItems();
 
-        return FutureBuilder<bool>(
-          future: _gdprFuture,
-          builder: (context, gdprSnapshot) {
-            final isUnderGdpr =
-                gdprSnapshot.hasData && (gdprSnapshot.data ?? false);
-
-            final visibleItems = _getVisibleMenuItems(
-              isAuthenticated: isAuthenticated,
-              isUnderGdpr: isUnderGdpr,
-            );
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: visibleItems.map((item) => _buildMenuItem(item)).toList(),
-              ),
-            );
-          },
-        );
-      },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: visibleItems.map((item) => _buildMenuItem(item)).toList(),
+      ),
     );
   }
 
   Widget _buildMenuItem(MenuItem item) {
-    Widget? trailing;
-    final isDeleteAccount = item.name == 'deleteAccountLbl';
-
-    if (item.name == 'soundLbl') {
-      trailing = const _SoundSwitchWidget();
-    } else if (item.name == 'vibrationLbl') {
-      trailing = const _VibrationSwitchWidget();
-    }
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-      onTap: () => _onTapMenuItem(item.name),
+        onTap: () => _onTapMenuItem(item.name),
         borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDeleteAccount 
-              ? Colors.red.shade50 
-              : context.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: isDeleteAccount 
-              ? Border.all(color: Colors.red.shade300, width: 1.5)
-              : null,
-        ),
-        child: Row(
-          children: [
-            QImage(
-              imageUrl: item.image,
-              color: isDeleteAccount ? Colors.red : context.primaryColor,
-              fit: BoxFit.fitHeight,
-              height: 24,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                context.tr(item.name)!,
-                textAlign: TextAlign.start,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-                style: TextStyle(
-                  fontWeight: isDeleteAccount ? FontWeights.bold : FontWeights.regular,
-                  fontSize: 16,
-                  color: isDeleteAccount ? Colors.red : context.primaryTextColor,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              QImage(
+                imageUrl: item.image,
+                color: context.primaryColor,
+                fit: BoxFit.fitHeight,
+                height: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  context.tr(item.name)!,
+                  textAlign: TextAlign.start,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  style: TextStyle(
+                    fontWeight: FontWeights.regular,
+                    fontSize: 16,
+                    color: context.primaryTextColor,
+                  ),
                 ),
               ),
-            ),
-            if (trailing != null) ...[const SizedBox(width: 12), trailing],
-          ],
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: context.primaryTextColor.withOpacity(0.5),
+              ),
+            ],
           ),
         ),
       ),
@@ -955,40 +822,3 @@ class _ChartPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Extracts only sound value from settings state to prevent rebuilds
-/// when other settings (vibration, notifications, etc.) change
-class _SoundSwitchWidget extends StatelessWidget {
-  const _SoundSwitchWidget();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocSelector<SettingsCubit, SettingsState, bool>(
-      selector: (state) => state.settingsModel!.sound,
-      builder: (context, isSoundEnabled) {
-        return CustomSwitch(
-          value: isSoundEnabled,
-          onChanged: (v) => context.read<SettingsCubit>().sound = v,
-        );
-      },
-    );
-  }
-}
-
-/// Extracts only vibration value from settings state to prevent rebuilds
-/// when other settings (sound, notifications, etc.) change
-class _VibrationSwitchWidget extends StatelessWidget {
-  const _VibrationSwitchWidget();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocSelector<SettingsCubit, SettingsState, bool>(
-      selector: (state) => state.settingsModel!.vibration,
-      builder: (context, isVibrationEnabled) {
-        return CustomSwitch(
-          value: isVibrationEnabled,
-          onChanged: (v) => context.read<SettingsCubit>().vibration = v,
-        );
-      },
-    );
-  }
-}

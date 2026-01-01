@@ -16,8 +16,8 @@ import 'package:flutterquiz/ui/widgets/error_container.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 import 'package:flutterquiz/utils/ui_utils.dart';
 
-/// Purple header color - consistent across all screens
-const _headerColor = Color(0xFF7B68EE);
+/// Blue header color - consistent across all screens
+const _headerColor = Color(0xFF1565C0);
 
 class LeaderBoardScreen extends StatefulWidget {
   const LeaderBoardScreen({super.key});
@@ -547,7 +547,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Podium image at the bottom
+                // Podium image at the bottom with blue tint
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -557,6 +557,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                     width: double.infinity,
                     height: podiumHeight,
                     fit: BoxFit.fill,
+                    color: const Color(0xFF1565C0),
+                    colorBlendMode: BlendMode.hue,
                   ),
                 ),
                 // 2nd place score - on left white box

@@ -56,7 +56,9 @@ class BottomNavBar extends StatelessWidget {
                           ? Transform.translate(
                               offset: const Offset(0, -2),
                               child: Icon(
-                                navTab.iconData,
+                                isSelected && navTab.activeIconData != null
+                                    ? navTab.activeIconData
+                                    : navTab.iconData,
                                 color: color,
                                 size: 24,
                               ),

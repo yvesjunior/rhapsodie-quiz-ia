@@ -1,0 +1,28 @@
+# Dockerfile for Rhapsody Quiz Cron Service
+FROM php:8.2-cli
+
+# Install required extensions
+RUN apt-get update && apt-get install -y \
+    cron \
+    curl \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd pdo pdo_mysql mysqli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Timezone will be set at runtime via TZ environment variable
+# Default: America/Montreal (Eastern Time - UTC-5/UTC-4 DST)
+ENV TZ=America/Montreal
+
+# Create the log file
+RUN touch /var/log/cron.log
+
+# Copy entrypoint script
+COPY infra/cron-entrypoint.sh /usr/local/bin/cron-entrypoint.sh
+RUN chmod +x /usr/local/bin/cron-entrypoint.sh
+
+# Run entrypoint script (sets up env vars and starts cron)
+CMD ["/usr/local/bin/cron-entrypoint.sh"]
+

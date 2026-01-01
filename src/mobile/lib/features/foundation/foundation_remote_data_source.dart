@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutterquiz/core/constants/api_endpoints_constants.dart';
 import 'package:flutterquiz/core/constants/api_exception.dart';
+import 'package:flutterquiz/core/constants/error_message_keys.dart';
 import 'package:flutterquiz/features/foundation/models/foundation_models.dart';
 import 'package:flutterquiz/utils/api_utils.dart';
 import 'package:http/http.dart' as http;
@@ -30,9 +32,14 @@ class FoundationRemoteDataSource {
       return classesJson
           .map((json) => FoundationClass.fromJson(json as Map<String, dynamic>))
           .toList();
+    } on SocketException {
+      log(name: 'FoundationRemoteDataSource', 'Network error');
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
       log(name: 'FoundationRemoteDataSource', 'Error: $e');
-      throw ApiException('Failed to load Foundation classes: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 
@@ -53,9 +60,14 @@ class FoundationRemoteDataSource {
       }
 
       return FoundationClass.fromJson(data['data'] as Map<String, dynamic>);
+    } on SocketException {
+      log(name: 'FoundationRemoteDataSource', 'Network error');
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
       log(name: 'FoundationRemoteDataSource', 'Error: $e');
-      throw ApiException('Failed to load Foundation class detail: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 }

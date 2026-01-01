@@ -28,7 +28,7 @@ class RhapsodyScreen extends StatefulWidget {
     
     return MaterialPageRoute(
       builder: (_) => BlocProvider(
-        create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())..loadYearsAndMonths(),
+        create: (_) => RhapsodyCubit(RhapsodyRepository())..loadYearsAndMonths(),
         child: const RhapsodyScreen(),
       ),
     );
@@ -42,7 +42,7 @@ class RhapsodyScreen extends StatefulWidget {
   }) {
     return MaterialPageRoute(
       builder: (_) => BlocProvider(
-        create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+        create: (_) => RhapsodyCubit(RhapsodyRepository())
           ..loadDayDetail(year, month, day),
         child: _RhapsodyDayScreen(
           day: RhapsodyDay(
@@ -66,7 +66,7 @@ class RhapsodyScreen extends StatefulWidget {
   }) {
     return MaterialPageRoute(
       builder: (_) => BlocProvider(
-        create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+        create: (_) => RhapsodyCubit(RhapsodyRepository())
           ..loadDays(year, month, monthName),
         child: RhapsodyMonthScreen(
           year: year,
@@ -126,22 +126,30 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
 
           if (state is RhapsodyError) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.white, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    style: const TextStyle(color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.read<RhapsodyCubit>().loadYearsAndMonths(),
-                    child: const Text('Retry'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      state.isOffline ? Icons.wifi_off : Icons.error_outline,
+                      color: Colors.white70,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.tr(state.message) ?? 'No internet connection found. check your connection or try again.',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => context.read<RhapsodyCubit>().loadYearsAndMonths(),
+                      icon: const Icon(Icons.refresh),
+                      label: Text(context.tr('tryAgain') ?? 'Try Again'),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -417,7 +425,7 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
       context,
       MaterialPageRoute(
         builder: (_) => BlocProvider(
-          create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+          create: (_) => RhapsodyCubit(RhapsodyRepository())
             ..loadDays(month.year, month.month, month.name),
           child: RhapsodyMonthScreen(
             year: month.year,
@@ -617,7 +625,27 @@ class RhapsodyMonthScreen extends StatelessWidget {
                     }
 
                     if (state is RhapsodyError) {
-                      return Center(child: Text(state.message));
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                state.isOffline ? Icons.wifi_off : Icons.error_outline,
+                                color: Colors.grey,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                context.tr(state.message) ?? 'Unable to load',
+                                style: const TextStyle(color: Colors.grey, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     }
 
                     return const SizedBox();
@@ -786,7 +814,7 @@ class RhapsodyMonthScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => BlocProvider(
-          create: (_) => RhapsodyCubit(RhapsodyRemoteDataSource())
+          create: (_) => RhapsodyCubit(RhapsodyRepository())
             ..loadDayDetail(day.year, day.month, day.day),
           child: _RhapsodyDayScreen(day: day),
         ),
@@ -956,7 +984,37 @@ class _RhapsodyDayScreen extends StatelessWidget {
           }
 
           if (state is RhapsodyError) {
-            return Center(child: Text(state.message));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      state.isOffline ? Icons.wifi_off : Icons.error_outline,
+                      color: Colors.grey,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.tr(state.message) ?? 'Unable to load',
+                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => context.read<RhapsodyCubit>().loadDayDetail(
+                            day.year,
+                            day.month,
+                            day.day,
+                          ),
+                      icon: const Icon(Icons.refresh),
+                      label: Text(context.tr('tryAgain') ?? 'Try Again'),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           return const SizedBox();

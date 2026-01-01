@@ -1,8 +1,12 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:io';
+
 import 'package:flutterquiz/core/constants/api_endpoints_constants.dart';
+import 'package:flutterquiz/core/constants/api_exception.dart';
+import 'package:flutterquiz/core/constants/error_message_keys.dart';
+import 'package:flutterquiz/features/rhapsody/models/rhapsody_models.dart';
 import 'package:flutterquiz/utils/api_utils.dart';
-import 'models/rhapsody_models.dart';
+import 'package:http/http.dart' as http;
 
 class RhapsodyRemoteDataSource {
   /// Get all available Rhapsody years
@@ -10,21 +14,25 @@ class RhapsodyRemoteDataSource {
     try {
       final response = await http.post(
         Uri.parse(getRhapsodyYearsUrl),
-        body: {},
+        body: <String, String>{},
         headers: await ApiUtils.getHeaders(),
       );
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['error'] == true) {
         return [];
       }
 
-      final List<dynamic> yearsJson = data['data'] ?? [];
+      final yearsJson = (data['data'] as List<dynamic>?) ?? [];
       return yearsJson
           .map((json) => RhapsodyYear.fromJson(json as Map<String, dynamic>))
           .toList();
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      throw Exception('Failed to load Rhapsody years: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 
@@ -37,17 +45,21 @@ class RhapsodyRemoteDataSource {
         headers: await ApiUtils.getHeaders(),
       );
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['error'] == true) {
         return [];
       }
 
-      final List<dynamic> monthsJson = data['data'] ?? [];
+      final monthsJson = (data['data'] as List<dynamic>?) ?? [];
       return monthsJson
           .map((json) => RhapsodyMonth.fromJson(json as Map<String, dynamic>))
           .toList();
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      throw Exception('Failed to load Rhapsody months: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 
@@ -63,17 +75,21 @@ class RhapsodyRemoteDataSource {
         headers: await ApiUtils.getHeaders(),
       );
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['error'] == true) {
         return [];
       }
 
-      final List<dynamic> daysJson = data['data'] ?? [];
+      final daysJson = (data['data'] as List<dynamic>?) ?? [];
       return daysJson
           .map((json) => RhapsodyDay.fromJson(json as Map<String, dynamic>))
           .toList();
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      throw Exception('Failed to load Rhapsody days: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 
@@ -90,15 +106,20 @@ class RhapsodyRemoteDataSource {
         headers: await ApiUtils.getHeaders(),
       );
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['error'] == true || data['data'] == null) {
         return null;
       }
 
       return RhapsodyDayDetail.fromJson(data['data'] as Map<String, dynamic>);
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      rethrow;
     } catch (e) {
-      throw Exception('Failed to load Rhapsody day detail: $e');
+      throw const ApiException(errorCodeNoInternet);
     }
   }
 }
+
 

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
 import 'package:flutterquiz/commons/commons.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/core/core.dart';
@@ -163,90 +164,57 @@ class _ContestScreen extends State<ContestScreen>
     );
   }
 
+  // Navigation tabs matching dashboard configuration
+  List<NavTab> get _navTabs => [
+    NavTab(
+      tab: NavTabType.home,
+      title: 'navHome',
+      icon: Assets.homeNavIcon,
+      activeIcon: Assets.homeActiveNavIcon,
+      child: const SizedBox.shrink(),
+    ),
+    NavTab(
+      tab: NavTabType.leaderboard,
+      title: 'navLeaderBoard',
+      icon: Assets.leaderboardNavIcon,
+      activeIcon: Assets.leaderboardActiveNavIcon,
+      child: const SizedBox.shrink(),
+    ),
+    NavTab(
+      tab: NavTabType.quizZone,
+      title: 'Foundation',
+      icon: Assets.quizZoneNavIcon,
+      activeIcon: Assets.quizZoneActiveNavIcon,
+      iconData: Icons.school_outlined,
+      activeIconData: Icons.school,
+      child: const SizedBox.shrink(),
+    ),
+    NavTab(
+      tab: NavTabType.profile,
+      title: 'navProfile',
+      icon: Assets.profileNavIcon,
+      activeIcon: Assets.profileActiveNavIcon,
+      child: const SizedBox.shrink(),
+    ),
+    NavTab(
+      tab: NavTabType.settings,
+      title: 'Settings',
+      icon: Assets.settingsIcon,
+      activeIcon: Assets.settingsIcon,
+      iconData: Icons.settings_outlined,
+      activeIconData: Icons.settings,
+      child: const SizedBox.shrink(),
+    ),
+  ];
+
   Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      height: kBottomNavigationBarHeight + 26,
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: const [
-          BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
-          _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
-          _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
-          _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
-          _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
-    final color = context.primaryTextColor.withValues(alpha: 0.8);
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-          dashboardScreenKey.currentState?.changeTab(tabType);
-        },
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(child: QImage(imageUrl: iconAsset, color: color)),
-              const Flexible(child: SizedBox(height: 4)),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
-    final color = context.primaryTextColor.withValues(alpha: 0.8);
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-          dashboardScreenKey.currentState?.changeTab(tabType);
-        },
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(child: Icon(icon, color: color, size: 24)),
-              const Flexible(child: SizedBox(height: 4)),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 12, height: 1.15, color: color),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return BottomNavBar(
+      navTabs: _navTabs,
+      currentIndex: -1, // No tab selected since we're on Contest screen
+      onTap: (index) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        dashboardScreenKey.currentState?.changeTab(_navTabs[index].tab);
+      },
     );
   }
 
@@ -613,9 +581,14 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Hide this card in Ongoing tab if contest is completed
-    // (It will show in Finished tab instead)
-    if (_hasCompleted && !_isLoading) {
+    // Hide this card if:
+    // 1. Still loading
+    // 2. Contest is completed (will show in Finished tab)
+    // 3. No pending contest exists
+    if (_isLoading) {
+      return const SizedBox.shrink();
+    }
+    if (_hasCompleted || !_hasPendingContest) {
       return const SizedBox.shrink();
     }
 

@@ -51,12 +51,12 @@ class DailyContestCubit extends Cubit<DailyContestState> {
       final result = await _quizRepository.getDailyContestStatus();
       
       emit(DailyContestStatusLoaded(
-        hasPendingContest: result['has_pending_contest'] ?? false,
-        hasCompleted: result['has_completed'] ?? false,
+        hasPendingContest: (result['has_pending_contest'] as bool?) ?? false,
+        hasCompleted: (result['has_completed'] as bool?) ?? false,
         contestId: result['contest_id']?.toString(),
-        contestName: result['contest_name'],
-        userScore: result['user_score'],
-        date: result['date'],
+        contestName: result['contest_name']?.toString(),
+        userScore: result['user_score'] as int?,
+        date: result['date']?.toString(),
       ));
     } catch (e) {
       emit(DailyContestError(e.toString()));

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/core/core.dart';
+import 'package:flutterquiz/core/offline/offline.dart';
 import 'package:flutterquiz/features/ads/ads.dart';
 import 'package:flutterquiz/features/auth/auth_repository.dart';
 import 'package:flutterquiz/features/auth/cubits/auth_cubit.dart';
@@ -67,6 +68,13 @@ Future<Widget> initializeApp() async {
   await Hive.openBox<dynamic>(userDetailsBox);
   await Hive.openBox<dynamic>(examBox);
 
+  // Initialize offline infrastructure
+  await CacheManager.instance.init();
+  await PendingOperationsQueue.instance.init();
+
+  // Initialize local notification reminders
+  await LocalReminderService.instance.init();
+
   return const MyApp();
 }
 
@@ -77,6 +85,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        // Connectivity monitoring (offline-first)
+        BlocProvider<ConnectivityCubit>(
+          create: (_) => ConnectivityCubit(),
+        ),
         BlocProvider<ThemeCubit>(
           create: (_) => ThemeCubit(SettingsLocalDataSource()),
         ),

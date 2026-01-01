@@ -1,0 +1,15 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Load environment variables
+BASH_ENV=/etc/environment
+
+# Rhapsody Quiz Cron Jobs
+# Daily contest creation at midnight
+0 0 * * * root . /etc/environment && [ "$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job >> /var/log/cron.log 2>&1
+
+# Daily contest notifications at 8AM, 1PM, 10PM
+0 8 * * * root . /etc/environment && [ "$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job/send_daily_contest_notifications >> /var/log/cron.log 2>&1
+0 13 * * * root . /etc/environment && [ "$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job/send_daily_contest_notifications >> /var/log/cron.log 2>&1
+0 22 * * * root . /etc/environment && [ "$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job/send_daily_contest_notifications >> /var/log/cron.log 2>&1
+

@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutterquiz/core/constants/api_exception.dart';
+import 'package:flutterquiz/core/constants/error_message_keys.dart';
 import 'package:flutterquiz/features/quiz/models/contest.dart';
 import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 import 'package:flutterquiz/utils/datetime_utils.dart';
@@ -16,9 +18,10 @@ final class ContestProgress extends ContestState {
 }
 
 final class ContestSuccess extends ContestState {
-  const ContestSuccess(this.contestList);
+  const ContestSuccess(this.contestList, {this.isOffline = false});
 
   final Contests contestList;
+  final bool isOffline;
 }
 
 final class ContestFailure extends ContestState {
@@ -36,13 +39,17 @@ final class ContestCubit extends Cubit<ContestState> {
     emit(const ContestProgress());
     final (:gmt, :localTimezone) = await DateTimeUtils.getTimeZone();
 
-    await _quizRepository
-        .getContest(languageId: languageId, timezone: localTimezone, gmt: gmt)
-        .then((val) {
-          emit(ContestSuccess(val));
-        })
-        .catchError((Object e) {
-          emit(ContestFailure(e.toString()));
-        });
+    try {
+      final val = await _quizRepository.getContest(
+        languageId: languageId,
+        timezone: localTimezone,
+        gmt: gmt,
+      );
+      emit(ContestSuccess(val));
+    } on ApiException catch (e) {
+      emit(ContestFailure(e.error));
+    } catch (e) {
+      emit(const ContestFailure(errorCodeNoInternet));
+    }
   }
 }

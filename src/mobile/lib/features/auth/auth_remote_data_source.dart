@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -117,9 +118,23 @@ class AuthRemoteDataSource {
       String fcmId = '';
       if (!userLoggingOut) {
         try {
+          // On iOS, we need to wait for APNs token first
+          if (Platform.isIOS) {
+            // Get APNs token first (required for FCM on iOS)
+            String? apnsToken;
+            for (int i = 0; i < 5; i++) {
+              apnsToken = await fcm.FirebaseMessaging.instance.getAPNSToken();
+              if (apnsToken != null) break;
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+            log('APNs token obtained: ${apnsToken != null ? "YES" : "NO"}');
+          }
+          
           fcmId = await fcm.FirebaseMessaging.instance.getToken() ?? '';
-        } catch (_) {
+          log('FCM token obtained: ${fcmId.isNotEmpty ? "${fcmId.substring(0, 30)}..." : "EMPTY"}');
+        } catch (e) {
           // FCM not available (e.g., on simulator), continue with empty token
+          log('FCM token error: $e');
           fcmId = '';
         }
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/commons/widgets/show_login_required_dialog.dart';
+import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/core/routes/routes.dart';
 import 'package:flutterquiz/features/auth/cubits/auth_cubit.dart';
 import 'package:flutterquiz/features/foundation/foundation.dart';
@@ -14,9 +15,10 @@ class FoundationClassScreen extends StatelessWidget {
 
   static Route route({required String classId}) {
     return MaterialPageRoute(
-      builder: (_) => BlocProvider(
-        create: (_) =>
-            FoundationCubit(FoundationRemoteDataSource())..loadClassDetail(classId),
+      builder: (context) => BlocProvider(
+        create: (_) => FoundationCubit(
+          FoundationRepository(connectivityCubit: context.read<ConnectivityCubit>()),
+        )..loadClassDetail(classId),
         child: FoundationClassScreen(classId: classId),
       ),
     );
@@ -34,21 +36,7 @@ class FoundationClassScreen extends StatelessWidget {
             return _buildClassContent(context, state.classDetail);
           }
           if (state is FoundationError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${state.message}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context
-                        .read<FoundationCubit>()
-                        .loadClassDetail(classId),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorWidget(context, state, classId);
           }
           return const SizedBox();
         },
@@ -361,5 +349,51 @@ class _ContentSection {
   final bool isHeader;
 
   _ContentSection({required this.text, required this.isHeader});
+}
+
+Widget _buildErrorWidget(BuildContext context, FoundationError state, String classId) {
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF1565C0),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: const Text('Foundation', style: TextStyle(color: Colors.white)),
+    ),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              state.isOffline ? Icons.wifi_off : Icons.error_outline,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              context.tr(state.message) ?? 'No internet connection found. check your connection or try again.',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context
+                  .read<FoundationCubit>()
+                  .loadClassDetail(classId),
+              icon: const Icon(Icons.refresh),
+              label: Text(context.tr('tryAgain') ?? 'Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1565C0),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 

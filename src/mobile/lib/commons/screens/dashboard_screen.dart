@@ -17,6 +17,7 @@ import 'package:flutterquiz/features/profile_management/cubits/update_score_and_
 import 'package:flutterquiz/features/profile_management/cubits/update_user_details_cubit.dart';
 import 'package:flutterquiz/features/profile_management/profile_management_repository.dart';
 import 'package:flutterquiz/features/profile_tab/screens/profile_tab_screen.dart';
+import 'package:flutterquiz/features/settings_tab/screens/settings_tab_screen.dart';
 import 'package:flutterquiz/features/quiz/cubits/quiz_category_cubit.dart';
 import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 import 'package:flutterquiz/features/quiz_zone_tab/screens/quiz_zone_tab_screen.dart';
@@ -82,6 +83,7 @@ class DashboardScreenState extends State<DashboardScreen> {
       debugLabel: 'Play Zone',
     ),
     NavTabType.profile: GlobalKey<ProfileTabScreenState>(debugLabel: 'Profile'),
+    NavTabType.settings: GlobalKey<SettingsTabScreenState>(debugLabel: 'Settings'),
   };
 
   late var _navTabs = <NavTab>[
@@ -130,9 +132,12 @@ class DashboardScreenState extends State<DashboardScreen> {
       title: 'Foundation',
       icon: Assets.quizZoneNavIcon,
       activeIcon: Assets.quizZoneActiveNavIcon,
-      iconData: Icons.school,
+      iconData: Icons.school_outlined,
+      activeIconData: Icons.school,
       child: BlocProvider(
-        create: (_) => FoundationCubit(FoundationRemoteDataSource()),
+        create: (context) => FoundationCubit(
+          FoundationRepository(connectivityCubit: context.read<ConnectivityCubit>()),
+        ),
         child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
       ),
     ),
@@ -152,6 +157,15 @@ class DashboardScreenState extends State<DashboardScreen> {
       icon: Assets.profileNavIcon,
       activeIcon: Assets.profileActiveNavIcon,
       child: ProfileTabScreen(key: navTabsKeys[NavTabType.profile]),
+    ),
+    NavTab(
+      tab: NavTabType.settings,
+      title: 'Settings',
+      icon: Assets.settingsIcon,
+      activeIcon: Assets.settingsIcon,
+      iconData: Icons.settings_outlined,
+      activeIconData: Icons.settings,
+      child: SettingsTabScreen(key: navTabsKeys[NavTabType.settings]),
     ),
   ];
 
@@ -249,9 +263,12 @@ class DashboardScreenState extends State<DashboardScreen> {
           title: 'Foundation',
           icon: Assets.quizZoneNavIcon,
           activeIcon: Assets.quizZoneActiveNavIcon,
-          iconData: Icons.school,
+          iconData: Icons.school_outlined,
+          activeIconData: Icons.school,
           child: BlocProvider(
-            create: (_) => FoundationCubit(FoundationRemoteDataSource()),
+            create: (context) => FoundationCubit(
+              FoundationRepository(connectivityCubit: context.read<ConnectivityCubit>()),
+            ),
             child: FoundationTabScreen(key: navTabsKeys[NavTabType.quizZone]),
           ),
         ),
@@ -271,6 +288,15 @@ class DashboardScreenState extends State<DashboardScreen> {
         icon: Assets.profileNavIcon,
         activeIcon: Assets.profileActiveNavIcon,
         child: ProfileTabScreen(key: navTabsKeys[NavTabType.profile]),
+      ),
+      NavTab(
+        tab: NavTabType.settings,
+        title: 'Settings',
+        icon: Assets.settingsIcon,
+        activeIcon: Assets.settingsIcon,
+        iconData: Icons.settings_outlined,
+        activeIconData: Icons.settings,
+        child: SettingsTabScreen(key: navTabsKeys[NavTabType.settings]),
       ),
     ];
     setState(() {});

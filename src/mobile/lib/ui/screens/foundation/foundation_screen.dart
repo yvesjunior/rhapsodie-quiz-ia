@@ -10,9 +10,10 @@ class FoundationScreen extends StatelessWidget {
 
   static Route route() {
     return MaterialPageRoute(
-      builder: (_) => BlocProvider(
-        create: (_) =>
-            FoundationCubit(FoundationRemoteDataSource())..loadClasses(),
+      builder: (context) => BlocProvider(
+        create: (_) => FoundationCubit(
+          FoundationRepository(connectivityCubit: context.read<ConnectivityCubit>()),
+        )..loadClasses(),
         child: const FoundationScreen(),
       ),
     );
@@ -39,20 +40,31 @@ class FoundationScreen extends StatelessWidget {
                   }
                   if (state is FoundationError) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Error: ${state.message}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () =>
-                                context.read<FoundationCubit>().loadClasses(),
-                            child: const Text('Retry'),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              state.isOffline ? Icons.wifi_off : Icons.error_outline,
+                              size: 64,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              context.tr(state.message) ?? 'No internet connection found. check your connection or try again.',
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () =>
+                                  context.read<FoundationCubit>().loadClasses(),
+                              icon: const Icon(Icons.refresh),
+                              label: Text(context.tr('tryAgain') ?? 'Try Again'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }

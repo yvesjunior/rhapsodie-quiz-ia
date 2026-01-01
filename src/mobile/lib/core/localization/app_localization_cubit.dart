@@ -2,6 +2,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/features/settings/settings_repository.dart';
 import 'package:flutterquiz/features/system_config/model/system_language.dart';
 
+/// Fallback translations for critical error messages
+/// These are shown when server translations aren't available (e.g. first launch offline)
+const _fallbackTranslations = <String, String>{
+  // Critical error messages
+  'noInternet': 'No internet connection. Please check your network and try again.',
+  'defaultErrorMessage': 'Something went wrong. Please try again.',
+  'dataNotFound': 'Unable to find data.',
+  'retryLbl': 'Retry',
+  // Authentication
+  'unauthorizedAccess': 'Unauthorized access. Please log in again.',
+  'accountHasBeenDeactive': 'Your account has been deactivated.',
+  // Server errors
+  'canNotMakeRequest': 'Cannot connect to server. Please try again later.',
+};
+
 class AppLocalizationState {
   const AppLocalizationState(this.language, this.systemLanguages);
 
@@ -75,5 +90,18 @@ class AppLocalizationCubit extends Cubit<AppLocalizationState> {
 
   SystemLanguage get activeLanguage => state.language;
 
-  String? tr(String key) => state.language.translations?[key];
+  /// Translate a key to its localized string
+  /// 
+  /// Lookup order:
+  /// 1. Server-loaded translations for current language
+  /// 2. Fallback translations (for offline/first-launch scenarios)
+  /// 3. Returns null if key not found anywhere
+  String? tr(String key) {
+    // First try server translations
+    final serverTranslation = state.language.translations?[key];
+    if (serverTranslation != null) return serverTranslation;
+    
+    // Fall back to built-in translations for critical messages
+    return _fallbackTranslations[key];
+  }
 }

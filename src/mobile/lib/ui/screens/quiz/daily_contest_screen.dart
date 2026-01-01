@@ -164,7 +164,9 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
         readText: _hasReadText,
       );
       
-      log('Contest submitted on early exit', name: 'DailyContest');
+      // Cancel reminders on early exit too
+      await LocalReminderService.instance.cancelContestReminders();
+      log('Contest submitted on early exit - reminders cancelled', name: 'DailyContest');
     } catch (e) {
       // Even if submission fails, exit the screen
       log('Error submitting partial results: $e', name: 'DailyContest');
@@ -520,6 +522,10 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
         answers: answers,
         readText: _hasReadText,
       );
+
+      // Cancel local reminders since contest is completed
+      await LocalReminderService.instance.cancelContestReminders();
+      log('Contest completed - local reminders cancelled', name: 'DailyContest');
 
       setState(() {
         _quizCompleted = true;

@@ -13,7 +13,7 @@ class RhapsodyYear {
   factory RhapsodyYear.fromJson(Map<String, dynamic> json) {
     return RhapsodyYear(
       id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
+      name: (json['name'] as String?) ?? '',
       year: int.tryParse(json['year']?.toString() ?? '0') ?? 0,
     );
   }
@@ -42,10 +42,10 @@ class RhapsodyMonth {
   factory RhapsodyMonth.fromJson(Map<String, dynamic> json) {
     return RhapsodyMonth(
       id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
+      name: (json['name'] as String?) ?? '',
       month: int.tryParse(json['month']?.toString() ?? '0') ?? 0,
       year: int.tryParse(json['year']?.toString() ?? '0') ?? 0,
-      image: json['image'],
+      image: json['image'] as String?,
       daysCount: int.tryParse(json['days_count']?.toString() ?? '0') ?? 0,
       questionsCount: int.tryParse(json['questions_count']?.toString() ?? '0') ?? 0,
     );
@@ -75,8 +75,8 @@ class RhapsodyDay {
   factory RhapsodyDay.fromJson(Map<String, dynamic> json) {
     return RhapsodyDay(
       id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      title: json['title'] ?? '',
+      name: (json['name'] as String?) ?? '',
+      title: (json['title'] as String?) ?? '',
       day: int.tryParse(json['day']?.toString() ?? '0') ?? 0,
       month: int.tryParse(json['month']?.toString() ?? '0') ?? 0,
       year: int.tryParse(json['year']?.toString() ?? '0') ?? 0,
@@ -118,13 +118,13 @@ class RhapsodyDayDetail {
   factory RhapsodyDayDetail.fromJson(Map<String, dynamic> json) {
     return RhapsodyDayDetail(
       id: json['id']?.toString() ?? '',
-      name: json['name'] ?? '',
-      title: json['title'] ?? '',
-      dailyText: json['daily_text'] ?? '',
-      scriptureRef: json['scripture_ref'] ?? '',
-      contentText: json['content_text'] ?? '',
-      prayerText: json['prayer_text'] ?? '',
-      furtherStudy: json['further_study'] ?? '',
+      name: (json['name'] as String?) ?? '',
+      title: (json['title'] as String?) ?? '',
+      dailyText: (json['daily_text'] as String?) ?? '',
+      scriptureRef: (json['scripture_ref'] as String?) ?? '',
+      contentText: (json['content_text'] as String?) ?? '',
+      prayerText: (json['prayer_text'] as String?) ?? '',
+      furtherStudy: (json['further_study'] as String?) ?? '',
       day: int.tryParse(json['day']?.toString() ?? '0') ?? 0,
       month: int.tryParse(json['month']?.toString() ?? '0') ?? 0,
       year: int.tryParse(json['year']?.toString() ?? '0') ?? 0,

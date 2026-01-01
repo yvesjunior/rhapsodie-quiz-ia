@@ -605,7 +605,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
               // Content
               SafeArea(
                 child: Column(
-                  children: [
+                          children: [
                     _buildHeader(),
                     Expanded(
                       child: _buildContent(),
@@ -804,7 +804,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 fontSize: 16,
                 color: context.primaryTextColor.withValues(alpha: 0.6),
               ),
-              children: [
+                      children: [
                 TextSpan(
                   text: '${winPercentage.toStringAsFixed(0)}%',
                   style: TextStyle(
@@ -892,16 +892,16 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
     required String value,
     required String label,
   }) {
-    return Column(
-      children: [
+              return Column(
+                children: [
         Row(
           children: [
             Icon(icon, color: iconColor, size: 20),
             const SizedBox(width: 4),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 18,
+                          style: TextStyle(
+                            fontSize: 18,
                 fontWeight: FontWeights.bold,
                 color: context.primaryTextColor,
               ),
@@ -933,8 +933,8 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        children: [
+                          child: Column(
+                            children: [
           // Tab bar
                     Padding(
             padding: const EdgeInsets.all(8),
@@ -956,8 +956,8 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                         ),
                         child: Text(
                         tabs[index],
-                        textAlign: TextAlign.center,
-                          style: TextStyle(
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
                           fontSize: 14,
                           fontWeight: isSelected ? FontWeights.bold : FontWeights.regular,
                           color: isSelected 
@@ -1019,34 +1019,34 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                                 children: [
                 SizedBox(
                   width: 40,
-                  child: Text(
+                                child: Text(
                     context.trWithFallback('rankLbl', 'Rank'),
-                    style: TextStyle(
+                                  style: TextStyle(
                       fontSize: 12,
                       color: context.primaryTextColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ),
+                                  ),
+                                ),
+                              ),
                 Expanded(
                   child: Text(
                     '${standings.length} ${context.trWithFallback('playersLbl', 'Players')}',
-                    style: TextStyle(
-                      fontSize: 12,
+                                  style: TextStyle(
+                                    fontSize: 12,
                       color: context.primaryTextColor.withValues(alpha: 0.5),
-                    ),
-                  ),
+                                  ),
+                                ),
                 ),
                               Text(
                   '${context.trWithFallback('correctLbl', 'Correct')}(%)',
                                 style: TextStyle(
-                    fontSize: 12,
+                                  fontSize: 12,
                     color: context.primaryTextColor.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
           // Standings list
           ...standings.take(5).map((player) => _buildStandingItem(player)),
           
@@ -1111,7 +1111,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
             ),
             child: Stack(
               clipBehavior: Clip.none,
-              children: [
+                            children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: profile.isNotEmpty
@@ -1128,9 +1128,9 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                       color: rankColors[1],
                       size: 20,
                                   ),
-                                ),
-                              ],
-            ),
+                                  ),
+                                ],
+                              ),
           ),
           const SizedBox(width: 12),
           
@@ -1142,7 +1142,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                               Text(
                   name,
                                 style: TextStyle(
-                    fontSize: 16,
+                                  fontSize: 16,
                     fontWeight: FontWeights.semiBold,
                                   color: context.primaryTextColor,
                                 ),
@@ -1154,41 +1154,41 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                     children: [
                       Text(
                         context.trWithFallback('wonLbl', 'Won'),
-                        style: TextStyle(
+                                  style: TextStyle(
                           fontSize: 12,
                           color: const Color(0xFF4CD964),
-                        ),
-                      ),
+                                  ),
+                                ),
                         const SizedBox(width: 4),
                       const Icon(
                         Icons.monetization_on,
                         color: Color(0xFFFFC107),
                         size: 14,
-                      ),
-                      Text(
+                              ),
+                                Text(
                         ' $coins',
                         style: const TextStyle(
-                          fontSize: 12,
+                                    fontSize: 12,
                           color: Color(0xFFFFC107),
-                        ),
-                      ),
-                    ],
+                                  ),
+                                ),
+                              ],
                                   ),
                                 ],
                               ),
           ),
-          
+
           // Percentage
                               Text(
             '$percentage%',
                                 style: TextStyle(
                                   fontSize: 16,
-              fontWeight: FontWeights.bold,
+                                  fontWeight: FontWeights.bold,
                                   color: context.primaryTextColor,
                                 ),
                               ),
-        ],
-      ),
+                            ],
+                          ),
     );
   }
 
@@ -1225,14 +1225,14 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
+            ),
+          );
+        }
 
   Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+          decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
