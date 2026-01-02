@@ -314,22 +314,30 @@ class Api extends REST_Controller
                         $fix_question = is_settings('battle_mode_random_fix_question');
                         $limit = is_settings('battle_mode_random_total_question');
                     }
-                    /* if match does not exist read and store the questions */
-                    $this->db->select('tbl_question.*,c.id as cat_id, sc.id as subcat_id'); // Select all columns from tbl_question
+                    
+                    // Handle special topic types: rhapsody and foundation
+                    if ($category === 'rhapsody') {
+                        $res = $this->_get_rhapsody_questions_for_battle($limit ?: 10, $language_id);
+                    } else if ($category === 'foundation') {
+                        $res = $this->_get_foundation_questions_for_battle($limit ?: 10, $language_id);
+                    } else {
+                        /* if match does not exist read and store the questions */
+                        $this->db->select('tbl_question.*,c.id as cat_id, sc.id as subcat_id'); // Select all columns from tbl_question
 
-                    if (!empty($language_id)) {
-                        $this->db->where('tbl_question.language_id', $language_id);
+                        if (!empty($language_id)) {
+                            $this->db->where('tbl_question.language_id', $language_id);
+                        }
+                        if (!empty($category)) {
+                            $this->db->where('tbl_question.category', $category);
+                        }
+                        $this->db->join('tbl_category c', 'tbl_question.category = c.id')->where('c.is_premium = 0');
+                        $this->db->join('tbl_subcategory sc', 'tbl_question.subcategory = sc.id', 'left');
+                        $this->db->order_by('rand()');
+                        if ($fix_question == 1) {
+                            $this->db->limit($limit, 0);
+                        }
+                        $res = $this->db->get('tbl_question')->result_array();
                     }
-                    if (!empty($category)) {
-                        $this->db->where('tbl_question.category', $category);
-                    }
-                    $this->db->join('tbl_category c', 'tbl_question.category = c.id')->where('c.is_premium = 0');
-                    $this->db->join('tbl_subcategory sc', 'tbl_question.subcategory = sc.id', 'left');
-                    $this->db->order_by('rand()');
-                    if ($fix_question == 1) {
-                        $this->db->limit($limit, 0);
-                    }
-                    $res = $this->db->get('tbl_question')->result_array();
 
                     if (empty($res)) {
                         $response['error'] = true;
@@ -448,14 +456,29 @@ class Api extends REST_Controller
 
             $res1 = $this->db->where('room_id', $room_id)->get('tbl_rooms')->row_array();
             if (empty($res1)) {
-                if (!empty($language_id)) {
-                    $this->db->where('language_id', $language_id);
+                // Handle special topic types: rhapsody and foundation
+                log_message('debug', "create_room: category=$category, language_id=$language_id, no_of_que=$no_of_que");
+                if ($category === 'rhapsody') {
+                    // Get random questions from Rhapsody content
+                    log_message('debug', "create_room: Fetching rhapsody questions");
+                    $res = $this->_get_rhapsody_questions_for_battle($no_of_que, $language_id);
+                    log_message('debug', "create_room: Got " . count($res) . " rhapsody questions");
+                } else if ($category === 'foundation') {
+                    // Get random questions from Foundation content
+                    log_message('debug', "create_room: Fetching foundation questions");
+                    $res = $this->_get_foundation_questions_for_battle($no_of_que, $language_id);
+                    log_message('debug', "create_room: Got " . count($res) . " foundation questions");
+                } else {
+                    // Standard category-based questions
+                    if (!empty($language_id)) {
+                        $this->db->where('language_id', $language_id);
+                    }
+                    if (!empty($category)) {
+                        $this->db->where('category', $category);
+                    }
+                    $this->db->order_by($this->Order_By)->limit($no_of_que);
+                    $res = $this->db->get('tbl_question')->result_array();
                 }
-                if (!empty($category)) {
-                    $this->db->where('category', $category);
-                }
-                $this->db->order_by($this->Order_By)->limit($no_of_que);
-                $res = $this->db->get('tbl_question')->result_array();
 
                 if (empty($res)) {
                     $response['error'] = true;
@@ -464,12 +487,24 @@ class Api extends REST_Controller
                     $total_questions = count($res);
                     $questions = json_encode($res);
 
+                    // Convert topic name to topic ID for storage
+                    $category_id = 0;
+                    if ($category === 'rhapsody' || $category === 'foundation') {
+                        $topic_row = $this->db->where('slug', $category === 'rhapsody' ? 'rhapsody' : 'foundation_school')
+                            ->get('tbl_topic')->row_array();
+                        if (!empty($topic_row)) {
+                            $category_id = $topic_row['id'];
+                        }
+                    } else if (is_numeric($category)) {
+                        $category_id = (int)$category;
+                    }
+                    
                     $frm_data = array(
                         'room_id' => $room_id,
                         'entry_coin' => $entry_coin,
                         'user_id' => $user_id,
                         'room_type' => $room_type,
-                        'category_id' => $category,
+                        'category_id' => $category_id,
                         'no_of_que' => $total_questions ?? $no_of_que,
                         'questions' => $questions,
                         'set_user1' => 0,
@@ -760,7 +795,27 @@ class Api extends REST_Controller
                             // Not a valid URL. Its a image only or empty
                             $res['profile'] = ($res['profile']) ? base_url() . USER_IMG_PATH . $res['profile'] : '';
                         }
-                        $my_rank_sql = "SELECT m.total_score AS score, ( SELECT COUNT(*) + 1 FROM ( SELECT user_id, SUM(score) AS total_score FROM tbl_leaderboard_monthly GROUP BY user_id ) AS sub WHERE sub.total_score > m.total_score ) AS user_rank FROM ( SELECT user_id, SUM(score) AS total_score FROM tbl_leaderboard_monthly GROUP BY user_id ) AS m WHERE m.user_id=?";
+                        // Calculate all-time score and rank from tbl_contest_leaderboard (consistent with leaderboard screen)
+                        // Using dense ranking: tied users share the same rank, next distinct score gets next rank
+                        $my_rank_sql = "
+                            SELECT 
+                                COALESCE(m.total_score, 0) AS score,
+                                COALESCE((
+                                    SELECT COUNT(DISTINCT sub.total_score) + 1 
+                                    FROM (
+                                        SELECT user_id, SUM(score) AS total_score 
+                                        FROM tbl_contest_leaderboard 
+                                        GROUP BY user_id
+                                    ) AS sub 
+                                    WHERE sub.total_score > COALESCE(m.total_score, 0)
+                                ), 1) AS user_rank 
+                            FROM (
+                                SELECT user_id, SUM(score) AS total_score 
+                                FROM tbl_contest_leaderboard 
+                                GROUP BY user_id
+                            ) AS m 
+                            WHERE m.user_id = ?
+                        ";
                         $my_rank = $this->db->query($my_rank_sql, [$res['id']])->row_array();
                         $res['all_time_score'] = ($my_rank) ? $my_rank['score'] : '0';
                         $res['all_time_rank'] = ($my_rank) ? $my_rank['user_rank'] : '0';
@@ -1525,14 +1580,13 @@ class Api extends REST_Controller
                 ORDER BY score DESC, u.name ASC
             ";
 
-            // Tied ranking query
+            // Dense ranking: tied users share same rank, next distinct score gets next consecutive rank
             $ranked_sql = "
                 SELECT r.*,
-                       @rank := IF(@prev_score = r.score, @rank, @row_num) as user_rank,
-                       @row_num := @row_num + 1,
+                       @rank := IF(@prev_score = r.score, @rank, @rank + 1) as user_rank,
                        @prev_score := r.score
                 FROM ($base_sql) r,
-                     (SELECT @rank := 0, @row_num := 1, @prev_score := NULL) init
+                     (SELECT @rank := 0, @prev_score := NULL) init
             ";
 
             // Get total active users
@@ -1635,14 +1689,13 @@ class Api extends REST_Controller
                 ORDER BY score DESC, u.name ASC
             ";
 
-            // Tied ranking query
+            // Dense ranking: tied users share same rank, next distinct score gets next consecutive rank
             $ranked_sql = "
                 SELECT r.*,
-                       @rank := IF(@prev_score = r.score, @rank, @row_num) as user_rank,
-                       @row_num := @row_num + 1,
+                       @rank := IF(@prev_score = r.score, @rank, @rank + 1) as user_rank,
                        @prev_score := r.score
                 FROM ($base_sql) r,
-                     (SELECT @rank := 0, @row_num := 1, @prev_score := NULL) init
+                     (SELECT @rank := 0, @prev_score := NULL) init
             ";
 
             // Get total active users
@@ -1743,14 +1796,14 @@ class Api extends REST_Controller
                 ORDER BY score DESC, u.name ASC
             ";
 
-            // Tied ranking query
+            // Dense ranking query: tied users share same rank, next distinct score gets next consecutive rank
+            // Example: 1st, 1st, 2nd, 2nd, 3rd (not 1st, 1st, 3rd, 3rd, 5th)
             $ranked_sql = "
                 SELECT r.*,
-                       @rank := IF(@prev_score = r.score, @rank, @row_num) as user_rank,
-                       @row_num := @row_num + 1,
+                       @rank := IF(@prev_score = r.score, @rank, @rank + 1) as user_rank,
                        @prev_score := r.score
                 FROM ($base_sql) r,
-                     (SELECT @rank := 0, @row_num := 1, @prev_score := NULL) init
+                     (SELECT @rank := 0, @prev_score := NULL) init
             ";
 
             // Get total active users
@@ -2706,34 +2759,103 @@ class Api extends REST_Controller
     }
 
     /**
-     * Helper: Update daily leaderboard with points
+     * Get random questions from Rhapsody topic for battle mode
+     * @param int $limit Number of questions to fetch
+     * @param int $language_id Optional language filter
+     * @return array Questions
+     */
+    private function _get_rhapsody_questions_for_battle($limit, $language_id = 0)
+    {
+        // Get Rhapsody topic ID
+        $topic = $this->db->where('slug', 'rhapsody')->get('tbl_topic')->row_array();
+        if (empty($topic)) {
+            return [];
+        }
+
+        // Get all category IDs for this topic (type = day for actual content)
+        $categories = $this->db->select('id')
+            ->where('topic_id', $topic['id'])
+            ->where('category_type', 'day')
+            ->get('tbl_category')
+            ->result_array();
+        
+        if (empty($categories)) {
+            return [];
+        }
+
+        $category_ids = array_column($categories, 'id');
+
+        // Get random questions from these categories
+        $this->db->where_in('category', $category_ids);
+        if (!empty($language_id)) {
+            $this->db->where('language_id', $language_id);
+        }
+        $this->db->order_by('RAND()')->limit($limit);
+        return $this->db->get('tbl_question')->result_array();
+    }
+
+    /**
+     * Get random questions from Foundation School topic for battle mode
+     * @param int $limit Number of questions to fetch
+     * @param int $language_id Optional language filter
+     * @return array Questions
+     */
+    private function _get_foundation_questions_for_battle($limit, $language_id = 0)
+    {
+        log_message('debug', "_get_foundation_questions_for_battle: limit=$limit, language_id=$language_id");
+        
+        // Get Foundation School topic ID
+        $topic = $this->db->where('slug', 'foundation_school')->get('tbl_topic')->row_array();
+        log_message('debug', "_get_foundation_questions_for_battle: topic=" . json_encode($topic));
+        
+        if (empty($topic)) {
+            log_message('error', "_get_foundation_questions_for_battle: No foundation_school topic found");
+            return [];
+        }
+
+        // Get all category IDs for this topic (modules)
+        $categories = $this->db->select('id')
+            ->where('topic_id', $topic['id'])
+            ->get('tbl_category')
+            ->result_array();
+        
+        log_message('debug', "_get_foundation_questions_for_battle: categories count=" . count($categories));
+        
+        if (empty($categories)) {
+            log_message('error', "_get_foundation_questions_for_battle: No categories found for topic_id=" . $topic['id']);
+            return [];
+        }
+
+        $category_ids = array_column($categories, 'id');
+        log_message('debug', "_get_foundation_questions_for_battle: category_ids=" . json_encode($category_ids));
+
+        // Get random questions from these categories
+        // Foundation questions may have language_id = 0, so also include those
+        $this->db->where_in('category', $category_ids);
+        if (!empty($language_id)) {
+            // Include questions with the specified language OR language_id = 0 (universal)
+            $this->db->group_start();
+            $this->db->where('language_id', $language_id);
+            $this->db->or_where('language_id', 0);
+            $this->db->group_end();
+        }
+        $this->db->order_by('RAND()')->limit($limit);
+        $result = $this->db->get('tbl_question')->result_array();
+        
+        log_message('debug', "_get_foundation_questions_for_battle: found " . count($result) . " questions");
+        
+        return $result;
+    }
+
+    /**
+     * @deprecated No longer used. Leaderboard now uses tbl_contest_leaderboard exclusively.
+     * Kept for backward compatibility - does nothing.
      */
     private function set_daily_leaderboard($user_id, $score)
     {
-        $today = date('Y-m-d');
-        
-        // Check if entry exists for today
-        $existing = $this->db->where('user_id', $user_id)
-            ->where('DATE(date_created)', $today)
-            ->get('tbl_leaderboard_daily')
-            ->row_array();
-
-        if ($existing) {
-            // Update existing score
-            $new_score = $existing['score'] + $score;
-            $this->db->where('id', $existing['id'])
-                ->update('tbl_leaderboard_daily', ['score' => $new_score]);
-        } else {
-            // Insert new entry
-            $this->db->insert('tbl_leaderboard_daily', [
-                'user_id' => $user_id,
-                'score' => $score,
-                'date_created' => date('Y-m-d H:i:s')
-            ]);
-        }
-
-        // Also update monthly leaderboard
-        $this->set_monthly_leaderboard($user_id, $score);
+        // DEPRECATED: Leaderboard now uses tbl_contest_leaderboard exclusively
+        // This function is kept for backward compatibility but does nothing
+        return;
     }
 
     /**
@@ -7019,60 +7141,15 @@ class Api extends REST_Controller
         }
     }
 
+    /**
+     * @deprecated No longer used. Leaderboard now uses tbl_contest_leaderboard exclusively.
+     * Kept for backward compatibility - does nothing.
+     */
     public function set_monthly_leaderboard($user_id, $score)
     {
-        $month = date('m', strtotime($this->toDate));
-        $year = date('Y', strtotime($this->toDate));
-
-        // set data in mothly leaderboard
-        $data_m = $this->db->where('user_id', $user_id)->where('MONTH(date_created)', $month)->where('YEAR(date_created)', $year)->get('tbl_leaderboard_monthly')->row_array();
-        if (!empty($data_m)) {
-            $old1 = $data_m['score'];
-            $new1 = $old1 + $score;
-
-            $data['score'] =  $new1;
-            $data['last_updated'] = $this->toDateTime;
-
-            $this->db->where('id', $data_m['id'])->where('user_id', $user_id)->update('tbl_leaderboard_monthly', $data);
-        } else {
-            $score1 = $score;
-            $data = array(
-                'user_id' => $user_id,
-                'score' => $score1,
-                'last_updated' => $this->toDateTime,
-                'date_created' => $this->toDateTime,
-            );
-            $this->db->insert('tbl_leaderboard_monthly', $data);
-        }
-
-        // set data in daily leaderboard
-        $data_d = $this->db->where('user_id', $user_id)->get('tbl_leaderboard_daily')->row_array();
-        if (!empty($data_d)) {
-            $data_d1 = $this->db->where('user_id', $user_id)->where('DATE(date_created)', $this->toDate)->get('tbl_leaderboard_daily')->row_array();
-            if (!empty($data_d1)) {
-                $old = $data_d1['score'];
-                $new = $old + $score;
-
-                $data1['score'] = $new;
-
-                $this->db->where('id', $data_d1['id'])->where('user_id', $user_id)->update('tbl_leaderboard_daily', $data1);
-            } else {
-                $score1 = $score;
-                $data2 = array(
-                    'score' => $score1,
-                    'date_created' => $this->toDateTime,
-                );
-                $this->db->where('id', $data_d['id'])->where('user_id', $user_id)->update('tbl_leaderboard_daily', $data2);
-            }
-        } else {
-            $score1 = $score;
-            $data = array(
-                'user_id' => $user_id,
-                'score' => $score1,
-                'date_created' => $this->toDateTime,
-            );
-            $this->db->insert('tbl_leaderboard_daily', $data);
-        }
+        // DEPRECATED: Leaderboard now uses tbl_contest_leaderboard exclusively
+        // This function is kept for backward compatibility but does nothing
+        return;
     }
 
     public function random_string($length)
@@ -8967,24 +9044,40 @@ class Api extends REST_Controller
             $correct_answers = 0;
             $total_questions = count($answers);
             $detailed_results = [];
+            
+            log_message('debug', "Solo Quiz: Processing $total_questions answers for topic: $topic_slug");
 
             foreach ($answers as $answer) {
                 $question_id = $answer['question_id'];
-                $selected = $answer['selected_answer'];
+                $selected_letter = strtolower(trim($answer['selected_answer'] ?? ''));
+                $selected_option_text = trim($answer['selected_option_text'] ?? '');
 
-                // Get correct answer from database
+                // Get question from database
                 $question = $this->db->where('id', $question_id)->get('tbl_question')->row_array();
                 
                 if ($question) {
-                    $is_correct = (strtolower($selected) == strtolower($question['answer']));
+                    // The original correct answer letter (before any shuffle)
+                    $correct_letter = strtolower(trim($question['answer']));
+                    
+                    // Get the correct answer option text
+                    $correct_option_key = 'option' . $correct_letter;
+                    $correct_option_text = trim($question[$correct_option_key] ?? '');
+                    
+                    // Compare by option TEXT (handles shuffled options)
+                    // The client sends the actual text of the selected option
+                    $is_correct = !empty($selected_option_text) && 
+                                  ($selected_option_text === $correct_option_text);
+                    
+                    log_message('debug', "Q$question_id: selected='$selected_option_text' correct='$correct_option_text' is_correct=" . ($is_correct ? 'true' : 'false'));
+                    
                     if ($is_correct) {
                         $correct_answers++;
                     }
 
                     $detailed_results[] = [
                         'question_id' => $question_id,
-                        'selected_answer' => $selected,
-                        'correct_answer' => $question['answer'],
+                        'selected_answer' => $selected_letter,
+                        'correct_answer' => $correct_letter,
                         'is_correct' => $is_correct,
                         'question' => $question['question'],
                         'note' => $question['note'] ?? '' // Explanation
@@ -8996,9 +9089,9 @@ class Api extends REST_Controller
             $percentage = ($total_questions > 0) ? round(($correct_answers / $total_questions) * 100) : 0;
 
             // Determine coin reward
-            // Rule: +1 coin if 100% correct AND question_count > 5
+            // Rule: +1 coin if 100% correct AND question_count >= 5
             $earned_coin = 0;
-            if ($percentage == 100 && $question_count > 5) {
+            if ($percentage == 100 && $question_count >= 5) {
                 $earned_coin = 1;
                 $this->set_coins($user_id, $earned_coin);
                 
@@ -9018,7 +9111,7 @@ class Api extends REST_Controller
             $response['wrong_answers'] = $total_questions - $correct_answers;
             $response['percentage'] = $percentage;
             $response['earned_coin'] = $earned_coin;
-            $response['coin_eligible'] = ($question_count > 5); // Tells if coin was possible
+            $response['coin_eligible'] = ($question_count >= 5); // Tells if coin was possible
             $response['time_taken'] = $time_taken;
             $response['topic'] = [
                 'id' => $topic['id'],
@@ -9028,8 +9121,8 @@ class Api extends REST_Controller
             $response['detailed_results'] = $detailed_results;
             $response['message'] = ($earned_coin > 0) 
                 ? 'Perfect score! +1 coin earned' 
-                : ($percentage == 100 && $question_count <= 5 
-                    ? 'Perfect score! (No coin for 5 questions or less)' 
+                : ($percentage == 100 && $question_count < 5 
+                    ? 'Perfect score! (No coin for less than 5 questions)' 
                     : 'Quiz completed');
 
         } catch (Exception $e) {

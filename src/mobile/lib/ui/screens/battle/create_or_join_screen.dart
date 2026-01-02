@@ -16,6 +16,7 @@ import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/features/system_config/model/room_code_char_type.dart';
 import 'package:flutterquiz/ui/screens/battle/widgets/battle_invite_card.dart';
+import 'package:flutterquiz/ui/screens/battle/widgets/group_battle_create_sheet.dart';
 import 'package:flutterquiz/ui/screens/battle/widgets/top_curve_clipper.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
@@ -213,6 +214,12 @@ class _CreateOrJoinRoomScreenState extends State<CreateOrJoinRoomScreen> {
       const BattleRoomInitial(),
       cancelSubscription: true,
     );
+
+    // Use enhanced sheet for Group Battle with topic/category selection
+    if (widget.quizType == QuizTypes.groupPlay) {
+      _showEnhancedGroupBattleSheet();
+      return;
+    }
 
     showModalBottomSheet<void>(
       isScrollControlled: true,
@@ -1567,6 +1574,57 @@ class _CreateOrJoinRoomScreenState extends State<CreateOrJoinRoomScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Enhanced Group Battle sheet with multi-step topic/category selection
+  void _showEnhancedGroupBattleSheet() {
+    // Reset Battle State to Initial
+    context.read<MultiUserBattleRoomCubit>().reset();
+    
+    showModalBottomSheet<void>(
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: UiUtils.bottomSheetTopRadius,
+      ),
+      context: context,
+      builder: (_) {
+        // Pass the existing cubits to the sheet
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<MultiUserBattleRoomCubit>()),
+            BlocProvider.value(value: context.read<SystemConfigCubit>()),
+            BlocProvider.value(value: context.read<UserDetailsCubit>()),
+          ],
+          child: GroupBattleCreateSheet(
+            onCreateRoom: ({
+              required String categoryId,
+              required String categoryName,
+              required String categoryImage,
+              required int entryFee,
+              required RoomCodeCharType charType,
+            }) {
+              final userDetails = context.read<UserDetailsCubit>();
+              
+              final profile = userDetails.getUserProfile();
+              context.read<MultiUserBattleRoomCubit>().createRoom(
+                categoryId: categoryId,
+                categoryName: categoryName,
+                categoryImage: categoryImage,
+                charType: charType,
+                name: userDetails.getUserName(),
+                profileUrl: profile.profileUrl ?? '',
+                uid: userDetails.userId(),
+                roomType: 'public',
+                entryFee: entryFee,
+                questionLanguageId: UiUtils.getCurrentQuizLanguageId(context),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

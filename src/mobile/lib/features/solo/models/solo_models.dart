@@ -69,7 +69,9 @@ class SoloQuestion {
   final String optionB;
   final String optionC;
   final String optionD;
-  final SoloCorrectAnswer correctAnswer;
+  final String cipherText; // Encrypted correct answer
+  final String iv; // Initialization vector for decryption
+  final String? plainAnswer; // Plain text answer (for non-encrypted fallback)
   final String? note; // Explanation
   final String? image;
 
@@ -80,21 +82,27 @@ class SoloQuestion {
     required this.optionB,
     required this.optionC,
     required this.optionD,
-    required this.correctAnswer,
+    required this.cipherText,
+    required this.iv,
+    this.plainAnswer,
     this.note,
     this.image,
   });
 
   factory SoloQuestion.fromJson(Map<String, dynamic> json) {
     // Handle encrypted answer (Map with ciphertext/iv) or plain string
-    SoloCorrectAnswer answer;
+    String cipherText = '';
+    String iv = '';
+    String? plainAnswer;
+    
     final rawAnswer = json['answer'];
     if (rawAnswer is Map) {
       // Encrypted answer with ciphertext and iv
-      answer = SoloCorrectAnswer.fromJson(Map<String, dynamic>.from(rawAnswer));
+      cipherText = rawAnswer['ciphertext']?.toString() ?? '';
+      iv = rawAnswer['iv']?.toString() ?? '';
     } else {
-      // Plain string answer (fallback)
-      answer = SoloCorrectAnswer(cipherText: '', iv: '', plainAnswer: rawAnswer?.toString() ?? '');
+      // Plain string answer (fallback - for older API or testing)
+      plainAnswer = rawAnswer?.toString();
     }
     
     return SoloQuestion(
@@ -104,44 +112,31 @@ class SoloQuestion {
       optionB: json['optionb']?.toString() ?? '',
       optionC: json['optionc']?.toString() ?? '',
       optionD: json['optiond']?.toString() ?? '',
-      correctAnswer: answer,
+      cipherText: cipherText,
+      iv: iv,
+      plainAnswer: plainAnswer,
       note: json['note']?.toString(),
       image: json['image']?.toString(),
     );
   }
 
   List<String> get options => [optionA, optionB, optionC, optionD];
-}
-
-/// Encrypted correct answer for Solo Mode
-class SoloCorrectAnswer {
-  final String cipherText;
-  final String iv;
-  final String? plainAnswer; // For fallback if not encrypted
-
-  const SoloCorrectAnswer({
-    required this.cipherText,
-    required this.iv,
-    this.plainAnswer,
-  });
-
-  factory SoloCorrectAnswer.fromJson(Map<String, dynamic> json) {
-    return SoloCorrectAnswer(
-      cipherText: json['ciphertext']?.toString() ?? '',
-      iv: json['iv']?.toString() ?? '',
-    );
-  }
+  
+  /// Check if answer is encrypted
+  bool get isEncrypted => cipherText.isNotEmpty && iv.isNotEmpty;
 }
 
 /// User's answer for a question
 class SoloAnswer {
   final String questionId;
-  final String selectedAnswer;
+  final String selectedAnswer; // Letter: 'a', 'b', 'c', 'd'
+  final String selectedOptionText; // The actual option text
   final bool? isCorrect;
 
   SoloAnswer({
     required this.questionId,
     required this.selectedAnswer,
+    required this.selectedOptionText,
     this.isCorrect,
   });
 
@@ -149,6 +144,7 @@ class SoloAnswer {
     return {
       'question_id': questionId,
       'selected_answer': selectedAnswer,
+      'selected_option_text': selectedOptionText, // Send text for accurate comparison
     };
   }
 }
@@ -182,27 +178,46 @@ class SoloQuizResult {
   });
 
   factory SoloQuizResult.fromJson(Map<String, dynamic> json) {
-    final topicJson = json['topic'] as Map<String, dynamic>? ?? {};
-    final resultsJson = json['detailed_results'] as List<dynamic>? ?? [];
+    // Handle nested 'data' field if present (some APIs wrap response in data)
+    final data = json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json;
+    
+    final topicJson = data['topic'] as Map<String, dynamic>? ?? {};
+    
+    // Handle detailed_results as both List and Map (PHP associative array)
+    final resultsRaw = data['detailed_results'];
+    List<dynamic> resultsJson;
+    if (resultsRaw is List) {
+      resultsJson = resultsRaw;
+    } else if (resultsRaw is Map) {
+      resultsJson = resultsRaw.values.toList();
+    } else {
+      resultsJson = [];
+    }
+    
+    // Handle coin_eligible as boolean, int, or string
+    final coinEligibleRaw = data['coin_eligible'];
+    final coinEligible = coinEligibleRaw == true || 
+                         coinEligibleRaw == 1 || 
+                         coinEligibleRaw == '1';
 
     return SoloQuizResult(
-      score: int.tryParse(json['score']?.toString() ?? '0') ?? 0,
-      totalQuestions: int.tryParse(json['total_questions']?.toString() ?? '0') ?? 0,
-      correctAnswers: int.tryParse(json['correct_answers']?.toString() ?? '0') ?? 0,
-      wrongAnswers: int.tryParse(json['wrong_answers']?.toString() ?? '0') ?? 0,
-      percentage: int.tryParse(json['percentage']?.toString() ?? '0') ?? 0,
-      earnedCoin: int.tryParse(json['earned_coin']?.toString() ?? '0') ?? 0,
-      coinEligible: json['coin_eligible'] == true,
-      timeTaken: int.tryParse(json['time_taken']?.toString() ?? '0') ?? 0,
+      score: int.tryParse(data['score']?.toString() ?? '0') ?? 0,
+      totalQuestions: int.tryParse(data['total_questions']?.toString() ?? '0') ?? 0,
+      correctAnswers: int.tryParse(data['correct_answers']?.toString() ?? '0') ?? 0,
+      wrongAnswers: int.tryParse(data['wrong_answers']?.toString() ?? '0') ?? 0,
+      percentage: int.tryParse(data['percentage']?.toString() ?? '0') ?? 0,
+      earnedCoin: int.tryParse(data['earned_coin']?.toString() ?? '0') ?? 0,
+      coinEligible: coinEligible,
+      timeTaken: int.tryParse(data['time_taken']?.toString() ?? '0') ?? 0,
       topic: SoloTopic(
         id: topicJson['id']?.toString() ?? '',
-        slug: topicJson['slug'] as String? ?? '',
-        name: topicJson['name'] as String? ?? '',
+        slug: topicJson['slug']?.toString() ?? '',
+        name: topicJson['name']?.toString() ?? '',
       ),
       detailedResults: resultsJson
           .map((r) => SoloDetailedResult.fromJson(r as Map<String, dynamic>))
           .toList(),
-      message: json['message'] as String? ?? '',
+      message: data['message']?.toString() ?? '',
     );
   }
 
@@ -228,13 +243,20 @@ class SoloDetailedResult {
   });
 
   factory SoloDetailedResult.fromJson(Map<String, dynamic> json) {
+    // Handle both boolean true and PHP's 1/0 or "1"/"0" for is_correct
+    final isCorrectRaw = json['is_correct'];
+    final isCorrect = isCorrectRaw == true || 
+                      isCorrectRaw == 1 || 
+                      isCorrectRaw == '1' ||
+                      isCorrectRaw == 'true';
+    
     return SoloDetailedResult(
       questionId: json['question_id']?.toString() ?? '',
-      selectedAnswer: json['selected_answer'] as String? ?? '',
-      correctAnswer: json['correct_answer'] as String? ?? '',
-      isCorrect: json['is_correct'] == true,
-      question: json['question'] as String? ?? '',
-      note: json['note'] as String?,
+      selectedAnswer: json['selected_answer']?.toString() ?? '',
+      correctAnswer: json['correct_answer']?.toString() ?? '',
+      isCorrect: isCorrect,
+      question: json['question']?.toString() ?? '',
+      note: json['note']?.toString(),
     );
   }
 }

@@ -14,6 +14,7 @@ import 'package:flutterquiz/utils/extensions.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutterquiz/core/constants/assets_constants.dart';
+import 'package:flutterquiz/ui/widgets/shared/shared_quiz_question.dart';
 
 /// Daily Contest Screen
 /// Shows: Rhapsody text (5 points) + 5 questions (5 points) = 10 points max
@@ -60,6 +61,9 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
   
   // For audience poll - track poll results per question
   Map<int, Map<String, int>>? _pollResults;
+
+  // Feedback state - show correct/wrong before moving to next
+  bool _showingFeedback = false;
 
   // Timer for each question (30 seconds per question)
   static const int _questionTimeSeconds = 30;
@@ -241,18 +245,26 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
   }
 
   void _onAnswerSelected(String answer) {
+    if (_showingFeedback) return; // Prevent double-tap
+    
+    _stopQuestionTimer(); // Stop timer when answer is selected
+    
     setState(() {
       _userAnswers[_currentQuestionIndex] = answer;
+      _showingFeedback = true;
     });
     
-    // Auto-advance after a short delay
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Show feedback for 1.5 seconds then advance
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
+        setState(() {
+          _showingFeedback = false;
+        });
+        
         if (_currentQuestionIndex < _questions.length - 1) {
           _onNextQuestion();
         } else {
           // Last question - auto submit
-          _stopQuestionTimer();
           _submitContest();
         }
       }
@@ -994,110 +1006,11 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
           ),
         ),
 
-        // Question
+        // Question with SharedQuizQuestion
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Question Text
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    question['question'] ?? '',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Options
-                ...options.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final option = entry.value.toString();
-                  final optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-                  final isSelected = selectedAnswer == option;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GestureDetector(
-                      onTap: () => _onAnswerSelected(option),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF1565C0).withOpacity(0.1)
-                              : Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF1565C0)
-                                : Colors.grey.shade300,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF1565C0)
-                                    : Colors.grey.shade200,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  optionLetter,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                option,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isSelected
-                                      ? const Color(0xFF1565C0)
-                                      : Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF1565C0),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+            child: _buildSharedQuestion(question, hiddenOpts, selectedAnswer),
           ),
         ),
 
@@ -1147,6 +1060,101 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
         ),
 
       ],
+    );
+  }
+
+  /// Build question using SharedQuizQuestion widget for consistent feedback
+  Widget _buildSharedQuestion(
+    Map<String, dynamic> question, 
+    List<String> hiddenOpts,
+    String? selectedAnswer,
+  ) {
+    // Get the correct answer letter and text
+    final answerLetter = question['answer']?.toString().toLowerCase() ?? '';
+    final correctAnswerText = _getOptionText(question, answerLetter);
+    
+    // Build option data list with IDs based on original option text
+    final optionKeys = ['a', 'b', 'c', 'd'];
+    final optionTexts = [
+      question['optiona'],
+      question['optionb'],
+      question['optionc'],
+      question['optiond'],
+    ];
+    
+    final options = <QuizOptionData>[];
+    String? correctOptionId;
+    
+    for (int i = 0; i < 4; i++) {
+      final text = optionTexts[i]?.toString() ?? '';
+      if (text.isNotEmpty) {
+        final optId = optionKeys[i];
+        options.add(QuizOptionData(id: optId, text: text));
+        
+        // Determine which option is correct by comparing text
+        if (text.toLowerCase().trim() == correctAnswerText.toLowerCase().trim()) {
+          correctOptionId = optId;
+        }
+      }
+    }
+    
+    // Find selected option ID based on the text stored in _userAnswers
+    String? selectedOptionId;
+    if (selectedAnswer != null) {
+      for (final opt in options) {
+        if (opt.text == selectedAnswer) {
+          selectedOptionId = opt.id;
+          break;
+        }
+      }
+    }
+    
+    // Convert hidden options (text) to IDs
+    final hiddenOptionIds = <String>[];
+    for (final hiddenText in hiddenOpts) {
+      for (final opt in options) {
+        if (opt.text == hiddenText) {
+          hiddenOptionIds.add(opt.id);
+          break;
+        }
+      }
+    }
+    
+    // Convert poll results from text keys to ID keys
+    Map<String, int>? pollById;
+    final pollByText = _pollResults?[_currentQuestionIndex];
+    if (pollByText != null) {
+      pollById = {};
+      for (final entry in pollByText.entries) {
+        for (final opt in options) {
+          if (opt.text == entry.key) {
+            pollById[opt.id] = entry.value;
+            break;
+          }
+        }
+      }
+    }
+    
+    final questionData = QuizQuestionData(
+      id: question['id']?.toString() ?? '0',
+      question: question['question'] ?? '',
+      options: options,
+      correctOptionId: correctOptionId ?? 'a',
+      note: question['note']?.toString(),
+    );
+    
+    return SharedQuizQuestion(
+      question: questionData,
+      selectedAnswerId: selectedOptionId,
+      hasSubmitted: _showingFeedback,
+      answerMode: QuizAnswerMode.showCorrectnessAndCorrect,
+      hiddenOptions: hiddenOptionIds,
+      pollPercentages: pollById,
+      onOptionSelected: (optionId) {
+        // Find the text for this option ID
+        final selectedText = options.firstWhere((o) => o.id == optionId).text;
+        _onAnswerSelected(selectedText);
+      },
     );
   }
 

@@ -710,24 +710,121 @@ class _BattleRoomQuizScreenState extends State<BattleRoomQuizScreen>
   }
 
   Widget _buildYouWonContainer(VoidCallback onPressed) {
-    final textStyle = GoogleFonts.nunito(
-      textStyle: TextStyle(color: Theme.of(context).primaryColor),
-    );
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Container(
       alignment: Alignment.center,
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+      color: Colors.black54,
       width: context.width,
       height: context.height,
-      child: AlertDialog(
-        shadowColor: Colors.transparent,
-        title: Text(context.tr('youWonLbl')!, style: textStyle),
-        content: Text(context.tr('opponentLeftLbl')!, style: textStyle),
-        actions: [
-          CupertinoButton(
-            onPressed: onPressed,
-            child: Text(context.tr('okayLbl')!, style: textStyle),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.elasticOut,
+        builder: (context, scale, child) => Transform.scale(
+          scale: scale,
+          child: child,
+        ),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.primary.withValues(alpha: 0.95),
+                colorScheme.primary.withValues(alpha: 0.85),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.4),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Trophy icon with glow
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade400,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withValues(alpha: 0.6),
+                      blurRadius: 20,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  size: 48,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Title
+              Text(
+                context.tr('youWonLbl') ?? 'You Won!',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Subtitle
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  context.tr('opponentLeftLbl') ?? 'Opponent left the game',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Okay button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    context.tr('okayLbl') ?? 'Okay',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

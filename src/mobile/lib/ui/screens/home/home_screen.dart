@@ -873,41 +873,13 @@ class HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-            // Notification Badge - shows when daily contest is pending (with jiggle animation)
+            // Notification Badge - shows when daily contest is pending (with jiggle + color animation)
             if (_hasPendingDailyContest)
-              Positioned(
+              const Positioned(
                 top: -8,
                 right: -8,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 500),
-                  builder: (context, value, child) {
-                    // Continuous jiggle using a repeating animation
-                    return _JigglingBadge(child: child!);
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.notifications_active,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                child: _JigglingBadge(
+                  child: _PulsingBadgeContent(),
                 ),
               ),
           ],
@@ -1817,7 +1789,7 @@ class HomeScreenState extends State<HomeScreen>
   bool get wantKeepAlive => true;
 }
 
-/// Bell badge widget with gentle swing animation
+/// Bell badge widget with energetic swing animation
 class _JigglingBadge extends StatefulWidget {
   const _JigglingBadge({required this.child});
   
@@ -1829,8 +1801,10 @@ class _JigglingBadge extends StatefulWidget {
 
 class _JigglingBadgeState extends State<_JigglingBadge> {
   double _angle = 0;
+  double _verticalOffset = 0;
   Timer? _timer;
   int _step = 0;
+  int _globalStep = 0; // For 5-second bounce cycle
 
   @override
   void initState() {
@@ -1839,58 +1813,96 @@ class _JigglingBadgeState extends State<_JigglingBadge> {
   }
 
   void _startJiggle() {
-    // Gentle swing animation (80ms intervals)
-    _timer = Timer.periodic(const Duration(milliseconds: 80), (timer) {
+    // Faster, more noticeable swing animation (40ms intervals)
+    _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
       
       setState(() {
-        // Gentle bell swing pattern
-        final cycleStep = _step % 30;
+        // Energetic bell swing pattern - more visible
+        final cycleStep = _step % 24;
         
-        if (cycleStep < 10) {
-          // Gentle swing phase - smooth oscillation
+        if (cycleStep < 12) {
+          // Active swing phase - stronger oscillation
           switch (cycleStep) {
             case 0:
-              _angle = 0.12;
+              _angle = 0.20;
               break;
             case 1:
-              _angle = 0.18;
+              _angle = 0.35;
               break;
             case 2:
-              _angle = 0.12;
+              _angle = 0.25;
               break;
             case 3:
               _angle = 0;
               break;
             case 4:
-              _angle = -0.12;
+              _angle = -0.20;
               break;
             case 5:
-              _angle = -0.18;
+              _angle = -0.35;
               break;
             case 6:
-              _angle = -0.12;
+              _angle = -0.25;
               break;
             case 7:
               _angle = 0;
               break;
             case 8:
-              _angle = 0.08;
+              _angle = 0.15;
               break;
             case 9:
+              _angle = -0.15;
+              break;
+            case 10:
+              _angle = 0.08;
+              break;
+            case 11:
               _angle = -0.08;
               break;
           }
         } else {
-          // Pause phase - rest before next swing
+          // Short pause phase - brief rest before next swing
           _angle = 0;
         }
         
+        // Bounce effect every ~5 seconds (125 steps at 40ms = 5 seconds)
+        final bouncePhase = _globalStep % 125;
+        if (bouncePhase < 10) {
+          // Quick bounce animation
+          switch (bouncePhase) {
+            case 0:
+            case 1:
+              _verticalOffset = -3;
+              break;
+            case 2:
+            case 3:
+              _verticalOffset = -6;
+              break;
+            case 4:
+            case 5:
+              _verticalOffset = -4;
+              break;
+            case 6:
+            case 7:
+              _verticalOffset = -2;
+              break;
+            case 8:
+            case 9:
+              _verticalOffset = 0;
+              break;
+          }
+        } else {
+          _verticalOffset = 0;
+        }
+        
         _step++;
-        if (_step >= 60) _step = 0; // Reset after ~4.8 seconds
+        _globalStep++;
+        if (_step >= 48) _step = 0;
+        if (_globalStep >= 250) _globalStep = 0; // Reset after 10 seconds
       });
     });
   }
@@ -1903,9 +1915,106 @@ class _JigglingBadgeState extends State<_JigglingBadge> {
 
   @override
   Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: _angle,
-      child: widget.child,
+    return Transform.translate(
+      offset: Offset(0, _verticalOffset),
+      child: Transform.rotate(
+        angle: _angle,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Pulsing badge content with color animation
+class _PulsingBadgeContent extends StatefulWidget {
+  const _PulsingBadgeContent();
+
+  @override
+  State<_PulsingBadgeContent> createState() => _PulsingBadgeContentState();
+}
+
+class _PulsingBadgeContentState extends State<_PulsingBadgeContent>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2500), // Slower, smoother pulse
+      vsync: this,
+    )..repeat(reverse: true);
+
+    // Color pulse: subtle red variation (less jarring)
+    _colorAnimation = ColorTween(
+      begin: Colors.red.shade600,
+      end: Colors.red.shade400,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    // Very subtle scale pulse
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.05,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    // Gentle glow intensity
+    _glowAnimation = Tween<double>(
+      begin: 0.3,
+      end: 0.5,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: _colorAnimation.value,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: (_colorAnimation.value ?? Colors.red)
+                      .withOpacity(_glowAnimation.value),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.notifications_active,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

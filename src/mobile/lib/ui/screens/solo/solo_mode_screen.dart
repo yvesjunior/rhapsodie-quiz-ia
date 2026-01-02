@@ -1,14 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutterquiz/commons/bottom_nav/models/nav_tab_type_enum.dart';
-import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutterquiz/commons/widgets/custom_image.dart';
 import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/core/localization/localization_extensions.dart';
 import 'package:flutterquiz/core/theme/theme_extension.dart';
+import 'package:flutterquiz/features/profile_management/cubits/user_details_cubit.dart';
 import 'package:flutterquiz/features/solo/solo.dart';
 import 'package:flutterquiz/ui/widgets/custom_appbar.dart';
+import 'package:flutterquiz/ui/widgets/shared/shared.dart';
+import 'package:flutterquiz/ui/widgets/text_circular_timer.dart';
+import 'package:flutterquiz/core/constants/assets_constants.dart';
 import 'package:flutterquiz/utils/extensions.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -26,8 +29,10 @@ class SoloModeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firebaseUserId = context.read<UserDetailsCubit>().getUserFirebaseId();
+    
     return BlocProvider(
-      create: (_) => SoloModeCubit()..loadTopics(),
+      create: (_) => SoloModeCubit(firebaseUserId: firebaseUserId)..loadTopics(),
       child: const _SoloModeView(),
     );
   }
@@ -38,8 +43,15 @@ class _SoloModeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SoloModeCubit, SoloModeState>(
-      builder: (context, state) {
+    return BlocListener<SoloModeCubit, SoloModeState>(
+      listener: (context, state) {
+        // Refresh user data when coins are earned
+        if (state is SoloModeCompleted && state.result.earnedCoin > 0) {
+          context.read<UserDetailsCubit>().fetchUserDetails();
+        }
+      },
+      child: BlocBuilder<SoloModeCubit, SoloModeState>(
+        builder: (context, state) {
         // States with their own full-screen layout (blue header)
         if (state is SoloModePlaying) {
           return _PlayingView(state: state);
@@ -72,9 +84,10 @@ class _SoloModeView extends StatelessWidget {
             SoloModeError(:final message) => _ErrorView(message: message),
             _ => const SizedBox(), // Handled above
           },
-          bottomNavigationBar: _buildBottomNav(context),
+          bottomNavigationBar: const SharedBottomNav(),
         );
-      },
+        },
+      ),
     );
   }
 }
@@ -243,7 +256,7 @@ class _TopicSelectionView extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const SharedBottomNav(),
     );
   }
 }
@@ -511,12 +524,12 @@ class _ConfigurationView extends StatelessWidget {
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               Text(
-                                state.questionCount > 5
+                                state.questionCount >= 5
                                     ? '+1 coin for 100% correct!'
-                                    : 'No coin for 5 questions (choose 10+ for rewards)',
+                                    : 'No coin for less than 5 questions',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: state.questionCount > 5 ? Colors.green : Colors.grey,
+                                  color: state.questionCount >= 5 ? Colors.green : Colors.grey,
                                 ),
                               ),
                             ],
@@ -551,7 +564,7 @@ class _ConfigurationView extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const SharedBottomNav(),
     );
   }
 }
@@ -618,54 +631,136 @@ class _SelectionChips<T> extends StatelessWidget {
 }
 
 // ============================================
-// Playing View - Matching existing Quiz Screen design
+// Playing View - Matching Rhapsody Quiz Layout
 // ============================================
 
-class _PlayingView extends StatelessWidget {
+class _PlayingView extends StatefulWidget {
   final SoloModePlaying state;
   
   const _PlayingView({required this.state});
 
   @override
+  State<_PlayingView> createState() => _PlayingViewState();
+}
+
+class _PlayingViewState extends State<_PlayingView> 
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _timerController;
+
+  @override
+  void initState() {
+    super.initState();
+    _timerController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: widget.state.timePerQuestion),
+    );
+    _updateTimer();
+  }
+
+  @override
+  void didUpdateWidget(_PlayingView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateTimer();
+  }
+
+  void _updateTimer() {
+    // Calculate timer progress based on remaining time
+    final progress = widget.state.timeRemaining / widget.state.timePerQuestion;
+    _timerController.value = progress;
+  }
+
+  @override
+  void dispose() {
+    _timerController.dispose();
+    super.dispose();
+  }
+
+  void _onTapBack() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Exit Quiz?'),
+        content: const Text('Your progress will be lost.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<SoloModeCubit>().reset();
+            },
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final question = state.currentQuestion;
-    final options = ['a', 'b', 'c', 'd'];
-    final optionTexts = [question.optionA, question.optionB, question.optionC, question.optionD];
-    final colorScheme = Theme.of(context).colorScheme;
-    final onTertiary = colorScheme.onTertiary;
+    final cubit = context.read<SoloModeCubit>();
+    final question = widget.state.currentQuestion;
+    
+    // Get decrypted correct answer from cubit
+    final correctAnswer = cubit.getDecryptedAnswer(question);
+    
+    // Hide explanation for Foundation School topic
+    final isFoundation = widget.state.topic.slug == 'foundation_school' || 
+                         widget.state.topic.slug == 'foundation';
+    
+    // Build question data for shared widget
+    final questionData = QuizQuestionData(
+      id: question.id,
+      question: question.question,
+      options: [
+        if (question.optionA.isNotEmpty)
+          QuizOptionData(id: 'a', text: question.optionA),
+        if (question.optionB.isNotEmpty)
+          QuizOptionData(id: 'b', text: question.optionB),
+        if (question.optionC.isNotEmpty)
+          QuizOptionData(id: 'c', text: question.optionC),
+        if (question.optionD.isNotEmpty)
+          QuizOptionData(id: 'd', text: question.optionD),
+      ],
+      correctOptionId: correctAnswer,
+      imageUrl: question.image,
+      note: isFoundation ? null : question.note, // Hide explanation for Foundation
+    );
+    
+    // Build poll percentages map
+    final pollPercentages = widget.state.audiencePollPercentages.isNotEmpty
+        ? {
+            'a': widget.state.audiencePollPercentages.isNotEmpty ? widget.state.audiencePollPercentages[0] : 0,
+            'b': widget.state.audiencePollPercentages.length > 1 ? widget.state.audiencePollPercentages[1] : 0,
+            'c': widget.state.audiencePollPercentages.length > 2 ? widget.state.audiencePollPercentages[2] : 0,
+            'd': widget.state.audiencePollPercentages.length > 3 ? widget.state.audiencePollPercentages[3] : 0,
+          }
+        : null;
 
     return Scaffold(
+      appBar: QAppBar(
+        onTapBackButton: _onTapBack,
+        roundedAppBar: false,
+        title: TextCircularTimer(
+          animationController: _timerController,
+          arcColor: Theme.of(context).primaryColor,
+          color: Theme.of(context).colorScheme.onTertiary.withValues(alpha: 0.2),
+        ),
+      ),
       body: Column(
         children: [
-          // Blue Header (same as Foundation)
-          Container(
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-            ),
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
+          // Question count header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Timer
-                _CircularTimer(
-                  timeRemaining: state.timeRemaining,
-                  totalTime: state.timePerQuestion,
-                ),
-                const SizedBox(height: 12),
-                // Question index
                 Text(
-                  'Question ${state.currentQuestionIndex + 1} of ${state.totalQuestions}',
+                  '${widget.state.currentQuestionIndex + 1} / ${widget.state.totalQuestions}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -673,100 +768,99 @@ class _PlayingView extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        
-        // Question and Options
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                
-                // Question text
-                Text(
-                  question.question,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.nunito(
-                    textStyle: TextStyle(
-                      height: 1.125,
-                      color: onTertiary,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 30),
-                
-                // Options
-                ...List.generate(4, (index) {
-                  final optionText = optionTexts[index];
-                  if (optionText.isEmpty) return const SizedBox.shrink();
-                  
-                  return _SoloOptionContainer(
-                    optionId: options[index],
-                    optionText: optionText,
-                    onTap: () => context.read<SoloModeCubit>().answerQuestion(options[index]),
-                  );
-                }),
-              ],
+          
+          // Question and Options using SharedQuizQuestion
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: SharedQuizQuestion(
+                question: questionData,
+                selectedAnswerId: widget.state.selectedAnswerId,
+                hasSubmitted: widget.state.showingFeedback,
+                hiddenOptions: widget.state.hiddenOptions,
+                pollPercentages: pollPercentages,
+                answerMode: QuizAnswerMode.showCorrectnessAndCorrect,
+                onOptionSelected: (optionId) {
+                  if (!widget.state.showingFeedback) {
+                    cubit.answerQuestion(optionId);
+                  }
+                },
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-    bottomNavigationBar: _buildBottomNav(context),
-  );
+          
+          // Lifelines Row (only show if not showing feedback)
+          if (!widget.state.showingFeedback)
+            _LifelinesRow(state: widget.state),
+        ],
+      ),
+    );
   }
 }
 
-/// Circular timer for blue header (white theme)
-class _CircularTimer extends StatelessWidget {
-  final int timeRemaining;
-  final int totalTime;
+// ============================================
+// Lifelines Row
+// ============================================
 
-  const _CircularTimer({
-    required this.timeRemaining,
-    required this.totalTime,
-  });
+class _LifelinesRow extends StatelessWidget {
+  final SoloModePlaying state;
+  
+  const _LifelinesRow({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final progress = timeRemaining / totalTime;
-    final isLowTime = timeRemaining <= 5;
-
-    return SizedBox(
-      width: 60,
-      height: 60,
-      child: Stack(
-        alignment: Alignment.center,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Background circle
-          CircularProgressIndicator(
-            value: 1.0,
-            strokeWidth: 4,
-            backgroundColor: Colors.transparent,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Colors.white.withValues(alpha: 0.3),
-            ),
+          // 50/50 lifeline
+          _LifelineButton(
+            icon: Assets.fiftyFiftyLifeline,
+            label: '50/50',
+            isUsed: state.fiftyFiftyStatus == LifelineStatus.used,
+            onTap: state.fiftyFiftyStatus == LifelineStatus.unused
+                ? () => context.read<SoloModeCubit>().useFiftyFifty()
+                : null,
           ),
-          // Progress circle
-          CircularProgressIndicator(
-            value: progress,
-            strokeWidth: 4,
-            backgroundColor: Colors.transparent,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              isLowTime ? Colors.red[300]! : Colors.white,
-            ),
+          // Poll lifeline
+          _LifelineButton(
+            icon: Assets.audiencePollLifeline,
+            label: 'Poll',
+            isUsed: state.audiencePollStatus == LifelineStatus.used,
+            onTap: state.audiencePollStatus == LifelineStatus.unused
+                ? () => context.read<SoloModeCubit>().useAudiencePoll()
+                : null,
           ),
-          // Time text
-          Text(
-            '$timeRemaining',
-            style: TextStyle(
-              color: isLowTime ? Colors.red[300] : Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+          // Timer lifeline
+          _LifelineButton(
+            icon: Assets.resetTimeLifeline,
+            label: 'Timer',
+            isUsed: state.resetTimeStatus == LifelineStatus.used,
+            onTap: state.resetTimeStatus == LifelineStatus.unused
+                ? () => context.read<SoloModeCubit>().useResetTime()
+                : null,
+          ),
+          // Skip lifeline (always available)
+          _LifelineButton(
+            icon: Assets.skipQueLifeline,
+            label: 'Skip',
+            isUsed: false,
+            onTap: () => context.read<SoloModeCubit>().skipQuestion(),
           ),
         ],
       ),
@@ -774,86 +868,82 @@ class _CircularTimer extends StatelessWidget {
   }
 }
 
-/// Option container matching the existing quiz design
-class _SoloOptionContainer extends StatefulWidget {
-  final String optionId;
-  final String optionText;
-  final VoidCallback onTap;
+// ============================================
+// Lifeline Button
+// ============================================
 
-  const _SoloOptionContainer({
-    required this.optionId,
-    required this.optionText,
-    required this.onTap,
+class _LifelineButton extends StatelessWidget {
+  final String icon;
+  final String label;
+  final bool isUsed;
+  final VoidCallback? onTap;
+
+  const _LifelineButton({
+    required this.icon,
+    required this.label,
+    required this.isUsed,
+    this.onTap,
   });
-
-  @override
-  State<_SoloOptionContainer> createState() => _SoloOptionContainerState();
-}
-
-class _SoloOptionContainerState extends State<_SoloOptionContainer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-  late final Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 90),
-    );
-    _scaleAnimation = Tween<double>(begin: 1, end: 0.95).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInQuad),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final surface = colorScheme.surface;
-    final onTertiary = colorScheme.onTertiary;
-
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (_, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        );
-      },
-      child: GestureDetector(
-        onTapDown: (_) => _animationController.forward(),
-        onTapCancel: () => _animationController.reverse(),
-        onTap: () async {
-          await _animationController.reverse();
-          widget.onTap();
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              widget.optionText,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.nunito(
-                textStyle: TextStyle(
-                  color: onTertiary,
-                  height: 1,
-                  fontSize: 20,
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: isUsed ? 0.4 : 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isUsed 
+                    ? Colors.grey.shade200 
+                    : colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isUsed 
+                      ? Colors.grey.shade300 
+                      : colorScheme.primary.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  icon,
+                  width: 28,
+                  height: 28,
+                  colorFilter: ColorFilter.mode(
+                    isUsed ? Colors.grey : colorScheme.primary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isUsed 
+                    ? Colors.grey 
+                    : colorScheme.onSurface,
+              ),
+            ),
+            if (isUsed)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                child: const Icon(
+                  Icons.check_circle,
+                  size: 12,
+                  color: Colors.green,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1203,99 +1293,9 @@ class _ResultsView extends StatelessWidget {
         ),
       ),
     ),
-    bottomNavigationBar: _buildBottomNav(context),
+    bottomNavigationBar: const SharedBottomNav(),
   );
   }
 }
 
-// ============================================
-// Bottom Navigation Bar for Solo Mode (matching Dashboard)
-// ============================================
-
-Widget _buildBottomNav(BuildContext context) {
-  return Container(
-    height: kBottomNavigationBarHeight + 26,
-    decoration: BoxDecoration(
-      color: context.surfaceColor,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      boxShadow: const [
-        BoxShadow(blurRadius: 16, spreadRadius: 2, color: Colors.black12),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _navItemSvg(context, Assets.homeNavIcon, 'Home', NavTabType.home),
-        _navItemSvg(context, Assets.leaderboardNavIcon, 'Leaderboard', NavTabType.leaderboard),
-        _navItemIcon(context, Icons.school, 'Foundation', NavTabType.quizZone),
-        _navItemSvg(context, Assets.playZoneNavIcon, 'Play Zone', NavTabType.playZone),
-        _navItemSvg(context, Assets.profileNavIcon, 'Profile', NavTabType.profile),
-      ],
-    ),
-  );
-}
-
-Widget _navItemSvg(BuildContext context, String iconAsset, String label, NavTabType tabType) {
-  final color = context.primaryTextColor.withValues(alpha: 0.8);
-  return Expanded(
-    child: GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        dashboardScreenKey.currentState?.changeTab(tabType);
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: QImage(imageUrl: iconAsset, color: color)),
-            const Flexible(child: SizedBox(height: 4)),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 12, height: 1.15, color: color),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _navItemIcon(BuildContext context, IconData icon, String label, NavTabType tabType) {
-  final color = context.primaryTextColor.withValues(alpha: 0.8);
-  return Expanded(
-    child: GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        dashboardScreenKey.currentState?.changeTab(tabType);
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 60, minHeight: 48),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: Icon(icon, color: color, size: 24)),
-            const Flexible(child: SizedBox(height: 4)),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 12, height: 1.15, color: color),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
 

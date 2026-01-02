@@ -119,6 +119,7 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
     emit(const MultiUserBattleRoomInProgress());
     try {
       final roomCode = generateRoomCode(charType, 6);
+      print('DEBUG: Creating room with code: $roomCode, category: $categoryId');
 
       final documentSnapshot = await _battleRoomRepository
           .createMultiUserBattleRoom(
@@ -133,6 +134,7 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
             entryFee: entryFee,
             questionLanguageId: questionLanguageId,
           );
+      print('DEBUG: Room created in Firestore: ${documentSnapshot.id}');
 
       final questions = await _battleRoomRepository.getQuestions(
         categoryId: '',
@@ -143,9 +145,11 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
         languageId: questionLanguageId!,
         entryCoin: entryFee,
       );
+      print('DEBUG: Got ${questions.length} questions');
 
       subscribeToMultiUserBattleRoom(documentSnapshot.id, questions);
     } on Exception catch (e) {
+      print('DEBUG: Error creating room: $e');
       emit(MultiUserBattleRoomFailure(e.toString()));
     }
   }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/features/topics/topics.dart';
 import 'package:flutterquiz/features/battles/battles.dart';
+import 'package:flutterquiz/features/groups/groups.dart';
 import 'package:flutterquiz/ui/screens/battles/battle_1v1_screen.dart';
+import 'package:flutterquiz/ui/screens/battles/group_battle_screen.dart';
 
 /// Battle Mode Selection Screen
 class BattleModeScreen extends StatefulWidget {
@@ -140,10 +142,8 @@ class _BattleModeScreenState extends State<BattleModeScreen> {
               ),
             );
           } else {
-            // Navigate to group battle
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Group battle coming soon!')),
-            );
+            // Navigate to group selection first
+            _showGroupSelectionForBattle(topicId, categoryId);
           }
         },
       ),
@@ -162,6 +162,29 @@ class _BattleModeScreenState extends State<BattleModeScreen> {
         Battle1v1Screen.route(matchCode: code),
       );
     }
+  }
+
+  void _showGroupSelectionForBattle(String topicId, String categoryId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _GroupSelectionSheet(
+        onGroupSelected: (groupId) {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            GroupBattleScreen.route(
+              battleId: '', // Will be created
+              groupId: groupId,
+              topicId: topicId,
+              categoryId: categoryId,
+              isCreator: true,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showHistory() {
@@ -629,6 +652,171 @@ class _BattleHistoryCard extends StatelessWidget {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+}
+
+/// Group Selection Sheet for Group Battles
+class _GroupSelectionSheet extends StatelessWidget {
+  final void Function(String groupId) onGroupSelected;
+
+  const _GroupSelectionSheet({required this.onGroupSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Select Group',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose which group to battle with',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          BlocBuilder<GroupsCubit, GroupsState>(
+            builder: (context, state) {
+              if (state is GroupsLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (state is GroupsLoaded) {
+                final groups = state.groups;
+                if (groups.isEmpty) {
+                  return Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.groups_outlined, size: 48, color: Colors.grey),
+                        const SizedBox(height: 12),
+                        const Text('You are not in any groups yet'),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            // Navigate to groups screen
+                          },
+                          child: const Text('Join or Create a Group'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    itemCount: groups.length,
+                    itemBuilder: (context, index) {
+                      final group = groups[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.purple.shade100,
+                          child: Text(
+                            group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(group.name),
+                        subtitle: Text('${group.memberCount} members'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () => onGroupSelected(group.id),
+                      );
+                    },
+                  ),
+                );
+              }
+
+              if (state is GroupsError) {
+                return Center(child: Text(state.message));
+              }
+
+              // Initial state - load groups
+              context.read<GroupsCubit>().loadMyGroups();
+              return const Center(child: CircularProgressIndicator());
+            },
+          ),
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 16),
+        ],
+      ),
+    );
+  }
+}
+
+/// Join Battle Dialog
+class JoinBattleDialog extends StatefulWidget {
+  const JoinBattleDialog({super.key});
+
+  @override
+  State<JoinBattleDialog> createState() => _JoinBattleDialogState();
+}
+
+class _JoinBattleDialogState extends State<JoinBattleDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Join Battle'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Enter the match code to join:'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              hintText: 'Enter code',
+              border: OutlineInputBorder(),
+            ),
+            maxLength: 6,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final code = _controller.text.trim().toUpperCase();
+            if (code.isNotEmpty) {
+              Navigator.pop(context, code);
+            }
+          },
+          child: const Text('Join'),
+        ),
+      ],
+    );
   }
 }
 

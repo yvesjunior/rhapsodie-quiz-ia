@@ -76,6 +76,7 @@ final class BattleRoomRemoteDataSource {
     String? roomCode,
   ) async {
     try {
+      print('DEBUG: getMultiUserBattleQuestions for roomCode: $roomCode');
       final body = <String, String?>{roomIdKey: roomCode};
 
       final response = await http.post(
@@ -85,12 +86,16 @@ final class BattleRoomRemoteDataSource {
       );
 
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+      print('DEBUG: getMultiUserBattleQuestions response error: ${responseJson['error']}');
 
       if (responseJson['error'] as bool) {
+        print('DEBUG: getMultiUserBattleQuestions error msg: ${responseJson['message']}');
         throw ApiException(responseJson['message'].toString());
       }
 
-      return (responseJson['data'] as List).cast<Map<String, dynamic>>();
+      final questions = (responseJson['data'] as List).cast<Map<String, dynamic>>();
+      print('DEBUG: getMultiUserBattleQuestions got ${questions.length} questions');
+      return questions;
     } on SocketException {
       throw const ApiException(errorCodeNoInternet);
     } on ApiException {
@@ -383,23 +388,33 @@ final class BattleRoomRemoteDataSource {
         body.remove(languageIdKey);
       }
 
+      print('DEBUG: createMultiUserBattleRoom - categoryId: $categoryId');
+      print('DEBUG: createMultiUserBattleRoom - body: $body');
+
       // Validate room code with backend
       final response = await http.post(
         Uri.parse(createMultiUserBattleRoomUrl),
         body: body,
         headers: await ApiUtils.getHeaders(),
       );
+      
+      print('DEBUG: createMultiUserBattleRoom - response status: ${response.statusCode}');
+      print('DEBUG: createMultiUserBattleRoom - response body: ${response.body}');
 
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (responseJson['error'] as bool) {
+        print('DEBUG: create_room API returned error: ${responseJson['message']}');
         throw ApiException(responseJson['message'].toString());
       }
+      print('DEBUG: create_room API success, creating Firestore doc');
+      print('DEBUG: Firestore collection: $multiUserBattleRoomCollection');
 
-      // Create Firestore room document
-      final documentReference = await _firebaseFirestore
-          .collection(multiUserBattleRoomCollection)
-          .add({
+      // Create Firestore room document with timeout
+      try {
+        final documentReference = await _firebaseFirestore
+            .collection(multiUserBattleRoomCollection)
+            .add({
             'createdBy': uid,
             'categoryId': categoryId,
             'categoryName': categoryName,
@@ -436,8 +451,26 @@ final class BattleRoomRemoteDataSource {
               'profileUrl': '',
             },
             'createdAt': Timestamp.now(),
-          });
-      return documentReference.get();
+          }).timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              print('DEBUG: Firestore add timed out');
+              throw const ApiException('Firestore operation timed out');
+            },
+          );
+        print('DEBUG: Firestore doc created: ${documentReference.id}');
+        final docSnapshot = await documentReference.get().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('DEBUG: Firestore get timed out');
+            throw const ApiException('Firestore get operation timed out');
+          },
+        );
+        return docSnapshot;
+      } catch (firestoreError) {
+        print('DEBUG: Firestore error: $firestoreError');
+        rethrow;
+      }
     } on SocketException {
       throw const ApiException(errorCodeNoInternet);
     } on PlatformException {

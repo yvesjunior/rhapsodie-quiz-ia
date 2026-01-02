@@ -63,6 +63,8 @@ services:
       - ./src/admin/public/application/logs:/var/www/html/application/logs
       - ./src/admin/public/application/cache:/var/www/html/application/cache
       - ./src/admin/public/upload:/var/www/html/upload
+      # Mount Firebase service account for FCM v1 API
+      - ./firebase.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=${CI_ENV:-development}
       - DB_HOST=${DB_HOST:-rhapsody-db}
@@ -74,6 +76,10 @@ services:
       - REST_API_PASSWORD=${REST_API_PASSWORD}
       - REDIS_HOST=rhapsody-redis
       - REDIS_PORT=6379
+      # Timezone for consistent date handling
+      - TZ=${TZ:-America/Montreal}
+      # FCM v1 API
+      - FCM_PROJECT_ID=${FCM_PROJECT_ID:-}
     depends_on:
       rhapsody-db:
         condition: service_healthy
@@ -88,20 +94,20 @@ services:
       retries: 3
 
   # ============================================
-  # ADMIN PANEL - Queue Workers
+  # ADMIN PANEL - Cron Scheduler (Daily Contest & Notifications)
   # ============================================
-  rhapsody-queue:
+  rhapsody-cron:
     build:
       context: .
-      dockerfile: infra/Dockerfile
-    container_name: rhapsody-queue
+      dockerfile: infra/Dockerfile.cron
+    container_name: rhapsody-cron
     restart: unless-stopped
-    working_dir: /var/www/html
-    # TODO: Implement CodeIgniter queue worker command
-    # command: php artisan queue:work --tries=3 --timeout=300
-    command: tail -f /dev/null  # Keep container running for now
     volumes:
       - ./src/admin/public:/var/www/html
+      # Crontab is generated dynamically by cron-entrypoint.sh based on NOTIFICATION_HOURS
+      # - ./infra/crontab:/etc/cron.d/rhapsody-cron  # Removed - using dynamic generation
+      # Mount Firebase service account for FCM v1 API
+      - ./firebase.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=${CI_ENV:-development}
       - DB_HOST=${DB_HOST:-rhapsody-db}
@@ -110,10 +116,28 @@ services:
       - DB_NAME=${DB_NAME:-elite_quiz_237}
       - REDIS_HOST=rhapsody-redis
       - REDIS_PORT=6379
+      # Set to 'true' for production (auto-create daily contests at midnight)
+      # Set to 'false' for development (manual creation via script)
+      - DAILY_CONTEST_AUTO_CREATE=${DAILY_CONTEST_AUTO_CREATE:-false}
+      # Timezone for cron jobs (default: Montreal/Eastern Time)
+      # Examples: America/Montreal, Africa/Nairobi, Europe/Paris
+      - TZ=${TZ:-America/Montreal}
+      # ============================================
+      # Push Notification Schedule (24-hour format, comma-separated)
+      # ============================================
+      # Default: 8,13,22 = 8 AM, 1 PM, 10 PM
+      # Examples:
+      #   0,12,18    = 12 AM (midnight), 12 PM (noon), 6 PM
+      #   9,14,19,21 = 9 AM, 2 PM, 7 PM, 9 PM
+      #   8          = 8 AM only (single notification)
+      - NOTIFICATION_HOURS=${NOTIFICATION_HOURS:-8,13,22}
+      # FCM v1 API (Modern approach - recommended)
+      # Path to service account JSON file (mounted in container)
+      - GOOGLE_APPLICATION_CREDENTIALS=/var/www/credentials/firebase-service-account.json
+      # Firebase Project ID (found in Firebase Console -> Project Settings)
+      - FCM_PROJECT_ID=${FCM_PROJECT_ID:-}
     depends_on:
       rhapsody-db:
-        condition: service_healthy
-      rhapsody-redis:
         condition: service_healthy
       rhapsody-web:
         condition: service_healthy

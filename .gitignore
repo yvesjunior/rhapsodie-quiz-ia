@@ -23,7 +23,6 @@ database-backups/
 
 # Firebase configuration files
 **/firebase_config.json
-**/firebase.json
 **/firebase_options.dart
 **/google-services.json
 **/GoogleService-Info.plist
@@ -31,6 +30,8 @@ database-backups/
 **/android/app/google-services.json
 **/ios/Runner/GoogleService-Info.plist
 **/ios/firebase_app_id_file.json
+**/firebase-service-account.json
+**/*-service-account*.json
 
 # SSL/TLS certificates and keys
 *.pem
@@ -123,3 +124,6 @@ docker-data/
 # Admin uploaded content
 src/admin/public/images/
 
+
+# APNs keys
+*.p8

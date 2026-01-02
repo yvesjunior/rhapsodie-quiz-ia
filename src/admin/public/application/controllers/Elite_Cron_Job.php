@@ -177,7 +177,7 @@ class Elite_Cron_Job extends CI_Controller
      */
     private function send_new_contest_notification($contest_id, $month_name, $day, $year)
     {
-        $title = "🎯 New Daily Quiz Available!";
+        $title = "New Daily Quiz Available!";
         $body = "Today's Rhapsody quiz ($month_name $day) is ready. Complete it now to earn ranking points!";
         
         log_message('info', "Daily Contest Cron: Sending new contest notification for ID $contest_id");
@@ -278,7 +278,7 @@ class Elite_Cron_Job extends CI_Controller
         log_message('info', "Daily Contest Notification: " . count($users) . " users haven't completed the quiz");
         
         // Send FCM notification to topic (more reliable than individual tokens)
-        $title = "⏰ Daily Rhapsody Quiz Reminder";
+        $title = "Daily Rhapsody Quiz Reminder";
         $body = "Don't forget to complete today's Rhapsody quiz and earn points!";
         
         echo "Sending notification to topic 'daily_quiz'...\n";
@@ -327,6 +327,10 @@ class Elite_Cron_Job extends CI_Controller
         }
         
         $url = "https://fcm.googleapis.com/v1/projects/{$project_id}/messages:send";
+        
+        // Include title and body in data payload for Flutter foreground handling
+        $data['title'] = $title;
+        $data['body'] = $body;
         
         $message = [
             'message' => [
@@ -552,5 +556,238 @@ class Elite_Cron_Job extends CI_Controller
     private function base64url_encode($data)
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+
+    // =========================================================================
+    // WEEKLY REWARDS
+    // =========================================================================
+
+    /**
+     * Distribute weekly rewards based on contest leaderboard rankings
+     * Should be called every Sunday at midnight (end of week)
+     * 
+     * Rewards (with ties - same score = same reward):
+     * - 1st place: 50 gold coins
+     * - 2nd place: 30 gold coins
+     * - 3rd place: 20 gold coins
+     */
+    public function distribute_weekly_rewards()
+    {
+        echo "=== Weekly Rewards Distribution ===\n";
+        echo "Date: " . date('Y-m-d H:i:s') . "\n\n";
+
+        // Get the week's date range (Monday to Sunday)
+        $week_start = date('Y-m-d', strtotime('monday this week'));
+        $week_end = date('Y-m-d', strtotime('sunday this week'));
+        
+        echo "Week: $week_start to $week_end\n\n";
+
+        // Get all users from contest leaderboard for this week (ordered by score)
+        $query = $this->db->query("
+            SELECT 
+                cl.user_id,
+                u.name,
+                u.coins,
+                SUM(cl.score) as total_score,
+                COUNT(DISTINCT cl.contest_id) as contests_played
+            FROM tbl_contest_leaderboard cl
+            JOIN tbl_users u ON u.id = cl.user_id
+            JOIN tbl_contest c ON c.id = cl.contest_id
+            WHERE DATE(c.start_date) >= '$week_start'
+              AND DATE(c.start_date) <= '$week_end'
+              AND u.status = 1
+            GROUP BY cl.user_id
+            ORDER BY total_score DESC
+        ");
+
+        $all_users = $query->result_array();
+
+        if (empty($all_users)) {
+            echo "No users played contests this week. No rewards to distribute.\n";
+            log_message('info', 'Weekly Rewards: No users played this week');
+            return;
+        }
+
+        // Define rewards by rank
+        $rewards = [
+            1 => ['coins' => 50, 'label' => '🥇 1st Place'],
+            2 => ['coins' => 30, 'label' => '🥈 2nd Place'],
+            3 => ['coins' => 20, 'label' => '🥉 3rd Place'],
+        ];
+
+        // Calculate tied ranks using DENSE ranking (1,1,2 not 1,1,3)
+        $users_with_ranks = [];
+        $current_rank = 1;
+        $prev_score = null;
+        
+        foreach ($all_users as $user) {
+            $score = (int)$user['total_score'];
+            
+            // If score is different from previous, increment rank by 1
+            if ($prev_score !== null && $score < $prev_score) {
+                $current_rank++; // Dense ranking: just increment
+            }
+            
+            $user['rank'] = $current_rank;
+            $users_with_ranks[] = $user;
+            $prev_score = $score;
+        }
+
+        echo "Winners (with tied rankings):\n";
+        echo str_repeat('-', 60) . "\n";
+
+        $notifications_sent = 0;
+
+        foreach ($users_with_ranks as $user) {
+            $rank = $user['rank'];
+            
+            // Only reward ranks 1, 2, 3
+            if ($rank > 3) {
+                break; // No more rewards to give
+            }
+            
+            $reward = $rewards[$rank];
+            $user_id = $user['user_id'];
+            $user_name = $user['name'];
+            $current_coins = (int)$user['coins'];
+            $total_score = $user['total_score'];
+            $contests_played = $user['contests_played'];
+            $coins_to_add = $reward['coins'];
+
+            echo "{$reward['label']}: {$user_name}\n";
+            echo "   Score: {$total_score} pts | Contests: {$contests_played}\n";
+            echo "   Reward: +{$coins_to_add} coins (was: {$current_coins})\n";
+
+            // Update user's coins
+            $new_coins = $current_coins + $coins_to_add;
+            $this->db->where('id', $user_id)->update('tbl_users', ['coins' => $new_coins]);
+
+            // Log the reward
+            $this->db->insert('tbl_tracker', [
+                'user_id' => $user_id,
+                'type' => 'weekly_reward',
+                'coins' => $coins_to_add,
+                'info' => json_encode([
+                    'rank' => $rank,
+                    'week_start' => $week_start,
+                    'week_end' => $week_end,
+                    'total_score' => $total_score,
+                ]),
+                'date' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Send notification
+            $this->send_reward_notification($user_id, $rank, $coins_to_add, $total_score);
+            $notifications_sent++;
+
+            echo "   ✓ Coins updated to: {$new_coins}\n\n";
+        }
+
+        echo str_repeat('-', 60) . "\n";
+        echo "Weekly rewards distributed to {$notifications_sent} users.\n";
+        log_message('info', "Weekly Rewards: Distributed to {$notifications_sent} users for week $week_start - $week_end");
+    }
+
+    /**
+     * Send notification to user about their weekly reward
+     */
+    private function send_reward_notification($user_id, $rank, $coins, $score)
+    {
+        $rank_labels = [1 => '1st', 2 => '2nd', 3 => '3rd'];
+        $rank_emojis = [1 => '🥇', 2 => '🥈', 3 => '🥉'];
+        
+        $title = "{$rank_emojis[$rank]} Congratulations! You're {$rank_labels[$rank]}!";
+        $body = "You earned {$coins} gold coins for finishing {$rank_labels[$rank]} this week with {$score} points!";
+
+        // Save to notifications table
+        $this->db->insert('tbl_notifications', [
+            'title' => $title,
+            'message' => $body,
+            'users' => $user_id,
+            'type' => 'weekly_reward',
+            'type_id' => null,
+            'date_sent' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Get user's FCM token and send push notification
+        $user = $this->db->where('id', $user_id)->get('tbl_users')->row_array();
+        if (!empty($user['fcm_id'])) {
+            $this->send_fcm_topic_notification('daily_quiz', $title, $body, [
+                'type' => 'weekly_reward',
+                'rank' => (string)$rank,
+                'coins' => (string)$coins,
+            ]);
+        }
+    }
+
+    /**
+     * Test weekly rewards (for manual testing)
+     * This shows what would happen without actually updating coins
+     * Includes tied ranking logic
+     */
+    public function test_weekly_rewards()
+    {
+        echo "=== Weekly Rewards TEST (Dry Run) ===\n";
+        echo "Date: " . date('Y-m-d H:i:s') . "\n\n";
+
+        $week_start = date('Y-m-d', strtotime('monday this week'));
+        $week_end = date('Y-m-d', strtotime('sunday this week'));
+        
+        echo "Week: $week_start to $week_end\n\n";
+
+        $query = $this->db->query("
+            SELECT 
+                cl.user_id,
+                u.name,
+                u.coins,
+                SUM(cl.score) as total_score,
+                COUNT(DISTINCT cl.contest_id) as contests_played
+            FROM tbl_contest_leaderboard cl
+            JOIN tbl_users u ON u.id = cl.user_id
+            JOIN tbl_contest c ON c.id = cl.contest_id
+            WHERE DATE(c.start_date) >= '$week_start'
+              AND DATE(c.start_date) <= '$week_end'
+              AND u.status = 1
+            GROUP BY cl.user_id
+            ORDER BY total_score DESC
+        ");
+
+        $users = $query->result_array();
+
+        if (empty($users)) {
+            echo "No users played contests this week.\n";
+            return;
+        }
+
+        // Calculate tied ranks using DENSE ranking (1,1,2 not 1,1,3)
+        $rewards = [1 => 50, 2 => 30, 3 => 20];
+        $current_rank = 1;
+        $prev_score = null;
+        
+        echo "Rank | User            | Score | Contests | Reward\n";
+        echo str_repeat('-', 55) . "\n";
+
+        foreach ($users as $user) {
+            $score = (int)$user['total_score'];
+            
+            // If score is different from previous, increment rank
+            if ($prev_score !== null && $score < $prev_score) {
+                $current_rank++;
+            }
+            
+            $reward = isset($rewards[$current_rank]) ? "+{$rewards[$current_rank]} coins" : "-";
+            printf("%-4d | %-15s | %-5d | %-8d | %s\n", 
+                $current_rank, 
+                substr($user['name'], 0, 15), 
+                $score,
+                $user['contests_played'],
+                $reward
+            );
+            
+            $prev_score = $score;
+        }
+        
+        echo "\n* Dense ranking: same score = same rank (ex aequo)\n";
+        echo "* Example: 1st, 1st, 2nd, 3rd (not 1st, 1st, 3rd, 4th)\n";
     }
 }

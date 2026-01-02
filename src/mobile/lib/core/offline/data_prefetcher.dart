@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutterquiz/core/offline/connectivity_cubit.dart';
 import 'package:flutterquiz/features/foundation/foundation_repository.dart';
+import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
 import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 import 'package:flutterquiz/features/rhapsody/rhapsody_repository.dart';
 import 'package:flutterquiz/features/system_config/system_config_repository.dart';
@@ -164,12 +165,45 @@ class DataPrefetcher {
   Future<void> _prefetchQuizCategories(ConnectivityCubit cubit, String? languageId) async {
     try {
       final repo = QuizRepository(connectivityCubit: cubit);
+      
       // Prefetch main quiz categories (type 1 = quiz zone)
-      await repo.getCategory(
+      final categories = await repo.getCategory(
         languageId: languageId ?? '',
         type: '1',
       );
-      log('DataPrefetcher: ✓ Quiz categories cached');
+      log('DataPrefetcher: ✓ Quiz categories (${categories.length}) cached');
+
+      // Prefetch subcategories and questions for each category
+      for (final category in categories) {
+        try {
+          // Get subcategories
+          final subcategories = await repo.getSubCategory(category.id ?? '');
+          
+          if (subcategories.isEmpty) {
+            // No subcategories - fetch questions directly from category
+            await repo.getQuestions(
+              QuizTypes.quizZone,
+              categoryId: category.id,
+              subcategoryId: '',
+              level: '0',
+            );
+            log('DataPrefetcher: ✓ Questions for ${category.categoryName} cached');
+          } else {
+            // Has subcategories - fetch questions for each
+            for (final sub in subcategories) {
+              await repo.getQuestions(
+                QuizTypes.quizZone,
+                categoryId: category.id,
+                subcategoryId: sub.id,
+                level: '0',
+              );
+            }
+            log('DataPrefetcher: ✓ Questions for ${category.categoryName} (${subcategories.length} subs) cached');
+          }
+        } catch (e) {
+          log('DataPrefetcher: ✗ Questions for ${category.categoryName} failed: $e');
+        }
+      }
     } catch (e) {
       log('DataPrefetcher: ✗ Quiz categories failed: $e');
     }

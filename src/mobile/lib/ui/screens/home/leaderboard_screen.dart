@@ -458,11 +458,23 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     required GlobalKey<RefreshIndicatorState> refreshKey,
   }) {
     final showMyRank = score != '0' && int.parse(rank) > 3;
+    
+    // Get current user ID
+    final userState = context.read<UserDetailsCubit>().state;
+    final currentUserId = userState is UserDetailsFetchSuccess 
+        ? userState.userProfile.userId 
+        : null;
+    
+    // Extract podium users (1 per rank, prioritizing current user)
+    final podiumResult = _extractPodiumUsers(leaderboardList, currentUserId);
+    final podiumUsers = podiumResult.podiumUsers;
+    final remainingUsers = podiumResult.remainingUsers;
+    final tieCounts = podiumResult.tieCounts;
 
     return Column(
       children: [
-        // Top 3 Podium
-        _buildPodium(leaderboardList.take(3).toList()),
+        // Top 3 Podium (exactly 1 per place)
+        _buildPodium(podiumUsers, tieCounts: tieCounts),
         
         const SizedBox(height: 16),
         
@@ -482,7 +494,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                 if (showMyRank)
                   _buildMyRankCard(rank, profile, score),
                 
-                // Other rankings
+                // Other rankings (including tied users not on podium)
         Expanded(
           child: RefreshIndicator(
             key: refreshKey,
@@ -491,19 +503,18 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                     child: ListView.builder(
               controller: controller,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      itemCount: leaderboardList.length > 3 
-                          ? leaderboardList.length - 3 + (hasMore ? 1 : 0)
-                          : 0,
+                      itemCount: remainingUsers.length + (hasMore ? 1 : 0),
                       itemBuilder: (context, index) {
-                          final actualIndex = index + 3;
-
-                        if (hasMore && actualIndex >= leaderboardList.length) {
+                        if (hasMore && index >= remainingUsers.length) {
                           return const Center(child: CircularProgressContainer());
                         }
                         
-                        if (actualIndex >= leaderboardList.length) return null;
+                        if (index >= remainingUsers.length) return null;
                         
-                        return _buildLeaderboardItem(leaderboardList[actualIndex]);
+                        return _buildLeaderboardItem(
+                          remainingUsers[index],
+                          allUsers: remainingUsers,
+                        );
                       },
                       ),
                     ),
@@ -515,8 +526,65 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       ],
     );
   }
+  
+  /// Extract exactly 1 user per podium position (1st, 2nd, 3rd)
+  /// If there are ties, prioritize the current user
+  /// Also returns tie count per rank for displaying ex aequo indicator
+  ({List<Map<String, dynamic>> podiumUsers, List<Map<String, dynamic>> remainingUsers, Map<int, int> tieCounts}) 
+  _extractPodiumUsers(List<Map<String, dynamic>> allUsers, String? currentUserId) {
+    if (allUsers.isEmpty) {
+      return (podiumUsers: <Map<String, dynamic>>[], remainingUsers: <Map<String, dynamic>>[], tieCounts: <int, int>{});
+    }
+    
+    final podiumUsers = <Map<String, dynamic>>[];
+    final remainingUsers = <Map<String, dynamic>>[];
+    final tieCounts = <int, int>{}; // rank -> number of users tied
+    final usedRanks = <int>{};
+    
+    // First pass: find best user for each rank (prioritize current user)
+    for (final rank in [1, 2, 3]) {
+      // Get all users with this rank
+      final usersAtRank = allUsers.where((u) {
+        final userRank = int.tryParse(u['user_rank']?.toString() ?? '0') ?? 0;
+        return userRank == rank;
+      }).toList();
+      
+      if (usersAtRank.isEmpty) continue;
+      
+      // Store tie count
+      tieCounts[rank] = usersAtRank.length;
+      
+      // Check if current user is at this rank
+      final currentUserAtRank = usersAtRank.firstWhere(
+        (u) => u['id']?.toString() == currentUserId || u['user_id']?.toString() == currentUserId,
+        orElse: () => <String, dynamic>{},
+      );
+      
+      // Pick current user if present, otherwise first user
+      final selectedUser = currentUserAtRank.isNotEmpty ? currentUserAtRank : usersAtRank.first;
+      podiumUsers.add(selectedUser);
+      usedRanks.add(rank);
+    }
+    
+    // Second pass: add everyone else to remaining list
+    for (final user in allUsers) {
+      final userRank = int.tryParse(user['user_rank']?.toString() ?? '0') ?? 0;
+      final userId = user['id']?.toString() ?? user['user_id']?.toString() ?? '';
+      
+      // Check if this user is already on podium
+      final isOnPodium = podiumUsers.any((p) => 
+        (p['id']?.toString() ?? p['user_id']?.toString() ?? '') == userId
+      );
+      
+      if (!isOnPodium) {
+        remainingUsers.add(user);
+      }
+    }
+    
+    return (podiumUsers: podiumUsers, remainingUsers: remainingUsers, tieCounts: tieCounts);
+  }
 
-  Widget _buildPodium(List<Map<String, dynamic>> top3) {
+  Widget _buildPodium(List<Map<String, dynamic>> top3, {Map<int, int>? tieCounts}) {
     if (top3.isEmpty) return const SizedBox.shrink();
 
     return LayoutBuilder(
@@ -625,7 +693,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                         child: Padding(
                           padding: EdgeInsets.only(bottom: podiumHeight * 0.08),
                           child: top3.length > 1
-                              ? _buildPodiumAvatar(top3[1], 2)
+                              ? _buildPodiumAvatar(top3[1], 2, tieCount: tieCounts?[2] ?? 1)
                               : const SizedBox.shrink(),
                         ),
                       ),
@@ -634,7 +702,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                         child: Padding(
                           padding: EdgeInsets.only(bottom: avatar1stExtra),
                           child: top3.isNotEmpty
-                              ? _buildPodiumAvatar(top3[0], 1)
+                              ? _buildPodiumAvatar(top3[0], 1, tieCount: tieCounts?[1] ?? 1)
                               : const SizedBox.shrink(),
                         ),
                       ),
@@ -643,7 +711,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                         child: Padding(
                           padding: EdgeInsets.only(top: avatar3rdOffset),
                           child: top3.length > 2
-                              ? _buildPodiumAvatar(top3[2], 3)
+                              ? _buildPodiumAvatar(top3[2], 3, tieCount: tieCounts?[3] ?? 1)
                               : const SizedBox.shrink(),
                         ),
                       ),
@@ -658,9 +726,10 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     );
   }
 
-  Widget _buildPodiumAvatar(Map<String, dynamic> user, int position) {
+  Widget _buildPodiumAvatar(Map<String, dynamic> user, int position, {int tieCount = 1}) {
     final name = user['name'] as String? ?? '...';
     final profileUrl = user['profile'] as String? ?? '';
+    final isExAequo = tieCount > 1;
     
     // Avatar border colors matching the design
     final avatarBorderColors = {
@@ -692,51 +761,103 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
           ),
         
         // Avatar with border
-        Container(
-          width: avatarSize,
-          height: avatarSize,
-          decoration: BoxDecoration(
-            color: avatarBgColors[position],
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: avatarBorderColors[position]!,
-              width: 3,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: profileUrl.isNotEmpty
-                ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
-                : Icon(
-                    Icons.person,
-                    color: Colors.brown.shade300,
-                    size: position == 1 ? 34 : 28,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: avatarSize,
+              height: avatarSize,
+              decoration: BoxDecoration(
+                color: avatarBgColors[position],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isExAequo ? Colors.amber.shade400 : avatarBorderColors[position]!,
+                  width: isExAequo ? 4 : 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-          ),
+                  if (isExAequo)
+                    BoxShadow(
+                      color: Colors.amber.withOpacity(0.4),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: profileUrl.isNotEmpty
+                    ? QImage(imageUrl: profileUrl, fit: BoxFit.cover)
+                    : Icon(
+                        Icons.person,
+                        color: Colors.brown.shade300,
+                        size: position == 1 ? 34 : 28,
+                      ),
+              ),
+            ),
+            // Ex aequo badge
+            if (isExAequo)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade500,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '=$tieCount',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeights.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         
         const SizedBox(height: 6),
         
-        // Name
+        // Name with ex aequo indicator
         SizedBox(
           width: 80,
-          child: Text(
-            name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeights.semiBold,
-              color: Colors.white,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            children: [
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeights.semiBold,
+                  color: Colors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (isExAequo)
+                Text(
+                  'ex æquo',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.amber.shade300,
+                    fontWeight: FontWeights.medium,
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -834,12 +955,24 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     }
   }
 
-  Widget _buildLeaderboardItem(Map<String, dynamic> item) {
+  Widget _buildLeaderboardItem(
+    Map<String, dynamic> item, {
+    List<Map<String, dynamic>>? allUsers,
+  }) {
     final rank = item['user_rank'] as String? ?? '0';
     final name = item['name'] as String? ?? '...';
     final profileUrl = item['profile'] as String? ?? '';
     final score = item['score'] as String? ?? '0';
     final rankInt = int.tryParse(rank) ?? 0;
+    
+    // Check if this user is ex aequo (tied with others)
+    bool isExAequo = false;
+    if (allUsers != null) {
+      final usersWithSameRank = allUsers.where((u) => 
+        (u['user_rank'] as String? ?? '0') == rank
+      ).length;
+      isExAequo = usersWithSameRank > 1;
+    }
 
     // Colors for different rank ranges
     Color getItemColor() {
@@ -855,6 +988,9 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: isExAequo 
+            ? Border.all(color: Colors.amber.shade400, width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -865,33 +1001,47 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       ),
       child: Row(
         children: [
-          // Rank with superscript
+          // Rank with superscript and ex aequo indicator
           SizedBox(
-            width: 44,
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeights.bold,
-                  color: context.primaryTextColor,
-                ),
-                children: [
-                  TextSpan(text: rank),
-                  WidgetSpan(
-                    child: Transform.translate(
-                      offset: const Offset(0, -5),
-                      child: Text(
-                        _getOrdinalSuffix(rankInt),
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeights.bold,
-                          color: context.primaryTextColor,
-                        ),
-                      ),
+            width: 52,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isExAequo)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: Icon(
+                      Icons.drag_handle,
+                      size: 14,
+                      color: Colors.amber.shade700,
                     ),
                   ),
-                ],
-              ),
+                RichText(
+                  text: TextSpan(
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeights.bold,
+                      color: isExAequo ? Colors.amber.shade700 : context.primaryTextColor,
+                    ),
+                    children: [
+                      TextSpan(text: rank),
+                      WidgetSpan(
+                        child: Transform.translate(
+                          offset: const Offset(0, -5),
+                          child: Text(
+                            _getOrdinalSuffix(rankInt),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeights.bold,
+                              color: isExAequo ? Colors.amber.shade700 : context.primaryTextColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -912,24 +1062,47 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
           ),
           const SizedBox(width: 12),
           
-          // Name
+          // Name with ex aequo badge
           Expanded(
-            child: Text(
-              name,
-                  style: TextStyle(
-                fontSize: 16,
-                    fontWeight: FontWeights.semiBold,
-                color: context.primaryTextColor,
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeights.semiBold,
+                      color: context.primaryTextColor,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
                 ),
+                if (isExAequo)
+                  Container(
+                    margin: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'ex æquo',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeights.semiBold,
+                        color: Colors.amber.shade800,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           
           // Score
-                Text(
+          Text(
             '$score pt',
-                  style: TextStyle(
+            style: TextStyle(
               fontSize: 14,
               color: context.primaryTextColor.withValues(alpha: 0.6),
             ),

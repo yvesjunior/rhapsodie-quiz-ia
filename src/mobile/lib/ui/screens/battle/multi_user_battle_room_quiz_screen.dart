@@ -610,67 +610,158 @@ class _MultiUserBattleRoomQuizScreenState
             context.read<UserDetailsCubit>().userId(),
           )) {
             timerAnimationController.stop();
+            final colorScheme = Theme.of(context).colorScheme;
+            
             return Container(
               width: context.width,
               height: context.height,
-              color: context.surfaceColor.withValues(alpha: 0.1),
+              color: Colors.black54,
               alignment: Alignment.center,
-              child: AlertDialog(
-                shadowColor: Colors.transparent,
-                title: Text(
-                  context.tr('youWonLbl')!,
-                  style: TextStyle(color: Theme.of(context).primaryColor),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.elasticOut,
+                builder: (context, scale, child) => Transform.scale(
+                  scale: scale,
+                  child: child,
                 ),
-                content: Text(
-                  context.tr('everyOneLeftLbl')!,
-                  style: TextStyle(color: Theme.of(context).primaryColor),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () async {
-                      //delete messages
-                      deleteMessages(context.read<MultiUserBattleRoomCubit>());
-
-                      final battleRoom = battleRoomCubit.battleRoom!;
-
-                      // Set the Result
-                      await context
-                          .read<SetCoinScoreCubit>()
-                          .setCoinScore(
-                            quizType: '1.5',
-                            playedQuestions: {
-                              'user1_id': ?battleRoom.user1!.uid.isEmpty
-                                  ? '0'
-                                  : battleRoom.user1?.uid,
-                              'user2_id': ?battleRoom.user2!.uid.isEmpty
-                                  ? '0'
-                                  : battleRoom.user2?.uid,
-                              'user3_id': ?battleRoom.user3!.uid.isEmpty
-                                  ? '0'
-                                  : battleRoom.user3?.uid,
-                              'user4_id': battleRoom.user4!.uid.isEmpty
-                                  ? '0'
-                                  : battleRoom.user4?.uid,
-                              'user1_data': ?battleRoom.user1?.answers,
-                              'user2_data': ?battleRoom.user2?.answers,
-                              'user3_data': ?battleRoom.user3?.answers,
-                              'user4_data': ?battleRoom.user4?.answers,
-                            },
-                            joinedUsersCount: joinedUsersCount,
-                            matchId: battleRoomCubit.getRoomCode(),
-                          )
-                          .then((_) {
-                            // Delete the room
-                            battleRoomCubit.deleteMultiUserBattleRoom();
-                            context.shouldPop();
-                          });
-                    },
-                    child: Text(
-                      context.tr('okayLbl')!,
-                      style: TextStyle(color: Theme.of(context).primaryColor),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.primary.withValues(alpha: 0.95),
+                        colorScheme.primary.withValues(alpha: 0.85),
+                      ],
                     ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                ],
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Trophy icon with glow
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade400,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.amber.withValues(alpha: 0.6),
+                              blurRadius: 20,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.emoji_events_rounded,
+                          size: 48,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      // Title
+                      Text(
+                        context.tr('youWonLbl') ?? 'You Won!',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Subtitle
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          context.tr('everyOneLeftLbl') ?? 'Everyone left the game',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Okay button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            //delete messages
+                            deleteMessages(context.read<MultiUserBattleRoomCubit>());
+
+                            final battleRoom = battleRoomCubit.battleRoom!;
+
+                            // Set the Result
+                            await context
+                                .read<SetCoinScoreCubit>()
+                                .setCoinScore(
+                                  quizType: '1.5',
+                                  playedQuestions: {
+                                    'user1_id': ?battleRoom.user1!.uid.isEmpty
+                                        ? '0'
+                                        : battleRoom.user1?.uid,
+                                    'user2_id': ?battleRoom.user2!.uid.isEmpty
+                                        ? '0'
+                                        : battleRoom.user2?.uid,
+                                    'user3_id': ?battleRoom.user3!.uid.isEmpty
+                                        ? '0'
+                                        : battleRoom.user3?.uid,
+                                    'user4_id': battleRoom.user4!.uid.isEmpty
+                                        ? '0'
+                                        : battleRoom.user4?.uid,
+                                    'user1_data': ?battleRoom.user1?.answers,
+                                    'user2_data': ?battleRoom.user2?.answers,
+                                    'user3_data': ?battleRoom.user3?.answers,
+                                    'user4_data': ?battleRoom.user4?.answers,
+                                  },
+                                  joinedUsersCount: joinedUsersCount,
+                                  matchId: battleRoomCubit.getRoomCode(),
+                                )
+                                .then((_) {
+                                  // Delete the room
+                                  battleRoomCubit.deleteMultiUserBattleRoom();
+                                  context.shouldPop();
+                                });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            context.tr('okayLbl') ?? 'Okay',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }
@@ -683,26 +774,89 @@ class _MultiUserBattleRoomQuizScreenState
   Widget _buildUserLeftTheGame() {
     //cancel timer when user left the game
     if (showUserLeftTheGame) {
+      final colorScheme = Theme.of(context).colorScheme;
+      
       return Container(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+        color: Colors.black54,
         alignment: Alignment.center,
         width: context.width,
         height: context.height,
-        child: AlertDialog(
-          shadowColor: Colors.transparent,
-          content: Text(
-            context.tr('youLeftLbl')!,
-            style: TextStyle(color: Theme.of(context).primaryColor),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, scale, child) => Transform.scale(
+            scale: scale,
+            child: child,
           ),
-          actions: [
-            TextButton(
-              onPressed: Navigator.of(context).pop,
-              child: Text(
-                context.tr('okayLbl')!,
-                style: TextStyle(color: Theme.of(context).primaryColor),
-              ),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Exit icon
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.exit_to_app_rounded,
+                    size: 32,
+                    color: Colors.orange.shade700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Title
+                Text(
+                  context.tr('youLeftLbl') ?? 'You Left',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Okay button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: Navigator.of(context).pop,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      context.tr('okayLbl') ?? 'Okay',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }

@@ -108,13 +108,35 @@ final class QuizRepository {
     required String type,
     String? subType,
   }) async {
-    final result = await _quizRemoteDataSource.getCategory(
-      languageId: languageId,
-      type: type,
-      subType: subType,
-    );
-
-    return result.map(Category.fromJson).toList();
+    // Try cache first
+    final cached = await _quizLocalDataSource.getCachedCategories();
+    
+    try {
+      final result = await _quizRemoteDataSource.getCategory(
+        languageId: languageId,
+        type: type,
+        subType: subType,
+      );
+      final categories = result.map(Category.fromJson).toList();
+      
+      // Cache the result
+      await _quizLocalDataSource.cacheCategories(categories);
+      
+      return categories;
+    } on SocketException {
+      if (cached != null && cached.isNotEmpty) {
+        log('Categories (no user): returning ${cached.length} cached');
+        return cached;
+      }
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      if (cached != null && cached.isNotEmpty) return cached;
+      rethrow;
+    } catch (e) {
+      log('Error fetching categories: $e');
+      if (cached != null && cached.isNotEmpty) return cached;
+      throw const ApiException(errorCodeNoInternet);
+    }
   }
 
   /// Get subcategories (offline-first)
@@ -173,11 +195,20 @@ final class QuizRepository {
     String subCategory, {
     required QuizTypes quizType,
   }) async {
-    return _quizRemoteDataSource.getUnlockedLevel(
-      category,
-      subCategory,
-      quizType: quizType,
-    );
+    try {
+      return await _quizRemoteDataSource.getUnlockedLevel(
+        category,
+        subCategory,
+        quizType: quizType,
+      );
+    } on SocketException {
+      // Return level 0 (unlocked) if offline - allows playing at least first level
+      log('getUnlockedLevel: offline, returning 0');
+      return 0;
+    } catch (e) {
+      log('getUnlockedLevel error: $e');
+      return 0;
+    }
   }
 
   Future<List<Question>> getQuestions(
@@ -190,68 +221,126 @@ final class QuizRepository {
     String? contestId,
     String? funAndLearnId,
   }) async {
-    final List<Map<String, dynamic>> result;
+    // Generate cache key based on quiz type and parameters
+    final cacheKey = _generateQuestionsCacheKey(
+      quizType: quizType,
+      categoryId: categoryId,
+      subcategoryId: subcategoryId,
+      level: level,
+      contestId: contestId,
+      funAndLearnId: funAndLearnId,
+    );
+    
+    // Check cache first
+    final cached = await _quizLocalDataSource.getCachedQuestions(cacheKey);
+    
+    try {
+      final List<Map<String, dynamic>> result;
 
-    if (quizType == QuizTypes.dailyQuiz) {
-      final (:gmt, :localTimezone) = await DateTimeUtils.getTimeZone();
-      result = await _quizRemoteDataSource.getQuestionsForDailyQuiz(
-        languageId: languageId,
-        timezone: localTimezone,
-        gmt: gmt,
-      );
-    } else if (quizType == QuizTypes.selfChallenge) {
-      result = await _quizRemoteDataSource.getQuestionsForSelfChallenge(
-        languageId: languageId!,
-        categoryId: categoryId!,
-        numberOfQuestions: numberOfQuestions!,
-        subcategoryId: subcategoryId!,
-      );
-    } else if (quizType == QuizTypes.quizZone) {
-      //if level is 0 means need to fetch questions by get_question api endpoint
-      if (level! == '0') {
+      if (quizType == QuizTypes.dailyQuiz) {
+        final (:gmt, :localTimezone) = await DateTimeUtils.getTimeZone();
+        result = await _quizRemoteDataSource.getQuestionsForDailyQuiz(
+          languageId: languageId,
+          timezone: localTimezone,
+          gmt: gmt,
+        );
+      } else if (quizType == QuizTypes.selfChallenge) {
+        result = await _quizRemoteDataSource.getQuestionsForSelfChallenge(
+          languageId: languageId!,
+          categoryId: categoryId!,
+          numberOfQuestions: numberOfQuestions!,
+          subcategoryId: subcategoryId!,
+        );
+      } else if (quizType == QuizTypes.quizZone) {
+        //if level is 0 means need to fetch questions by get_question api endpoint
+        if (level! == '0') {
+          final type = categoryId!.isNotEmpty ? 'category' : 'subcategory';
+          final id = type == 'category' ? categoryId : subcategoryId!;
+          result = await _quizRemoteDataSource.getQuestionByCategoryOrSubcategory(
+            type: type,
+            id: id,
+          );
+        } else {
+          result = await _quizRemoteDataSource.getQuestionsForQuizZone(
+            languageId: languageId!,
+            categoryId: categoryId!,
+            subcategoryId: subcategoryId!,
+            level: level,
+          );
+        }
+      } else if (quizType == QuizTypes.trueAndFalse) {
+        result = await _quizRemoteDataSource.getQuestionByType(languageId!);
+      } else if (quizType == QuizTypes.contest) {
+        result = await _quizRemoteDataSource.getQuestionContest(contestId!);
+      } else if (quizType == QuizTypes.funAndLearn) {
+        result = await _quizRemoteDataSource.getComprehensionQuestion(
+          funAndLearnId,
+        );
+      } else if (quizType == QuizTypes.audioQuestions) {
         final type = categoryId!.isNotEmpty ? 'category' : 'subcategory';
         final id = type == 'category' ? categoryId : subcategoryId!;
-        result = await _quizRemoteDataSource.getQuestionByCategoryOrSubcategory(
+        result = await _quizRemoteDataSource.getAudioQuestions(
+          type: type,
+          id: id,
+        );
+      } else if (quizType == QuizTypes.mathMania) {
+        final type = subcategoryId != null && subcategoryId.isNotEmpty
+            ? 'subcategory'
+            : 'category';
+        final id = type == 'category' ? categoryId! : subcategoryId!;
+        result = await _quizRemoteDataSource.getLatexQuestions(
           type: type,
           id: id,
         );
       } else {
-        result = await _quizRemoteDataSource.getQuestionsForQuizZone(
-          languageId: languageId!,
-          categoryId: categoryId!,
-          subcategoryId: subcategoryId!,
-          level: level,
-        );
+        result = [];
       }
-    } else if (quizType == QuizTypes.trueAndFalse) {
-      result = await _quizRemoteDataSource.getQuestionByType(languageId!);
-    } else if (quizType == QuizTypes.contest) {
-      result = await _quizRemoteDataSource.getQuestionContest(contestId!);
-    } else if (quizType == QuizTypes.funAndLearn) {
-      result = await _quizRemoteDataSource.getComprehensionQuestion(
-        funAndLearnId,
-      );
-    } else if (quizType == QuizTypes.audioQuestions) {
-      final type = categoryId!.isNotEmpty ? 'category' : 'subcategory';
-      final id = type == 'category' ? categoryId : subcategoryId!;
-      result = await _quizRemoteDataSource.getAudioQuestions(
-        type: type,
-        id: id,
-      );
-    } else if (quizType == QuizTypes.mathMania) {
-      final type = subcategoryId != null && subcategoryId.isNotEmpty
-          ? 'subcategory'
-          : 'category';
-      final id = type == 'category' ? categoryId! : subcategoryId!;
-      result = await _quizRemoteDataSource.getLatexQuestions(
-        type: type,
-        id: id,
-      );
-    } else {
-      result = [];
-    }
 
-    return result.map(Question.fromJson).toList(growable: false);
+      final questions = result.map(Question.fromJson).toList(growable: false);
+      
+      // Cache the results
+      if (questions.isNotEmpty && cacheKey.isNotEmpty) {
+        await _quizLocalDataSource.cacheQuestions(cacheKey, questions);
+        log('Questions cached: $cacheKey (${questions.length} questions)');
+      }
+      
+      return questions;
+    } on SocketException {
+      // Network error - return cache if available
+      if (cached != null && cached.isNotEmpty) {
+        log('Questions: returning ${cached.length} cached due to network error');
+        return cached;
+      }
+      throw const ApiException(errorCodeNoInternet);
+    } on ApiException {
+      if (cached != null && cached.isNotEmpty) return cached;
+      rethrow;
+    } catch (e) {
+      log('Error fetching questions: $e');
+      if (cached != null && cached.isNotEmpty) return cached;
+      throw const ApiException(errorCodeNoInternet);
+    }
+  }
+  
+  /// Generate a unique cache key for questions
+  String _generateQuestionsCacheKey({
+    QuizTypes? quizType,
+    String? categoryId,
+    String? subcategoryId,
+    String? level,
+    String? contestId,
+    String? funAndLearnId,
+  }) {
+    final parts = <String>['questions'];
+    
+    if (quizType != null) parts.add(quizType.name);
+    if (categoryId != null && categoryId.isNotEmpty) parts.add('cat_$categoryId');
+    if (subcategoryId != null && subcategoryId.isNotEmpty) parts.add('sub_$subcategoryId');
+    if (level != null && level.isNotEmpty) parts.add('lvl_$level');
+    if (contestId != null && contestId.isNotEmpty) parts.add('contest_$contestId');
+    if (funAndLearnId != null && funAndLearnId.isNotEmpty) parts.add('fun_$funAndLearnId');
+    
+    return parts.join('_');
   }
 
   Future<List<GuessTheWordQuestion>> getGuessTheWordQuestions({
@@ -259,13 +348,19 @@ final class QuizRepository {
     required String type, //category or subcategory
     required String typeId, //id of the category or subcategory
   }) async {
-    final result = await _quizRemoteDataSource.getGuessTheWordQuestions(
-      languageId: languageId,
-      type: type,
-      typeId: typeId,
-    );
-
-    return result.map(GuessTheWordQuestion.fromJson).toList();
+    try {
+      final result = await _quizRemoteDataSource.getGuessTheWordQuestions(
+        languageId: languageId,
+        type: type,
+        typeId: typeId,
+      );
+      return result.map(GuessTheWordQuestion.fromJson).toList();
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } catch (e) {
+      log('getGuessTheWordQuestions error: $e');
+      throw const ApiException(errorCodeNoInternet);
+    }
   }
 
   Future<Contests> getContest({
@@ -312,19 +407,26 @@ final class QuizRepository {
     required int limit,
     int? offset,
   }) async {
-    final (:total, :otherUsersRanks) = await _quizRemoteDataSource
-        .getContestLeaderboard(
-          contestId: contestId,
-          limit: limit,
-          offset: offset,
-        );
+    try {
+      final (:total, :otherUsersRanks) = await _quizRemoteDataSource
+          .getContestLeaderboard(
+            contestId: contestId,
+            limit: limit,
+            offset: offset,
+          );
 
-    return (
-      total: total,
-      otherUsersRanks: otherUsersRanks
-          .map(ContestLeaderboard.fromJson)
-          .toList(),
-    );
+      return (
+        total: total,
+        otherUsersRanks: otherUsersRanks
+            .map(ContestLeaderboard.fromJson)
+            .toList(),
+      );
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } catch (e) {
+      log('getContestLeaderboard error: $e');
+      throw const ApiException(errorCodeNoInternet);
+    }
   }
 
   Future<List<Comprehension>> getComprehension({
@@ -332,13 +434,19 @@ final class QuizRepository {
     required String type,
     required String typeId,
   }) async {
-    final result = await _quizRemoteDataSource.getComprehension(
-      languageId: languageId,
-      type: type,
-      typeId: typeId,
-    );
-
-    return result.map(Comprehension.fromJson).toList();
+    try {
+      final result = await _quizRemoteDataSource.getComprehension(
+        languageId: languageId,
+        type: type,
+        typeId: typeId,
+      );
+      return result.map(Comprehension.fromJson).toList();
+    } on SocketException {
+      throw const ApiException(errorCodeNoInternet);
+    } catch (e) {
+      log('getComprehension error: $e');
+      throw const ApiException(errorCodeNoInternet);
+    }
   }
 
   Future<void> unlockPremiumCategory({required String categoryId}) async {
