@@ -21,7 +21,7 @@ database-backups/
 .env.development
 .env.test
 
-# Firebase configuration files
+# Firebase configuration files (sensitive - contain project IDs)
 **/firebase_config.json
 **/firebase_options.dart
 **/google-services.json
@@ -32,6 +32,11 @@ database-backups/
 **/ios/firebase_app_id_file.json
 **/firebase-service-account.json
 **/*-service-account*.json
+src/mobile/firebase.json
+
+# Firebase rules and deploy config (keep in repo)
+# firebase.json - root level config for firebase deploy
+# firestore.rules - security rules for Firestore
 
 # SSL/TLS certificates and keys
 *.pem

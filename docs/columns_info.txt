@@ -1,0 +1,452 @@
+TABLE_NAME	COLUMN_NAME	DATA_TYPE	COLUMN_TYPE	IS_NULLABLE	COLUMN_KEY	COLUMN_DEFAULT
+tbl_ai_questions	id	bigint	bigint	NO	PRI	NULL
+tbl_ai_questions	language_id	int	int	NO		0
+tbl_ai_questions	quiz_type	int	int	NO		0
+tbl_ai_questions	contest_id	int	int	NO		0
+tbl_ai_questions	exam_id	int	int	NO		0
+tbl_ai_questions	category	int	int	NO		NULL
+tbl_ai_questions	subcategory	int	int	NO		0
+tbl_ai_questions	level	int	int	NO		0
+tbl_ai_questions	question_type	int	int	NO		0
+tbl_ai_questions	answer_type	int	int	NO		0
+tbl_ai_questions	question	text	text	NO		NULL
+tbl_ai_questions	options	longtext	longtext	NO		NULL
+tbl_ai_questions	correct_answer	varchar	varchar(50)	NO		NULL
+tbl_ai_questions	marks	int	int	NO		0
+tbl_ai_questions	status	int	int	NO		0
+tbl_ai_questions	note	varchar	varchar(255)	YES		NULL
+tbl_ai_questions	date_time	datetime	datetime	NO		NULL
+tbl_audio_question	id	int	int	NO	PRI	NULL
+tbl_audio_question	category	int	int	NO	MUL	NULL
+tbl_audio_question	subcategory	int	int	NO	MUL	NULL
+tbl_audio_question	language_id	int	int	NO	MUL	0
+tbl_audio_question	audio_type	int	int	NO		NULL
+tbl_audio_question	audio	varchar	varchar(255)	NO		NULL
+tbl_audio_question	question	text	text	NO		NULL
+tbl_audio_question	question_type	tinyint	tinyint	NO		NULL
+tbl_audio_question	optiona	text	text	NO		NULL
+tbl_audio_question	optionb	text	text	NO		NULL
+tbl_audio_question	optionc	text	text	NO		NULL
+tbl_audio_question	optiond	text	text	NO		NULL
+tbl_audio_question	optione	text	text	YES		NULL
+tbl_audio_question	answer	text	text	NO		NULL
+tbl_audio_question	note	text	text	NO		NULL
+tbl_authenticate	auth_id	int	int	NO	PRI	NULL
+tbl_authenticate	auth_username	varchar	varchar(12)	NO	UNI	NULL
+tbl_authenticate	auth_pass	text	text	NO		NULL
+tbl_authenticate	role	varchar	varchar(32)	NO		NULL
+tbl_authenticate	permissions	mediumtext	mediumtext	NO		NULL
+tbl_authenticate	status	int	int	NO		0
+tbl_authenticate	language	varchar	varchar(255)	NO		english
+tbl_authenticate	created	datetime	datetime	NO		NULL
+tbl_badges	id	int	int	NO	PRI	NULL
+tbl_badges	language_id	int	int	YES		14
+tbl_badges	type	varchar	varchar(100)	NO		NULL
+tbl_badges	badge_label	varchar	varchar(200)	NO		NULL
+tbl_badges	badge_note	text	text	NO		NULL
+tbl_badges	badge_reward	int	int	NO		NULL
+tbl_badges	badge_icon	varchar	varchar(100)	NO		NULL
+tbl_badges	badge_counter	int	int	NO		NULL
+tbl_battle_questions	id	int	int	NO	PRI	NULL
+tbl_battle_questions	match_id	varchar	varchar(128)	NO	UNI	NULL
+tbl_battle_questions	entry_coin	int	int	NO		0
+tbl_battle_questions	questions	longtext	longtext	NO		NULL
+tbl_battle_questions	date_created	datetime	datetime	NO		NULL
+tbl_battle_questions	set_user1	int	int	NO		0
+tbl_battle_questions	set_user2	int	int	NO		0
+tbl_battle_statistics	id	int	int	NO	PRI	NULL
+tbl_battle_statistics	user_id1	int	int	NO	MUL	NULL
+tbl_battle_statistics	user_id2	int	int	NO	MUL	NULL
+tbl_battle_statistics	is_drawn	tinyint	tinyint	NO		NULL
+tbl_battle_statistics	winner_id	int	int	NO		NULL
+tbl_battle_statistics	date_created	datetime	datetime	NO		NULL
+tbl_bookmark	id	int	int	NO	PRI	NULL
+tbl_bookmark	user_id	int	int	NO	MUL	NULL
+tbl_bookmark	question_id	int	int	NO	MUL	NULL
+tbl_bookmark	status	int	int	NO		NULL
+tbl_bookmark	type	int	int	NO		NULL
+tbl_category	id	int	int	NO	PRI	NULL
+tbl_category	language_id	int	int	NO	MUL	0
+tbl_category	category_name	varchar	varchar(250)	NO		NULL
+tbl_category	slug	varchar	varchar(250)	YES		NULL
+tbl_category	type	int	int	NO		NULL
+tbl_category	is_premium	tinyint	tinyint	NO		0
+tbl_category	coins	int	int	NO		0
+tbl_category	image	text	text	YES		NULL
+tbl_category	row_order	int	int	NO		NULL
+tbl_coin_store	id	int	int	NO	PRI	NULL
+tbl_coin_store	title	varchar	varchar(50)	NO		NULL
+tbl_coin_store	coins	int	int	NO		NULL
+tbl_coin_store	type	int	int	NO		0
+tbl_coin_store	product_id	varchar	varchar(150)	NO	UNI	NULL
+tbl_coin_store	image	text	text	YES		NULL
+tbl_coin_store	description	text	text	NO		NULL
+tbl_coin_store	status	tinyint	tinyint	NO		1
+tbl_contest	id	int	int	NO	PRI	NULL
+tbl_contest	language_id	int	int	NO	MUL	0
+tbl_contest	name	text	text	NO		NULL
+tbl_contest	start_date	datetime	datetime	NO		NULL
+tbl_contest	end_date	datetime	datetime	NO		NULL
+tbl_contest	description	text	text	NO		NULL
+tbl_contest	image	varchar	varchar(512)	NO		NULL
+tbl_contest	entry	int	int	NO		NULL
+tbl_contest	prize_status	int	int	NO		NULL
+tbl_contest	date_created	datetime	datetime	NO		NULL
+tbl_contest	status	int	int	NO		NULL
+tbl_contest_leaderboard	id	int	int	NO	PRI	NULL
+tbl_contest_leaderboard	user_id	int	int	NO	MUL	NULL
+tbl_contest_leaderboard	contest_id	int	int	NO	MUL	NULL
+tbl_contest_leaderboard	questions_attended	int	int	NO		NULL
+tbl_contest_leaderboard	correct_answers	int	int	NO		NULL
+tbl_contest_leaderboard	score	double	double	NO	MUL	NULL
+tbl_contest_leaderboard	last_updated	datetime	datetime	NO		NULL
+tbl_contest_leaderboard	date_created	datetime	datetime	NO		NULL
+tbl_contest_prize	id	int	int	NO	PRI	NULL
+tbl_contest_prize	contest_id	int	int	NO	MUL	NULL
+tbl_contest_prize	top_winner	int	int	NO		NULL
+tbl_contest_prize	points	int	int	NO		NULL
+tbl_contest_question	id	int	int	NO	PRI	NULL
+tbl_contest_question	langauge_id	int	int	NO		0
+tbl_contest_question	contest_id	int	int	NO	MUL	NULL
+tbl_contest_question	image	varchar	varchar(256)	NO		NULL
+tbl_contest_question	question	text	text	NO		NULL
+tbl_contest_question	question_type	int	int	NO		NULL
+tbl_contest_question	optiona	text	text	NO		NULL
+tbl_contest_question	optionb	text	text	NO		NULL
+tbl_contest_question	optionc	text	text	NO		NULL
+tbl_contest_question	optiond	text	text	NO		NULL
+tbl_contest_question	optione	text	text	NO		NULL
+tbl_contest_question	answer	varchar	varchar(12)	NO		NULL
+tbl_contest_question	note	text	text	NO		NULL
+tbl_daily_quiz	id	int	int	NO	PRI	NULL
+tbl_daily_quiz	language_id	int	int	NO	MUL	NULL
+tbl_daily_quiz	questions_id	text	text	NO		NULL
+tbl_daily_quiz	date_published	date	date	NO		NULL
+tbl_daily_quiz_user	id	int	int	NO	PRI	NULL
+tbl_daily_quiz_user	user_id	int	int	NO		NULL
+tbl_daily_quiz_user	date	date	date	NO		NULL
+tbl_exam_module	id	int	int	NO	PRI	NULL
+tbl_exam_module	language_id	int	int	NO	MUL	0
+tbl_exam_module	title	text	text	NO		NULL
+tbl_exam_module	date	date	date	NO		NULL
+tbl_exam_module	exam_key	varchar	varchar(100)	NO		NULL
+tbl_exam_module	duration	int	int	NO		NULL
+tbl_exam_module	status	int	int	NO		0
+tbl_exam_module	answer_again	int	int	NO		NULL
+tbl_exam_module_question	id	int	int	NO	PRI	NULL
+tbl_exam_module_question	exam_module_id	int	int	NO	MUL	NULL
+tbl_exam_module_question	image	varchar	varchar(512)	NO		NULL
+tbl_exam_module_question	marks	int	int	NO		NULL
+tbl_exam_module_question	question	text	text	NO		NULL
+tbl_exam_module_question	question_type	tinyint	tinyint	NO		NULL
+tbl_exam_module_question	optiona	text	text	NO		NULL
+tbl_exam_module_question	optionb	text	text	NO		NULL
+tbl_exam_module_question	optionc	text	text	NO		NULL
+tbl_exam_module_question	optiond	text	text	NO		NULL
+tbl_exam_module_question	optione	text	text	YES		NULL
+tbl_exam_module_question	answer	text	text	NO		NULL
+tbl_exam_module_result	id	int	int	NO	PRI	NULL
+tbl_exam_module_result	exam_module_id	int	int	NO	MUL	NULL
+tbl_exam_module_result	user_id	int	int	NO	MUL	NULL
+tbl_exam_module_result	obtained_marks	varchar	varchar(200)	NO		NULL
+tbl_exam_module_result	total_duration	varchar	varchar(20)	NO		NULL
+tbl_exam_module_result	statistics	longtext	longtext	NO		NULL
+tbl_exam_module_result	status	int	int	NO		NULL
+tbl_exam_module_result	rules_violated	tinyint	tinyint	NO		NULL
+tbl_exam_module_result	captured_question_ids	text	text	NO		NULL
+tbl_fun_n_learn	id	int	int	NO	PRI	NULL
+tbl_fun_n_learn	language_id	int	int	NO		0
+tbl_fun_n_learn	category	int	int	NO	MUL	NULL
+tbl_fun_n_learn	subcategory	int	int	NO	MUL	NULL
+tbl_fun_n_learn	title	text	text	NO		NULL
+tbl_fun_n_learn	detail	longtext	longtext	NO		NULL
+tbl_fun_n_learn	status	int	int	NO		0
+tbl_fun_n_learn	content_type	tinyint	tinyint	NO		0
+tbl_fun_n_learn	content_data	varchar	varchar(255)	NO		NULL
+tbl_fun_n_learn_question	id	int	int	NO	PRI	NULL
+tbl_fun_n_learn_question	fun_n_learn_id	int	int	NO	MUL	NULL
+tbl_fun_n_learn_question	question	text	text	NO		NULL
+tbl_fun_n_learn_question	question_type	int	int	NO		NULL
+tbl_fun_n_learn_question	optiona	text	text	NO		NULL
+tbl_fun_n_learn_question	optionb	text	text	NO		NULL
+tbl_fun_n_learn_question	optionc	text	text	NO		NULL
+tbl_fun_n_learn_question	optiond	text	text	NO		NULL
+tbl_fun_n_learn_question	optione	text	text	NO		NULL
+tbl_fun_n_learn_question	answer	varchar	varchar(12)	NO		NULL
+tbl_fun_n_learn_question	image	varchar	varchar(250)	NO		NULL
+tbl_guess_the_word	id	int	int	NO	PRI	NULL
+tbl_guess_the_word	language_id	int	int	NO		NULL
+tbl_guess_the_word	category	int	int	NO	MUL	NULL
+tbl_guess_the_word	subcategory	int	int	NO	MUL	NULL
+tbl_guess_the_word	image	text	text	NO		NULL
+tbl_guess_the_word	question	text	text	NO		NULL
+tbl_guess_the_word	answer	text	text	NO		NULL
+tbl_languages	id	int	int	NO	PRI	NULL
+tbl_languages	language	varchar	varchar(64)	NO		NULL
+tbl_languages	code	varchar	varchar(11)	NO		NULL
+tbl_languages	status	tinyint	tinyint	NO		0
+tbl_languages	type	tinyint	tinyint	NO		0
+tbl_languages	default_active	tinyint	tinyint	NO		0
+tbl_leaderboard_daily	id	int	int	NO	PRI	NULL
+tbl_leaderboard_daily	user_id	int	int	NO	MUL	NULL
+tbl_leaderboard_daily	score	int	int	NO		NULL
+tbl_leaderboard_daily	date_created	datetime	datetime	NO		NULL
+tbl_leaderboard_monthly	id	int	int	NO	PRI	NULL
+tbl_leaderboard_monthly	user_id	int	int	NO	MUL	NULL
+tbl_leaderboard_monthly	score	int	int	NO		NULL
+tbl_leaderboard_monthly	last_updated	datetime	datetime	NO		NULL
+tbl_leaderboard_monthly	date_created	datetime	datetime	NO		NULL
+tbl_level	id	int	int	NO	PRI	NULL
+tbl_level	user_id	int	int	NO	MUL	NULL
+tbl_level	category	int	int	NO	MUL	NULL
+tbl_level	subcategory	int	int	NO	MUL	NULL
+tbl_level	level	int	int	NO		NULL
+tbl_maths_question	id	int	int	NO	PRI	NULL
+tbl_maths_question	category	int	int	NO	MUL	NULL
+tbl_maths_question	subcategory	int	int	NO	MUL	NULL
+tbl_maths_question	language_id	int	int	NO	MUL	0
+tbl_maths_question	image	varchar	varchar(512)	NO		NULL
+tbl_maths_question	question	text	text	NO		NULL
+tbl_maths_question	question_type	tinyint	tinyint	NO		NULL
+tbl_maths_question	optiona	text	text	NO		NULL
+tbl_maths_question	optionb	text	text	NO		NULL
+tbl_maths_question	optionc	text	text	NO		NULL
+tbl_maths_question	optiond	text	text	NO		NULL
+tbl_maths_question	optione	text	text	YES		NULL
+tbl_maths_question	answer	text	text	NO		NULL
+tbl_maths_question	note	text	text	NO		NULL
+tbl_month_week	id	int	int	NO	PRI	NULL
+tbl_month_week	name	varchar	varchar(100)	NO		NULL
+tbl_month_week	type	int	int	NO		NULL
+tbl_multi_match	id	int	int	NO	PRI	NULL
+tbl_multi_match	category	int	int	NO	MUL	NULL
+tbl_multi_match	subcategory	int	int	NO	MUL	NULL
+tbl_multi_match	language_id	int	int	NO	MUL	0
+tbl_multi_match	image	varchar	varchar(250)	NO		NULL
+tbl_multi_match	question	text	text	NO		NULL
+tbl_multi_match	question_type	tinyint	tinyint	NO		NULL
+tbl_multi_match	optiona	text	text	NO		NULL
+tbl_multi_match	optionb	text	text	NO		NULL
+tbl_multi_match	optionc	text	text	NO		NULL
+tbl_multi_match	optiond	text	text	NO		NULL
+tbl_multi_match	optione	text	text	YES		NULL
+tbl_multi_match	answer_type	tinyint	tinyint	NO		NULL
+tbl_multi_match	answer	text	text	NO		NULL
+tbl_multi_match	level	int	int	NO		NULL
+tbl_multi_match	note	text	text	NO		NULL
+tbl_multi_match_level	id	int	int	NO	PRI	NULL
+tbl_multi_match_level	user_id	int	int	NO	MUL	NULL
+tbl_multi_match_level	category	int	int	NO	MUL	NULL
+tbl_multi_match_level	subcategory	int	int	NO	MUL	NULL
+tbl_multi_match_level	level	int	int	NO		NULL
+tbl_multi_match_question_reports	id	int	int	NO	PRI	NULL
+tbl_multi_match_question_reports	question_id	int	int	NO	MUL	NULL
+tbl_multi_match_question_reports	user_id	int	int	NO	MUL	NULL
+tbl_multi_match_question_reports	message	varchar	varchar(512)	NO		NULL
+tbl_multi_match_question_reports	date	datetime	datetime	NO		NULL
+tbl_notifications	id	int	int	NO	PRI	NULL
+tbl_notifications	title	varchar	varchar(128)	NO		NULL
+tbl_notifications	message	text	text	NO		NULL
+tbl_notifications	users	varchar	varchar(8)	NO		all
+tbl_notifications	user_id	longtext	longtext	YES		NULL
+tbl_notifications	type	varchar	varchar(250)	NO		NULL
+tbl_notifications	type_id	int	int	NO		NULL
+tbl_notifications	image	varchar	varchar(128)	NO		NULL
+tbl_notifications	date_sent	datetime	datetime	NO		NULL
+tbl_payment_request	id	int	int	NO	PRI	NULL
+tbl_payment_request	user_id	int	int	NO	MUL	NULL
+tbl_payment_request	uid	text	text	NO		NULL
+tbl_payment_request	payment_type	varchar	varchar(100)	NO		NULL
+tbl_payment_request	payment_address	varchar	varchar(225)	NO		NULL
+tbl_payment_request	payment_amount	varchar	varchar(20)	NO		NULL
+tbl_payment_request	coin_used	varchar	varchar(20)	NO		NULL
+tbl_payment_request	details	text	text	NO		NULL
+tbl_payment_request	status	tinyint	tinyint	NO		NULL
+tbl_payment_request	date	datetime	datetime	NO		NULL
+tbl_payment_request	status_date	datetime	datetime	YES		NULL
+tbl_question	id	int	int	NO	PRI	NULL
+tbl_question	category	int	int	NO	MUL	NULL
+tbl_question	subcategory	int	int	NO	MUL	NULL
+tbl_question	language_id	int	int	NO	MUL	0
+tbl_question	image	varchar	varchar(512)	NO		NULL
+tbl_question	question	text	text	NO		NULL
+tbl_question	question_type	tinyint	tinyint	NO		NULL
+tbl_question	optiona	text	text	NO		NULL
+tbl_question	optionb	text	text	NO		NULL
+tbl_question	optionc	text	text	NO		NULL
+tbl_question	optiond	text	text	NO		NULL
+tbl_question	optione	text	text	YES		NULL
+tbl_question	answer	text	text	NO		NULL
+tbl_question	level	int	int	NO		NULL
+tbl_question	note	text	text	NO		NULL
+tbl_question_reports	id	int	int	NO	PRI	NULL
+tbl_question_reports	question_id	int	int	NO	MUL	NULL
+tbl_question_reports	user_id	int	int	NO	MUL	NULL
+tbl_question_reports	message	varchar	varchar(512)	NO		NULL
+tbl_question_reports	date	datetime	datetime	NO		NULL
+tbl_quiz_categories	id	int	int	NO	PRI	NULL
+tbl_quiz_categories	user_id	int	int	NO	MUL	NULL
+tbl_quiz_categories	type	int	int	NO	MUL	NULL
+tbl_quiz_categories	type_id	int	int	NO		NULL
+tbl_quiz_categories	category	int	int	NO		NULL
+tbl_quiz_categories	subcategory	int	int	NO		NULL
+tbl_rooms	id	int	int	NO	PRI	NULL
+tbl_rooms	room_id	text	text	NO		NULL
+tbl_rooms	entry_coin	int	int	NO		0
+tbl_rooms	user_id	int	int	NO	MUL	NULL
+tbl_rooms	room_type	varchar	varchar(11)	NO		NULL
+tbl_rooms	category_id	int	int	NO	MUL	NULL
+tbl_rooms	no_of_que	int	int	NO		NULL
+tbl_rooms	questions	longtext	longtext	NO		NULL
+tbl_rooms	date_created	datetime	datetime	NO		NULL
+tbl_rooms	set_user1	int	int	NO		0
+tbl_rooms	set_user2	int	int	NO		0
+tbl_rooms	set_user3	int	int	NO		0
+tbl_rooms	set_user4	int	int	NO		0
+tbl_settings	id	int	int	NO	PRI	NULL
+tbl_settings	type	varchar	varchar(512)	NO		NULL
+tbl_settings	message	text	text	NO		NULL
+tbl_slider	id	int	int	NO	PRI	NULL
+tbl_slider	language_id	int	int	NO	MUL	NULL
+tbl_slider	image	varchar	varchar(255)	NO		NULL
+tbl_slider	title	text	text	NO		NULL
+tbl_slider	description	text	text	NO		NULL
+tbl_subcategory	id	int	int	NO	PRI	NULL
+tbl_subcategory	language_id	int	int	NO	MUL	0
+tbl_subcategory	maincat_id	int	int	NO	MUL	NULL
+tbl_subcategory	subcategory_name	varchar	varchar(250)	NO		NULL
+tbl_subcategory	slug	varchar	varchar(250)	YES		NULL
+tbl_subcategory	image	text	text	YES		NULL
+tbl_subcategory	status	tinyint	tinyint	NO		1
+tbl_subcategory	is_premium	tinyint	tinyint	NO		0
+tbl_subcategory	coins	int	int	NO		0
+tbl_subcategory	row_order	int	int	NO		NULL
+tbl_tracker	id	int	int	NO	PRI	NULL
+tbl_tracker	user_id	int	int	NO	MUL	NULL
+tbl_tracker	uid	text	text	NO		NULL
+tbl_tracker	points	varchar	varchar(255)	NO		NULL
+tbl_tracker	type	text	text	NO		NULL
+tbl_tracker	status	tinyint	tinyint	NO		NULL
+tbl_tracker	date	date	date	NO		NULL
+tbl_upload_languages	id	int	int	NO	PRI	NULL
+tbl_upload_languages	name	varchar	varchar(512)	NO		NULL
+tbl_upload_languages	title	varchar	varchar(512)	NO		NULL
+tbl_upload_languages	app_version	varchar	varchar(100)	NO		0
+tbl_upload_languages	web_version	varchar	varchar(100)	NO		0
+tbl_upload_languages	app_rtl_support	tinyint	tinyint	NO		0
+tbl_upload_languages	web_rtl_support	tinyint	tinyint	NO		0
+tbl_upload_languages	app_status	tinyint	tinyint	NO		0
+tbl_upload_languages	web_status	tinyint	tinyint	NO		0
+tbl_upload_languages	app_default	tinyint	tinyint	NO		0
+tbl_upload_languages	web_default	tinyint	tinyint	NO		0
+tbl_user_audio_quiz_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_audio_quiz_session	user_id	int	int	NO	MUL	NULL
+tbl_user_audio_quiz_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_audio_quiz_session	date	date	date	YES		NULL
+tbl_user_category	id	int	int	NO	PRI	NULL
+tbl_user_category	user_id	int	int	NO	MUL	NULL
+tbl_user_category	category_id	int	int	NO		NULL
+tbl_user_contest_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_contest_session	user_id	int	int	NO	MUL	NULL
+tbl_user_contest_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_contest_session	date	date	date	YES		NULL
+tbl_user_daily_quiz_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_daily_quiz_session	user_id	int	int	NO	MUL	NULL
+tbl_user_daily_quiz_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_daily_quiz_session	date	date	date	YES		NULL
+tbl_user_fun_n_learn_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_fun_n_learn_session	user_id	int	int	NO	MUL	NULL
+tbl_user_fun_n_learn_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_fun_n_learn_session	date	date	date	YES		NULL
+tbl_user_guess_the_word_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_guess_the_word_session	user_id	int	int	NO	MUL	NULL
+tbl_user_guess_the_word_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_guess_the_word_session	date	date	date	YES		NULL
+tbl_user_maths_quiz_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_maths_quiz_session	user_id	int	int	NO	MUL	NULL
+tbl_user_maths_quiz_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_maths_quiz_session	date	date	date	YES		NULL
+tbl_user_multi_match_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_multi_match_session	user_id	int	int	NO	MUL	NULL
+tbl_user_multi_match_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_multi_match_session	date	date	date	YES		NULL
+tbl_user_quiz_zone_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_quiz_zone_session	user_id	int	int	NO	MUL	NULL
+tbl_user_quiz_zone_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_quiz_zone_session	date	date	date	YES		NULL
+tbl_user_true_false_session	id	bigint	bigint	NO	PRI	NULL
+tbl_user_true_false_session	user_id	int	int	NO	MUL	NULL
+tbl_user_true_false_session	questions	longtext	longtext	NO	MUL	NULL
+tbl_user_true_false_session	date	date	date	YES		NULL
+tbl_users	id	int	int unsigned	NO	PRI	NULL
+tbl_users	firebase_id	longtext	longtext	NO	MUL	NULL
+tbl_users	name	varchar	varchar(128)	NO		
+tbl_users	email	varchar	varchar(128)	NO	MUL	NULL
+tbl_users	mobile	varchar	varchar(32)	NO		NULL
+tbl_users	type	varchar	varchar(16)	NO		NULL
+tbl_users	profile	varchar	varchar(128)	NO		NULL
+tbl_users	fcm_id	varchar	varchar(1024)	YES	MUL	NULL
+tbl_users	web_fcm_id	varchar	varchar(1024)	YES	MUL	NULL
+tbl_users	coins	int	int	NO		0
+tbl_users	refer_code	varchar	varchar(128)	YES		NULL
+tbl_users	friends_code	varchar	varchar(128)	YES		NULL
+tbl_users	remove_ads	tinyint	tinyint	NO		0
+tbl_users	daily_ads_counter	int	int	NO		0
+tbl_users	daily_ads_date	date	date	NO		2023-10-19
+tbl_users	status	int	int unsigned	YES		0
+tbl_users	date_registered	datetime	datetime	NO		NULL
+tbl_users	api_token	longtext	longtext	NO		NULL
+tbl_users	app_language	varchar	varchar(512)	YES		NULL
+tbl_users	web_language	varchar	varchar(512)	YES		NULL
+tbl_users_badges	id	int	int	NO	PRI	NULL
+tbl_users_badges	user_id	int	int	NO		NULL
+tbl_users_badges	dashing_debut	int	int	NO		NULL
+tbl_users_badges	dashing_debut_counter	int	int	NO		NULL
+tbl_users_badges	combat_winner	int	int	NO		NULL
+tbl_users_badges	combat_winner_counter	int	int	NO		NULL
+tbl_users_badges	clash_winner	int	int	NO		NULL
+tbl_users_badges	clash_winner_counter	int	int	NO		NULL
+tbl_users_badges	most_wanted_winner	int	int	NO		NULL
+tbl_users_badges	most_wanted_winner_counter	int	int	NO		NULL
+tbl_users_badges	ultimate_player	int	int	NO		NULL
+tbl_users_badges	quiz_warrior	int	int	NO		NULL
+tbl_users_badges	quiz_warrior_counter	int	int	NO		NULL
+tbl_users_badges	super_sonic	int	int	NO		NULL
+tbl_users_badges	flashback	int	int	NO		NULL
+tbl_users_badges	brainiac	int	int	NO		NULL
+tbl_users_badges	big_thing	int	int	NO		NULL
+tbl_users_badges	elite	int	int	NO		NULL
+tbl_users_badges	thirsty	int	int	NO		NULL
+tbl_users_badges	thirsty_date	date	date	YES		NULL
+tbl_users_badges	thirsty_counter	int	int	NO		NULL
+tbl_users_badges	power_elite	int	int	NO		NULL
+tbl_users_badges	power_elite_counter	int	int	NO		NULL
+tbl_users_badges	sharing_caring	int	int	NO		NULL
+tbl_users_badges	streak	int	int	NO		NULL
+tbl_users_badges	streak_date	date	date	YES		NULL
+tbl_users_badges	streak_counter	int	int	NO		NULL
+tbl_users_in_app	id	int	int	NO	PRI	NULL
+tbl_users_in_app	pay_from	tinyint	tinyint	NO		NULL
+tbl_users_in_app	uid	longtext	longtext	NO	MUL	NULL
+tbl_users_in_app	user_id	int	int	NO	MUL	NULL
+tbl_users_in_app	product_id	text	text	NO	MUL	NULL
+tbl_users_in_app	amount	int	int	NO		NULL
+tbl_users_in_app	status	varchar	varchar(50)	NO		NULL
+tbl_users_in_app	transaction_id	text	text	NO		NULL
+tbl_users_in_app	date	datetime	datetime	NO		NULL
+tbl_users_in_app	purchase_token	longtext	longtext	NO		NULL
+tbl_users_in_app	responseData	longtext	longtext	NO		NULL
+tbl_users_statistics	id	int	int	NO	PRI	NULL
+tbl_users_statistics	user_id	int	int	NO	MUL	NULL
+tbl_users_statistics	questions_answered	int	int	NO		NULL
+tbl_users_statistics	correct_answers	int	int	NO		NULL
+tbl_users_statistics	strong_category	int	int	NO		NULL
+tbl_users_statistics	ratio1	double	double	NO		NULL
+tbl_users_statistics	weak_category	int	int	NO		NULL
+tbl_users_statistics	ratio2	double	double	NO		NULL
+tbl_users_statistics	best_position	int	int	NO		NULL
+tbl_users_statistics	date_created	datetime	datetime	NO		NULL
+tbl_web_settings	id	int	int	NO	PRI	NULL
+tbl_web_settings	language_id	int	int	YES		14
+tbl_web_settings	type	varchar	varchar(32)	NO		NULL
+tbl_web_settings	message	text	text	YES		NULL

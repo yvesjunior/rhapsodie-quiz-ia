@@ -48,12 +48,15 @@ final class BattleRoomUserFound extends BattleRoomState {
     required this.hasLeft,
     required this.questions,
     required this.isRoomExist,
+    this.localCorrectAnswers = 0,
   });
 
   final BattleRoom battleRoom;
   final bool hasLeft;
   final bool isRoomExist;
   final List<Question> questions;
+  /// Local counter for current user's correct answers to avoid Firestore race condition
+  final int localCorrectAnswers;
 }
 
 final class BattleRoomFailure extends BattleRoomState {
@@ -114,12 +117,14 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
                       battleRoom.readyToPlay!)) {
                 // Opponent left during active battle
                 if (state is BattleRoomUserFound) {
+                  final currentState = state as BattleRoomUserFound;
                   emit(
                     BattleRoomUserFound(
-                      battleRoom: (state as BattleRoomUserFound).battleRoom,
+                      battleRoom: currentState.battleRoom,
                       hasLeft: true,
                       isRoomExist: true,
-                      questions: (state as BattleRoomUserFound).questions,
+                      questions: currentState.questions,
+                      localCorrectAnswers: currentState.localCorrectAnswers,
                     ),
                   );
                   return;
@@ -134,24 +139,34 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
                 emit(BattleRoomCreated(battleRoom));
               } else {
                 // Opponent found or already playing
+                // Preserve locally updated questions and correct answers if they exist
+                final currentQuestions = state is BattleRoomUserFound
+                    ? (state as BattleRoomUserFound).questions
+                    : questions;
+                final currentLocalCorrectAnswers = state is BattleRoomUserFound
+                    ? (state as BattleRoomUserFound).localCorrectAnswers
+                    : 0;
                 emit(
                   BattleRoomUserFound(
                     battleRoom: battleRoom,
                     isRoomExist: true,
-                    questions: questions,
+                    questions: currentQuestions,
                     hasLeft: false,
+                    localCorrectAnswers: currentLocalCorrectAnswers,
                   ),
                 );
               }
             } else {
               // Room was deleted
               if (state is BattleRoomUserFound) {
+                final currentState = state as BattleRoomUserFound;
                 emit(
                   BattleRoomUserFound(
-                    battleRoom: (state as BattleRoomUserFound).battleRoom,
+                    battleRoom: currentState.battleRoom,
                     hasLeft: true,
                     isRoomExist: false,
-                    questions: (state as BattleRoomUserFound).questions,
+                    questions: currentState.questions,
+                    localCorrectAnswers: currentState.localCorrectAnswers,
                   ),
                 );
               }
@@ -176,13 +191,22 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
           (event) {
             if (event.exists) {
               final battleRoom = BattleRoom.fromDocumentSnapshot(event);
+              
+              // Preserve locally updated questions and correct answers
+              final currentQuestions = state is BattleRoomUserFound
+                  ? (state as BattleRoomUserFound).questions
+                  : questions;
+              final currentLocalCorrectAnswers = state is BattleRoomUserFound
+                  ? (state as BattleRoomUserFound).localCorrectAnswers
+                  : 0;
 
               emit(
                 BattleRoomUserFound(
                   battleRoom: battleRoom,
                   isRoomExist: true,
-                  questions: questions,
+                  questions: currentQuestions,
                   hasLeft: false,
+                  localCorrectAnswers: currentLocalCorrectAnswers,
                 ),
               );
             }
@@ -416,7 +440,8 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
   /// Firebase happens in [submitAnswer].
   void updateQuestionAnswer(String? questionId, String? submittedAnswerId) {
     if (state is BattleRoomUserFound) {
-      final updatedQuestions = (state as BattleRoomUserFound).questions;
+      final currentState = state as BattleRoomUserFound;
+      final updatedQuestions = currentState.questions;
       final questionIndex = updatedQuestions.indexWhere(
         (element) => element.id == questionId,
       );
@@ -426,10 +451,11 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
 
       emit(
         BattleRoomUserFound(
-          isRoomExist: (state as BattleRoomUserFound).isRoomExist,
-          hasLeft: (state as BattleRoomUserFound).hasLeft,
-          battleRoom: (state as BattleRoomUserFound).battleRoom,
+          isRoomExist: currentState.isRoomExist,
+          hasLeft: currentState.hasLeft,
+          battleRoom: currentState.battleRoom,
           questions: updatedQuestions,
+          localCorrectAnswers: currentState.localCorrectAnswers,
         ),
       );
     }
@@ -540,19 +566,23 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
     String timeTookToSubmitAnswer = '',
   }) {
     if (state is BattleRoomUserFound) {
-      final battleRoom = (state as BattleRoomUserFound).battleRoom;
-      final questions = (state as BattleRoomUserFound).questions;
+      final currentState = state as BattleRoomUserFound;
+      final battleRoom = currentState.battleRoom;
+      final questions = currentState.questions;
 
       final forUser1 = battleRoom.user1!.uid == currentUserId;
       final user = forUser1 ? battleRoom.user1! : battleRoom.user2!;
 
       // Prevent duplicate submissions after all questions are answered
       if (user.answers.length != questions.length) {
+        // Use local counter for correct answers to avoid Firestore race condition
+        final newLocalCorrectAnswers = isAnswerCorrect 
+            ? currentState.localCorrectAnswers + 1 
+            : currentState.localCorrectAnswers;
+        
         _battleRoomRepository.submitAnswer(
           battleRoomDocumentId: battleRoom.roomId,
-          correctAnswers: isAnswerCorrect
-              ? (user.correctAnswers + 1)
-              : user.correctAnswers,
+          correctAnswers: newLocalCorrectAnswers,
           forUser1: forUser1,
           submittedAnswer: List.from(user.answers)
             ..add({
@@ -560,6 +590,17 @@ final class BattleRoomCubit extends Cubit<BattleRoomState> {
               'id': questionId,
               'second': timeTookToSubmitAnswer,
             }),
+        );
+        
+        // Update local state with new correct answer count
+        emit(
+          BattleRoomUserFound(
+            battleRoom: battleRoom,
+            isRoomExist: currentState.isRoomExist,
+            hasLeft: currentState.hasLeft,
+            questions: questions,
+            localCorrectAnswers: newLocalCorrectAnswers,
+          ),
         );
       }
     }

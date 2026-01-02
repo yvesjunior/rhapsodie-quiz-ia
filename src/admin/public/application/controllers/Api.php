@@ -649,8 +649,14 @@ class Api extends REST_Controller
             return false;
         }
 
-        $get_user_data = $this->db->select('date_registered')->where('id', $user_id)->get('tbl_users')->row_array();
+        $get_user_data = $this->db->select('date_registered, notification_cleared_at')->where('id', $user_id)->get('tbl_users')->row_array();
         $register_date = date('Y-m-d', strtotime($get_user_data['date_registered']));
+        
+        // Use cleared date if set, otherwise use registration date
+        $min_date = $register_date;
+        if (!empty($get_user_data['notification_cleared_at'])) {
+            $min_date = $get_user_data['notification_cleared_at'];
+        }
 
         $limit = ($this->post('limit') && is_numeric($this->post('limit'))) ? $this->post('limit') : 10;
         $offset = ($this->post('offset') && is_numeric($this->post('offset'))) ? $this->post('offset') : 0;
@@ -660,7 +666,7 @@ class Api extends REST_Controller
 
         $this->db->select('id,title,message,users,type,type_id,image,date_sent')
             ->from('tbl_notifications n')
-            ->where('DATE(n.date_sent) >=', $register_date)
+            ->where('n.date_sent >', $min_date)
             ->group_start()
             ->where('n.users', 'all')
             ->or_where('FIND_IN_SET(' . $user_id . ', n.user_id) >', 0)
@@ -671,7 +677,7 @@ class Api extends REST_Controller
 
         $this->db->select('COUNT(*) as total')
             ->from('tbl_notifications n')
-            ->where('DATE(n.date_sent) >=', $register_date)
+            ->where('n.date_sent >', $min_date)
             ->group_start()
             ->where('n.users', 'all')
             ->or_where('FIND_IN_SET(' . $user_id . ', n.user_id) >', 0)
@@ -692,6 +698,35 @@ class Api extends REST_Controller
         $response['total'] = "$total";
         $response['data'] = $result ?: [];
 
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Clear all notifications for the current user
+     * POST: clear_notifications
+     */
+    public function clear_notifications_post()
+    {
+        $is_user = $this->verify_token();
+        if (!$is_user['error']) {
+            $user_id = $is_user['user_id'];
+        } else {
+            $this->response($is_user, REST_Controller::HTTP_OK);
+            return false;
+        }
+
+        // Delete notifications that were sent specifically to this user
+        $this->db->where('users', 'selected')
+            ->where("FIND_IN_SET($user_id, user_id) >", 0)
+            ->delete('tbl_notifications');
+        
+        // For 'all' notifications, we can't delete them but we can track user's cleared date
+        // Update user's notification_cleared_at timestamp
+        $this->db->where('id', $user_id)
+            ->update('tbl_users', ['notification_cleared_at' => date('Y-m-d H:i:s')]);
+
+        $response['error'] = false;
+        $response['message'] = 'Notifications cleared successfully';
         $this->response($response, REST_Controller::HTTP_OK);
     }
 
@@ -1741,6 +1776,131 @@ class Api extends REST_Controller
             $response['error'] = false;
             $response['total'] = "$total";
             $response['data'] = array(
+                'my_rank' => $user_rank,
+                'other_users_rank' => $data,
+                'top_three_ranks' => $topThreeUsersData
+            );
+        } catch (Exception $e) {
+            $response['error'] = true;
+            $response['message'] = "122";
+            $response['error_msg'] = $e->getMessage();
+        }
+
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    /**
+     * Weekly Leaderboard - Based on Contest Scores for Current Week (Monday-Sunday)
+     * Shows rankings from daily Rhapsody contests within the current week
+     * Week starts on Monday and ends on Sunday (consistent with reward distribution)
+     */
+    public function get_weekly_leaderboard_post()
+    {
+        try {
+            $is_user = $this->verify_token();
+            if (!$is_user['error']) {
+                $user_id = $is_user['user_id'];
+            } else {
+                $this->response($is_user, REST_Controller::HTTP_OK);
+                return false;
+            }
+
+            $offset = (int)($this->post('offset') ?: 0);
+            $limit = (int)($this->post('limit') ?: 25);
+            
+            // Calculate Monday-Sunday week boundaries
+            // If today is Sunday, we show current week (Mon-Sun)
+            // Otherwise, we show the week that started on the most recent Monday
+            $today = new DateTime();
+            $dayOfWeek = (int)$today->format('N'); // 1 = Monday, 7 = Sunday
+            
+            // Calculate Monday of current week
+            $monday = clone $today;
+            $monday->modify('-' . ($dayOfWeek - 1) . ' days');
+            $weekStart = $monday->format('Y-m-d');
+            
+            // Calculate Sunday of current week
+            $sunday = clone $monday;
+            $sunday->modify('+6 days');
+            $weekEnd = $sunday->format('Y-m-d');
+
+            // Initialize defaults
+            $data = array();
+            $topThreeUsersData = array();
+            $user_rank = array(
+                'user_id' => $user_id,
+                'score' => '0',
+                'user_rank' => '0',
+                'email' => '',
+                'name' => '',
+                'profile' => '',
+            );
+
+            // Base query: Contest scores for current week (Monday-Sunday) + all active users
+            $base_sql = "
+                SELECT u.id as user_id, u.email, u.name, u.profile,
+                       COALESCE(SUM(cl.score), 0) as score,
+                       MAX(cl.last_updated) as last_updated
+                FROM tbl_users u
+                LEFT JOIN tbl_contest_leaderboard cl ON u.id = cl.user_id
+                LEFT JOIN tbl_contest c ON cl.contest_id = c.id 
+                    AND DATE(c.start_date) BETWEEN ? AND ?
+                WHERE u.status = 1
+                GROUP BY u.id, u.email, u.name, u.profile
+                ORDER BY score DESC, u.name ASC
+            ";
+
+            // Dense ranking: tied users share same rank, next distinct score gets next consecutive rank
+            $ranked_sql = "
+                SELECT r.*,
+                       @rank := IF(@prev_score = r.score, @rank, @rank + 1) as user_rank,
+                       @prev_score := r.score
+                FROM ($base_sql) r,
+                     (SELECT @rank := 0, @prev_score := NULL) init
+            ";
+
+            // Get total active users
+            $total = $this->db->where('status', 1)->count_all_results('tbl_users');
+
+            if ($user_id && $total > 0) {
+                // Get paginated results
+                $sql = "SELECT * FROM ($ranked_sql) ranked ORDER BY user_rank ASC LIMIT ? OFFSET ?";
+                $result = $this->db->query($sql, array($weekStart, $weekEnd, $limit, $offset));
+                $data = $result->result_array();
+
+                // Process profile URLs
+                foreach ($data as &$row) {
+                    if (!filter_var($row['profile'], FILTER_VALIDATE_URL)) {
+                        $row['profile'] = $row['profile'] ? base_url() . USER_IMG_PATH . $row['profile'] : '';
+                    }
+                }
+
+                // Get top 3 (for podium)
+                $top3_sql = "SELECT * FROM ($ranked_sql) ranked WHERE user_rank <= 3 ORDER BY user_rank ASC";
+                $top3_result = $this->db->query($top3_sql, array($weekStart, $weekEnd));
+                $topThreeUsersData = $top3_result->result_array();
+                foreach ($topThreeUsersData as &$row) {
+                    if (!filter_var($row['profile'], FILTER_VALIDATE_URL)) {
+                        $row['profile'] = $row['profile'] ? base_url() . USER_IMG_PATH . $row['profile'] : '';
+                    }
+                }
+
+                // Get current user's rank
+                $user_rank_sql = "SELECT * FROM ($ranked_sql) ranked WHERE user_id = ?";
+                $user_rank_result = $this->db->query($user_rank_sql, array($weekStart, $weekEnd, $user_id));
+                if ($user_rank_result->num_rows() > 0) {
+                    $user_rank = $user_rank_result->row_array();
+                    if (!filter_var($user_rank['profile'], FILTER_VALIDATE_URL)) {
+                        $user_rank['profile'] = $user_rank['profile'] ? base_url() . USER_IMG_PATH . $user_rank['profile'] : '';
+                    }
+                }
+            }
+
+            $response = array(
+                'error' => false,
+                'total' => (string)$total,
+                'week_start' => $weekStart,
+                'week_end' => $weekEnd,
                 'my_rank' => $user_rank,
                 'other_users_rank' => $data,
                 'top_three_ranks' => $topThreeUsersData

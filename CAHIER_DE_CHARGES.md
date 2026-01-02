@@ -225,15 +225,50 @@ Foundation School (Topic)
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Solo Mode
+#### Solo Mode (Practice Mode)
+
+**Concept:** Mode d'entraînement où l'utilisateur pratique sur un topic avec des questions aléatoires.
 
 | Attribut | Valeur |
 |----------|--------|
 | **Joueurs** | 1 |
-| **Sélection** | Topic → Category |
-| **Topics** | Foundation School, Rhapsody |
-| **Categories FS** | Module 1, Module 2, ... |
-| **Categories Rhapsody** | Year → Month → Day |
+| **Sélection** | Topic uniquement (pas de category) |
+| **Topics** | Rhapsody, Foundation School (+ futurs: Evangelism, Teaching, Apologetics) |
+| **Questions** | Sélection aléatoire parmi TOUTES les categories du topic |
+| **Nombre de questions** | Choix utilisateur: 5, 10, 15, ou 20 |
+| **Temps par question** | Choix utilisateur: 10s, 15s, 30s, etc. |
+| **Récompense** | +1 coin si 100% ET nombre de questions > 5 |
+
+**Flux Solo Mode:**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  1. Sélection Topic                                                  │
+│     ┌─────────────┐ ┌─────────────┐                                 │
+│     │  Rhapsody   │ │ Foundation  │  (+ futurs topics)              │
+│     └─────────────┘ └─────────────┘                                 │
+│                                                                       │
+│  2. Configuration                                                    │
+│     • Nombre de questions: [5] [10] [15] [20]                       │
+│     • Temps par question:  [10s] [15s] [30s] [60s]                  │
+│                                                                       │
+│  3. Quiz                                                             │
+│     • Questions aléatoires de TOUTES les categories du topic        │
+│     • Rhapsody: toutes les années/mois/jours                        │
+│     • Foundation: tous les modules (sans contenu, quiz direct)      │
+│                                                                       │
+│  4. Résultat                                                         │
+│     • Score affiché                                                  │
+│     • +1 coin si 100% ET questions > 5                              │
+│     • [Rejouer] [Changer Topic]                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Notes importantes:**
+- Solo Mode est SÉPARÉ des quiz spécifiques (Rhapsody Day, Foundation Module)
+- Pour Rhapsody: accès à TOUTES les questions (toutes années/mois)
+- Pour Foundation: SKIP le contenu pédagogique, quiz direct
+- 5 questions = entraînement léger, pas de coin reward
+- 10+ questions = pratique sérieuse, coin reward possible
 
 #### 1v1 Mode
 
@@ -409,21 +444,21 @@ Les topics suivants seront ajoutés dans les versions ultérieures :
 5. Système enregistre la lecture (récompense: points de lecture)
 6. Déblocage du quiz du jour
 
-**Points:** 2 points pour la lecture
+**Points:** 5 points pour la lecture
 
 #### UC-3: Répondre au Quiz Quotidien
 **Acteur:** Utilisateur  
 **Préconditions:** Texte quotidien lu, questions validées par admin  
 **Scénario principal:**
 1. L'utilisateur accède au quiz quotidien
-2. Affichage de 10 questions QCM
+2. Affichage de 5 questions QCM
 3. L'utilisateur répond aux questions
 4. Calcul du score (1 point par bonne réponse)
 5. Enregistrement des résultats
 6. Affichage des réponses correctes avec explications
-7. Attribution des points (max 8 points pour le quiz)
+7. Attribution des points (max 5 points pour le quiz)
 
-**Points totaux quotidiens:** 10 points (2 lecture + 8 quiz)
+**Points totaux quotidiens:** 10 points (5 lecture + 5 quiz)
 
 #### UC-4: Créer un Groupe Personnalisé
 **Acteur:** Utilisateur (Manager)  
@@ -1164,62 +1199,190 @@ GROUP BY up.group_id, up.topic_id, YEAR(up.date), MONTH(up.date), up.user_id;
 
 ## 6. Fonctionnalités Détaillées
 
-### 6.1 Système de Points - Rhapsody
+### 6.0 Points vs Coins - Distinction Importante
 
-#### Points Quotidiens (10 points max)
-- **Lecture du texte:** 2 points (automatique après lecture)
-- **Quiz:** 8 points (1 point par bonne réponse sur 10 questions)
-- **Battle gagnée:** +5 points bonus (ajoutés au total quotidien)
+Le système utilise deux mécanismes distincts:
 
-#### Calcul des Points
+#### Points (pour le Classement)
+- **Usage:** Classement/Ranking uniquement
+- **Source:** Daily Contest (voir 6.1.2)
+- **Persistance:** Agrégés par période (jour/semaine/mois/année)
+- **Status:** Non-implémenté - sera développé ultérieurement
+
+#### Coins (Monnaie Virtuelle)
+- **Usage:** 
+  - Achat de lifelines (50/50, Skip, etc.)
+  - Récompense pour quiz parfait
+- **Source:**
+  - **Quiz 100% correct:** +1 coin (replays autorisés)
+  - Achat in-app (à venir)
+  - Bonus de parrainage
+- **Persistance:** Sauvegardés dans le profil utilisateur (`tbl_users.coins`)
+- **Exception:** Foundation School n'attribue PAS de coins
+
+### 6.1 Rhapsody - Deux Concepts
+
+#### 6.1.1 Rhapsody of Realities (Implémenté ✅)
+
+Contenu dévotionnel quotidien basé sur "Rhapsody of Realities".
+
+**Structure:**
+- Texte du jour (lecture dévotionnelle)
+- Quiz de compréhension (10 questions)
+- Prière du jour
+
+**Récompense Coin:**
+- **Quiz 100% correct:** +1 coin
+- **Quiz avec erreurs:** 0 coin
+- **Replays:** Autorisés, chaque 100% donne 1 coin
+
+**Navigation:** Année → Mois → Jour → Contenu + Quiz
+
+#### 6.1.2 Daily Contest (Non implémenté ❌)
+
+Compétition quotidienne basée sur le Rhapsody du jour courant.
+
+**Concept:**
+- Chaque jour, le système sélectionne automatiquement le Rhapsody du jour
+- Tous les utilisateurs sont invités à compléter le quiz du jour
+- Classement basé sur les points (pas les coins)
+
+**Disponibilité:**
+- **Durée:** Disponible jusqu'à 23:59:59 du jour de création
+- **Participation:** 1 seule tentative par jour par utilisateur
+
+**Création (contrôlée par ENV: `DAILY_CONTEST_AUTO_CREATE`):**
+| Valeur | Environnement | Comportement |
+|--------|---------------|--------------|
+| `true` | PRODUCTION | Création automatique à **00:00 AM** (cron job) |
+| `false` | DEV/TEST | Création manuelle via script: `php artisan contest:create-daily` |
+
+**UI - Badge de Notification:**
+- Sur la carte "Contest" de l'écran d'accueil, un badge rouge apparaît si le Daily Contest du jour n'est pas complété
+- Le badge disparaît une fois le quiz terminé
+
+**UI - Écran Contest (liste des contests):**
+| Onglet | Description |
+|--------|-------------|
+| **Ongoing** | Contest du jour en cours (non complété) |
+| **Finished** | Contests complétés par l'utilisateur |
+| **Upcoming** | Contests futurs (implémentation ultérieure) |
+
+**Notifications Push (jusqu'à complétion):**
+| Heure | Message |
+|-------|---------|
+| **08:00 AM** | "🌅 Bonjour! Le Rhapsody du jour est disponible. Gagnez vos 10 points!" |
+| **13:00 PM** | "☀️ N'oubliez pas votre Rhapsody quotidien! Il vous reste quelques heures." |
+| **22:00 PM** | "🌙 Dernière chance! Complétez votre Rhapsody avant minuit." |
+
+**Note:** Les notifications cessent une fois que l'utilisateur a complété le quiz du jour.
+
+**Points Quotidiens (10 points max):**
+- **Lecture du texte:** 5 points (automatique après lecture)
+- **Quiz:** 5 points (1 point par bonne réponse sur 5 questions)
+- **Battle gagnée:** +5 points bonus
+
+**Calcul des Points:**
 ```
 Points quotidiens = reading_points + quiz_points + battle_points
 Max quotidien = 10 + 5 = 15 points (si battle gagnée)
 ```
 
-#### Agrégation
+**Agrégation:**
 - **Hebdomadaire:** Somme des points quotidiens de la semaine
 - **Mensuel:** Somme des points quotidiens du mois
 - **Annuel:** Somme des points quotidiens de l'année
 
-### 6.2 Système de Points - Foundation School
+### 6.2 Système de Coins - Quizzes Généraux
 
-**Note:** Foundation School est axé sur l'apprentissage, pas la compétition. Les points sont optionnels et servent principalement à motiver l'utilisateur.
+#### Récompense Coin
+- **Quiz parfait (100%):** +1 coin
+- **Quiz avec erreurs:** 0 coin
+- **Replays:** Autorisés, chaque 100% récompense 1 coin
 
-#### Points par Module
-- **Complétion du contenu:** 5 points
-- **Quiz réussi:** 10 points (première réussite seulement)
+#### Exception: Foundation School
+**Note:** Foundation School est axé sur l'apprentissage, pas la compétition.
+- **Pas de coins attribués** pour les quiz Foundation School
+- L'accent est mis sur la progression personnelle, pas la gamification
 
-#### Points par Classe
-- **Complétion de la classe:** 25 points bonus
+### 6.3 Système de Groupes et Multiplayer Mode
 
-#### Calcul Simple
+#### Relation Group ↔ Multiplayer Mode
+
 ```
-Points totaux = (modules_completes × 15) + (classes_completees × 25)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   GROUP (Entité Persistante)        MULTIPLAYER MODE (Activité)         │
+│   ──────────────────────────        ───────────────────────────         │
+│                                                                          │
+│   • Communauté permanente           • Bataille temporaire               │
+│   • Membres stables                 • Participants par bataille         │
+│   • Créé une fois                   • Créé à chaque compétition         │
+│                                                                          │
+│   RELATION: 1 Group → N Group Battles                                   │
+│                                                                          │
+│   ┌──────────────────────┐          ┌──────────────────────┐            │
+│   │   "Mon Église"       │          │  Group Battle #1     │            │
+│   │   ───────────────    │─────────▶│  📅 15 Jan 2025      │            │
+│   │  👤 Owner: Jean      │  crée    │  📚 Rhapsody Day 1   │            │
+│   │  👥 Membres: 25      │  des     │  🎮 Terminée         │            │
+│   │  📅 Créé: 2024       │  battles │  🏆 Gagnant: Marie   │            │
+│   └──────────────────────┘          └──────────────────────┘            │
+│              │                                                           │
+│              │                      ┌──────────────────────┐            │
+│              └─────────────────────▶│  Group Battle #2     │            │
+│                                     │  📅 16 Jan 2025      │            │
+│                                     │  📚 Foundation M1    │            │
+│                                     │  🎮 En cours         │            │
+│                                     └──────────────────────┘            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Note:** Pas de classement compétitif pour Foundation School. L'accent est mis sur la progression personnelle.
+#### Concepts Clés
 
-### 6.3 Système de Groupes Hiérarchiques
+| Concept | Group | Group Battle (Multiplayer) |
+|---------|-------|----------------------------|
+| **Nature** | Entité (nom) | Activité (verbe) |
+| **Durée** | Permanente | Temporaire |
+| **Membres** | Stables dans le temps | Varient par bataille |
+| **Objectif** | Communauté | Compétition |
+| **Prérequis** | - | Appartenir à un Group |
 
-#### Groupes Par Défaut (Automatiques)
-1. **Worldwide** (`type='worldwide'`)
+#### Flux Utilisateur
+
+1. **Créer/Rejoindre un Group** (une fois)
+   ```
+   Utilisateur → Crée Group "Mon Église" → Obtient code "ABC123"
+   Autres utilisateurs → Entrent code "ABC123" → Rejoignent le group
+   ```
+
+2. **Lancer des Battles** (à répétition)
+   ```
+   Owner/Admin → Sélectionne Topic + Category → Crée Battle
+   Tous les membres → Reçoivent notification → Participent
+   Tous → Répondent aux mêmes questions → Classement calculé
+   ```
+
+#### Types de Groupes
+
+1. **Worldwide** (`type='worldwide'`) - FUTUR
    - Tous les utilisateurs y appartiennent automatiquement
    - Pas de manager (géré par système)
    - Classement global
 
-2. **Country** (`type='country'`)
+2. **Country** (`type='country'`) - FUTUR
    - Un groupe par pays (détecté via IP ou sélection utilisateur)
    - Tous les utilisateurs d'un pays y appartiennent automatiquement
    - Pas de manager (géré par système)
    - Classement par pays
 
-#### Groupes Personnalisés (`type='custom'`)
+3. **Custom** (`type='custom'`) - IMPLÉMENTÉ ✅
 - Créés par les utilisateurs
-- Manager désigné (créateur)
-- Code d'invitation unique
-- Gestion des membres par le manager
-- Abonnement aux topics configurable
+   - Owner désigné (créateur)
+   - Code d'invitation unique (8 caractères)
+   - Gestion des membres par l'owner/admin
+   - Peut lancer des Group Battles
 
 ### 6.4 Workflow de Validation des Questions
 

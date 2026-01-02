@@ -32,6 +32,7 @@ const getQuestionContestUrl = '$_api/get_questions_by_contest';
 const getContestLeaderboardUrl = '$_api/get_contest_leaderboard';
 const getAllTimeLeaderboardUrl = '$_api/get_globle_leaderboard';
 const getDailyLeaderboardUrl = '$_api/get_daily_leaderboard';
+const getWeeklyLeaderboardUrl = '$_api/get_weekly_leaderboard';
 const getMonthlyLeaderboardUrl = '$_api/get_monthly_leaderboard';
 
 // Learning & Exam Modules
@@ -75,6 +76,7 @@ const getSupportedLanguageListUrl = '$_api/get_system_language_list';
 const getSupportedQuestionLanguageUrl = '$_api/get_languages';
 const getSystemLanguageJson = '$_api/get_system_language_json';
 const getNotificationUrl = '$_api/get_notifications';
+const clearNotificationsUrl = '$_api/clear_notifications';
 
 // Multi Match Game
 const getMultiMatchLevelDataUrl = '$_api/get_multi_match_level_data';

@@ -316,12 +316,12 @@ class _BattleRoomQuizScreenState extends State<BattleRoomQuizScreen>
       final correctAnswer = AnswerEncryption.decryptCorrectAnswer(
         rawKey: context.read<UserDetailsCubit>().getUserFirebaseId(),
         correctAnswer: currQuestion.correctAnswer!,
-      );
+      ).trim().toLowerCase();
 
       battleRoomCubit.submitAnswer(
         _currUserId,
         submittedAnswer,
-        isAnswerCorrect: submittedAnswer == correctAnswer,
+        isAnswerCorrect: submittedAnswer.trim().toLowerCase() == correctAnswer,
         questionId: currQuestion.id!,
         timeTookToSubmitAnswer:
             (durationPerQuestion * timerAnimationController.value)
@@ -345,7 +345,7 @@ class _BattleRoomQuizScreenState extends State<BattleRoomQuizScreen>
     final correctAnswer = AnswerEncryption.decryptCorrectAnswer(
       rawKey: context.read<UserDetailsCubit>().getUserFirebaseId(),
       correctAnswer: questions[currentQuestionIndex].correctAnswer!,
-    );
+    ).trim().toLowerCase();
 
     final options = questions[currentQuestionIndex].answerOptions!.toList();
     final randomIdx = Random.secure().nextInt(options.length);
@@ -354,7 +354,7 @@ class _BattleRoomQuizScreenState extends State<BattleRoomQuizScreen>
     battleRoomCubit.submitAnswer(
       context.read<BattleRoomCubit>().getOpponentUserDetails(_currUserId).uid,
       submittedAnswer,
-      isAnswerCorrect: submittedAnswer == correctAnswer,
+      isAnswerCorrect: submittedAnswer.trim().toLowerCase() == correctAnswer,
       questionId: currQuestion.id!,
       timeTookToSubmitAnswer:
           (durationPerQuestion * opponentUserTimerAnimationController.value)

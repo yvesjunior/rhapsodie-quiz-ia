@@ -196,9 +196,11 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       final ans = AnswerEncryption.decryptCorrectAnswer(
         rawKey: _userFirebaseId,
         correctAnswer: question.correctAnswer!,
-      );
+      ).trim().toLowerCase();
 
-      return question.submittedAnswerId == ans;
+      final submitted = question.submittedAnswerId.trim().toLowerCase();
+      
+      return submitted == ans;
     }).length;
   }
 
@@ -582,7 +584,11 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           if (widget.quizType
               case QuizTypes.oneVsOneBattle || QuizTypes.randomBattle) {
             final currUserId = context.read<UserDetailsCubit>().userId();
-            if (state.userRanks.first.userId == currUserId) {
+            // For 1v1 battles, userRanks may be empty - use winnerUserId instead
+            final shouldDeleteRoom = state.userRanks.isNotEmpty
+                ? state.userRanks.first.userId == currUserId
+                : state.winnerUserId == currUserId;
+            if (shouldDeleteRoom) {
               context.read<BattleRoomCubit>().deleteBattleRoom();
             }
           }

@@ -27,11 +27,14 @@ final class MultiUserBattleRoomSuccess extends MultiUserBattleRoomState {
     required this.battleRoom,
     required this.isRoomExist,
     required this.questions,
+    this.localCorrectAnswers = 0,
   });
 
   final BattleRoom battleRoom;
   final bool isRoomExist;
   final List<Question> questions;
+  /// Local counter for current user's correct answers to avoid Firestore race condition
+  final int localCorrectAnswers;
 }
 
 final class MultiUserBattleRoomFailure extends MultiUserBattleRoomState {
@@ -75,20 +78,30 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
         .listen(
           (event) {
             if (event.exists) {
+              // Preserve locally updated questions and correct answers if they exist
+              final currentQuestions = state is MultiUserBattleRoomSuccess
+                  ? (state as MultiUserBattleRoomSuccess).questions
+                  : questions;
+              final currentLocalCorrectAnswers = state is MultiUserBattleRoomSuccess
+                  ? (state as MultiUserBattleRoomSuccess).localCorrectAnswers
+                  : 0;
               emit(
                 MultiUserBattleRoomSuccess(
                   battleRoom: BattleRoom.fromDocumentSnapshot(event),
                   isRoomExist: true,
-                  questions: questions,
+                  questions: currentQuestions,
+                  localCorrectAnswers: currentLocalCorrectAnswers,
                 ),
               );
             } else {
               // Room was deleted by owner
+              final currentState = state as MultiUserBattleRoomSuccess;
               emit(
                 MultiUserBattleRoomSuccess(
-                  battleRoom: (state as MultiUserBattleRoomSuccess).battleRoom,
+                  battleRoom: currentState.battleRoom,
                   isRoomExist: false,
-                  questions: (state as MultiUserBattleRoomSuccess).questions,
+                  questions: currentState.questions,
+                  localCorrectAnswers: currentState.localCorrectAnswers,
                 ),
               );
             }
@@ -187,7 +200,8 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
   /// Firebase happens in [submitAnswer].
   void updateQuestionAnswer(String questionId, String submittedAnswerId) {
     if (state is MultiUserBattleRoomSuccess) {
-      final updatedQuestions = (state as MultiUserBattleRoomSuccess).questions;
+      final currentState = state as MultiUserBattleRoomSuccess;
+      final updatedQuestions = currentState.questions;
       final questionIndex = updatedQuestions.indexWhere(
         (element) => element.id == questionId,
       );
@@ -197,9 +211,10 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
 
       emit(
         MultiUserBattleRoomSuccess(
-          isRoomExist: (state as MultiUserBattleRoomSuccess).isRoomExist,
-          battleRoom: (state as MultiUserBattleRoomSuccess).battleRoom,
+          isRoomExist: currentState.isRoomExist,
+          battleRoom: currentState.battleRoom,
           questions: updatedQuestions,
+          localCorrectAnswers: currentState.localCorrectAnswers,
         ),
       );
     }
@@ -256,8 +271,9 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
     required bool isCorrectAnswer,
   }) {
     if (state is MultiUserBattleRoomSuccess) {
-      final battleRoom = (state as MultiUserBattleRoomSuccess).battleRoom;
-      final questions = (state as MultiUserBattleRoomSuccess).questions;
+      final currentState = state as MultiUserBattleRoomSuccess;
+      final battleRoom = currentState.battleRoom;
+      final questions = currentState.questions;
 
       // Identify which user slot the current user occupies
       late final String userNo;
@@ -279,14 +295,27 @@ final class MultiUserBattleRoomCubit extends Cubit<MultiUserBattleRoomState> {
 
       // Prevent duplicate submissions after all questions are answered
       if (user.answers.length != questions.length) {
+        // Use local counter for correct answers to avoid Firestore race condition
+        final newLocalCorrectAnswers = isCorrectAnswer 
+            ? currentState.localCorrectAnswers + 1 
+            : currentState.localCorrectAnswers;
+        
         _battleRoomRepository.submitAnswerForMultiUserBattleRoom(
           battleRoomDocumentId: battleRoom.roomId,
-          correctAnswers: isCorrectAnswer
-              ? (user.correctAnswers + 1)
-              : user.correctAnswers,
+          correctAnswers: newLocalCorrectAnswers,
           userNumber: userNo,
           submittedAnswer: List.from(user.answers)
             ..add({'answer': submittedAnswer, 'id': questionId}),
+        );
+        
+        // Update local state with new correct answer count
+        emit(
+          MultiUserBattleRoomSuccess(
+            battleRoom: battleRoom,
+            isRoomExist: currentState.isRoomExist,
+            questions: questions,
+            localCorrectAnswers: newLocalCorrectAnswers,
+          ),
         );
       }
     }

@@ -8,9 +8,11 @@ class LeaderboardLocalDataSource {
 
   static const _keyAllTime = 'leaderboard_all_time';
   static const _keyMonthly = 'leaderboard_monthly';
+  static const _keyWeekly = 'leaderboard_weekly';
   static const _keyDaily = 'leaderboard_daily';
   static const _keyMyRankAllTime = 'leaderboard_my_rank_all_time';
   static const _keyMyRankMonthly = 'leaderboard_my_rank_monthly';
+  static const _keyMyRankWeekly = 'leaderboard_my_rank_weekly';
   static const _keyMyRankDaily = 'leaderboard_my_rank_daily';
 
   /// Decode a JSON string to Map
@@ -76,6 +78,32 @@ class LeaderboardLocalDataSource {
   }
 
   // ============================================
+  // Weekly Leaderboard
+  // ============================================
+
+  Future<void> cacheWeeklyLeaderboard(
+    List<Map<String, dynamic>> data,
+    Map<String, dynamic> myRank,
+    int total,
+  ) async {
+    await _cache.cache(_keyWeekly, {
+      'data': data,
+      'total': total,
+    });
+    await _cache.cache(_keyMyRankWeekly, myRank);
+  }
+
+  Future<Map<String, dynamic>?> getCachedWeeklyLeaderboard() async {
+    final raw = await _cache.getRaw(_keyWeekly);
+    return _decode(raw);
+  }
+
+  Future<Map<String, dynamic>?> getCachedWeeklyMyRank() async {
+    final raw = await _cache.getRaw(_keyMyRankWeekly);
+    return _decode(raw);
+  }
+
+  // ============================================
   // Daily Leaderboard
   // ============================================
 
@@ -108,9 +136,11 @@ class LeaderboardLocalDataSource {
   Future<void> clearAll() async {
     await _cache.clear(_keyAllTime);
     await _cache.clear(_keyMonthly);
+    await _cache.clear(_keyWeekly);
     await _cache.clear(_keyDaily);
     await _cache.clear(_keyMyRankAllTime);
     await _cache.clear(_keyMyRankMonthly);
+    await _cache.clear(_keyMyRankWeekly);
     await _cache.clear(_keyMyRankDaily);
   }
 }

@@ -119,4 +119,27 @@ final class NotificationCubit extends Cubit<NotificationState> {
 
   bool get hasMore =>
       state is NotificationSuccess && (state as NotificationSuccess).hasMore;
+
+  Future<void> clearAllNotifications() async {
+    try {
+      final response = await http.post(
+        Uri.parse(clearNotificationsUrl),
+        headers: await ApiUtils.getHeaders(),
+      );
+
+      final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (responseJson['error'] as bool) {
+        throw ApiException(responseJson['message'].toString());
+      }
+
+      // Clear local state
+      emit(const NotificationSuccess([], 0, hasMore: false));
+    } on SocketException catch (_) {
+      throw const ApiException(errorCodeNoInternet);
+    } catch (e) {
+      // Keep current state but rethrow for UI handling
+      rethrow;
+    }
+  }
 }

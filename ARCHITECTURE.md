@@ -109,12 +109,12 @@ Admin crée:
         └── Category: January (Month)
             └── Category: Day 1 (Day)
                 ├── daily_text: "Texte du jour..."
-                └── Questions: [Q1, Q2, ... Q10]
+                └── Questions: [Q1, Q2, ... Q5]
 
 Utilisateur:
   1. Navigue: 2025 → January → Day 1
-  2. Lit le texte (+2 points)
-  3. Répond au quiz (+0-8 points)
+  2. Lit le texte (+5 points)
+  3. Répond au quiz (+0-5 points)
   4. Score ajouté au classement
 ```
 
@@ -139,44 +139,83 @@ Utilisateur:
 #### Contest - Flux Quotidien
 ```
 Système (automatique):
-  1. À 00:00, récupère le Day Rhapsody du jour
-  2. Crée un Contest basé sur ce Day
-  3. Contest disponible pour TOUS
+  1. À 00:00 AM, récupère le Day Rhapsody du jour
+  2. Crée un Contest basé sur ce Day (5 questions)
+  3. Contest disponible pour TOUS jusqu'à 23:59:59
+
+Notifications Push (jusqu'à complétion):
+  - 08:00 AM → "🌅 Bonjour! Le Rhapsody du jour est disponible."
+  - 13:00 PM → "☀️ N'oubliez pas votre Rhapsody quotidien!"
+  - 22:00 PM → "🌙 Dernière chance! Complétez avant minuit."
 
 Utilisateur:
-  1. Accède au Contest du jour
-  2. Lit le texte
-  3. Répond au quiz
-  4. Score ajouté au classement global
+  1. Reçoit notification (si non complété)
+  2. Accède au Contest du jour
+  3. Lit le texte (+5 points)
+  4. Répond au quiz de 5 questions (+0-5 points)
+  5. Score ajouté au classement global
+  6. Notifications cessent pour ce jour
 ```
 
 ### 2.4 Modes de Jeu - Flux
 
-#### Solo Mode
+#### Solo Mode (Practice Mode)
+
+**Concept:** Practice mode with random questions from a topic. Separate from category-specific quizzes.
+
 ```
 ┌──────────┐
 │   User   │
 └────┬─────┘
      │
-     │ 1. Sélectionne Mode: Solo
-     │ 2. Sélectionne Topic: FS ou Rhapsody
-     │ 3. Sélectionne Category:
-     │    - FS: Module 1, 2, ...
-     │    - Rhapsody: Year → Month → Day
-     ▼
-┌──────────────┐
-│ Quiz Screen  │
-│ - Questions  │
-│ - Timer (opt)│
-└────┬─────────┘
+     │ 1. Taps "Solo" on Home Screen
      │
-     │ 4. Soumet réponses
      ▼
-┌──────────────┐
-│ Results      │
-│ - Score      │
-│ - Réponses   │
-└──────────────┘
+┌──────────────────────────────────────┐
+│  SELECT TOPIC                        │
+│  ┌─────────┐ ┌─────────┐            │
+│  │Rhapsody │ │ Found.  │ (+future)  │
+│  │   📖    │ │ School  │            │
+│  └─────────┘ └─────────┘            │
+└────┬─────────────────────────────────┘
+     │
+     │ 2. Configures quiz settings
+     ▼
+┌──────────────────────────────────────┐
+│  QUIZ SETTINGS                       │
+│                                      │
+│  Questions: [5] [10] [15] [20]       │
+│  Time:      [10s] [15s] [30s] [60s]  │
+│                                      │
+│         [START QUIZ]                 │
+└────┬─────────────────────────────────┘
+     │
+     │ 3. System selects random questions
+     │    from ALL categories in topic
+     ▼
+┌──────────────────────────────────────┐
+│  QUIZ SCREEN                         │
+│  - Random questions from topic       │
+│  - Timer per question                │
+│  - Progress indicator                │
+└────┬─────────────────────────────────┘
+     │
+     │ 4. Submits answers
+     ▼
+┌──────────────────────────────────────┐
+│  RESULTS                             │
+│  - Score: 8/10 (80%)                 │
+│  - Coin reward: +1 (if 100% & >5 Q)  │
+│  - [Play Again] [Change Topic]       │
+└──────────────────────────────────────┘
+
+QUESTION SOURCES:
+├── Rhapsody: ALL years → months → days
+└── Foundation: ALL modules (skip content, quiz only)
+
+COIN REWARD RULE:
+├── 100% correct AND questions > 5 → +1 coin
+└── Otherwise → 0 coins
 ```
 
 #### 1v1 Mode
@@ -212,44 +251,64 @@ Utilisateur:
 ```
 
 #### Multiplayer Mode (Group Battle)
+
+**Concept:** Groups are persistent communities, Group Battles are temporary competitions within those communities.
+
 ```
+                    GROUP (Persistent)              GROUP BATTLES (Temporary)
+                    ─────────────────               ────────────────────────
+                    
 ┌──────────────┐
 │ Group Owner  │
 └──────┬───────┘
        │
-       │ 1. Crée groupe
+       │ 1. Crée groupe (une fois)
        │ 2. Obtient code d'invitation
        │ 3. Invite membres
        │
        ▼
 ┌──────────────────────────────────────┐
-│              GROUP                    │
+│         GROUP "Mon Église"           │
 │  ┌────────┐ ┌────────┐ ┌────────┐   │
-│  │Member 1│ │Member 2│ │Member 3│   │
-│  └────────┘ └────────┘ └────────┘   │
-└──────────────────────────────────────┘
+│  │ Marie  │ │ Pierre │ │ Sarah  │   │     ┌─────────────────────┐
+│  │ (owner)│ │(member)│ │(member)│   │────▶│ Battle #1           │
+│  └────────┘ └────────┘ └────────┘   │     │ Rhapsody Jan 15     │
+│                                      │     │ Status: Completed   │
+│  invite_code: "ABC123"               │     └─────────────────────┘
+│  members: 25                         │
+│  created: 2024                       │     ┌─────────────────────┐
+│                                      │────▶│ Battle #2           │
+│  RELATION: 1 Group → N Battles       │     │ Foundation M1       │
+│                                      │     │ Status: In Progress │
+└──────────────────────────────────────┘     └─────────────────────┘
        │
-       │ 4. Owner lance Battle
+       │ 4. Owner lance Battle (répétable)
        │    - Sélectionne Topic
        │    - Sélectionne Category
        │
        ▼
 ┌──────────────────────────────────────┐
-│           GROUP BATTLE               │
-│  - Tous les membres participent      │
-│  - Mêmes questions                   │
+│           GROUP BATTLE #N            │
+│  - Tous les membres peuvent jouer    │
+│  - Mêmes questions pour tous         │
 │  - Temps limité (optionnel)          │
+│  - Résultat: Classement du groupe    │
 └──────────────────────────────────────┘
        │
-       │ 5. Résultats
+       │ 5. Résultats (par battle)
        ▼
 ┌──────────────────────────────────────┐
-│         LEADERBOARD                  │
-│  1. Member 2 - 95%                   │
-│  2. Member 1 - 85%                   │
-│  3. Member 3 - 75%                   │
+│      BATTLE LEADERBOARD              │
+│  1. Pierre - 95% (10/10)             │
+│  2. Marie  - 85% (8/10)              │
+│  3. Sarah  - 75% (7/10)              │
 └──────────────────────────────────────┘
 ```
+
+**Key Distinction:**
+- **Group** = The community container (like a club)
+- **Group Battle** = A competition event within that community
+- A user must **belong to a Group** before participating in its **Group Battles**
 
 ---
 

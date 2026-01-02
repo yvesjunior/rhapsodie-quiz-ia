@@ -7,8 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/commons/commons.dart';
 import 'package:flutterquiz/core/core.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_all_time_cubit.dart';
-import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_daily_cubit.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_monthly_cubit.dart';
+import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_weekly_cubit.dart';
 import 'package:flutterquiz/features/profile_management/cubits/user_details_cubit.dart';
 import 'package:flutterquiz/ui/widgets/already_logged_in_dialog.dart';
 import 'package:flutterquiz/ui/widgets/circular_progress_container.dart';
@@ -32,20 +32,20 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
 
   final _allTimeRefreshKey = GlobalKey<RefreshIndicatorState>();
   final _monthlyRefreshKey = GlobalKey<RefreshIndicatorState>();
-  final _dailyRefreshKey = GlobalKey<RefreshIndicatorState>();
+  final _weeklyRefreshKey = GlobalKey<RefreshIndicatorState>();
 
   final controllerM = ScrollController();
   final controllerA = ScrollController();
-  final controllerD = ScrollController();
+  final controllerW = ScrollController();
 
   @override
   void initState() {
     controllerM.addListener(scrollListenerM);
     controllerA.addListener(scrollListenerA);
-    controllerD.addListener(scrollListenerD);
+    controllerW.addListener(scrollListenerW);
 
     Future.delayed(Duration.zero, () {
-      context.read<LeaderBoardDailyCubit>().fetchLeaderBoard('20');
+      context.read<LeaderBoardWeeklyCubit>().fetchLeaderBoard('20');
       context.read<LeaderBoardMonthlyCubit>().fetchLeaderBoard('20');
       context.read<LeaderBoardAllTimeCubit>().fetchLeaderBoard('20');
     });
@@ -56,10 +56,10 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   void dispose() {
     controllerM.removeListener(scrollListenerM);
     controllerA.removeListener(scrollListenerA);
-    controllerD.removeListener(scrollListenerD);
+    controllerW.removeListener(scrollListenerW);
     controllerM.dispose();
     controllerA.dispose();
-    controllerD.dispose();
+    controllerW.dispose();
     super.dispose();
   }
 
@@ -79,10 +79,10 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     }
   }
 
-  void scrollListenerD() {
-    if (controllerD.position.maxScrollExtent == controllerD.offset) {
-      if (context.read<LeaderBoardDailyCubit>().hasMoreData()) {
-        context.read<LeaderBoardDailyCubit>().fetchMoreLeaderBoardData('20');
+  void scrollListenerW() {
+    if (controllerW.position.maxScrollExtent == controllerW.offset) {
+      if (context.read<LeaderBoardWeeklyCubit>().hasMoreData()) {
+        context.read<LeaderBoardWeeklyCubit>().fetchMoreLeaderBoardData('20');
       }
     }
   }
@@ -109,14 +109,14 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
         _monthlyRefreshKey.currentState?.show();
       }
     } else if (_selectedTabIndex == 2) {
-      if (controllerD.hasClients && controllerD.offset != 0) {
-        controllerD.animateTo(
+      if (controllerW.hasClients && controllerW.offset != 0) {
+        controllerW.animateTo(
           0,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
         );
       } else {
-        _dailyRefreshKey.currentState?.show();
+        _weeklyRefreshKey.currentState?.show();
       }
     }
   }
@@ -149,7 +149,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
         children: [
           allTimeLeaderBoard(),
           monthlyLeaderBoard(),
-          dailyLeaderBoard(),
+          weeklyLeaderBoard(),
                     ],
                   ),
                 ),
@@ -283,8 +283,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   void fetchMonthlyLeaderBoard() =>
       context.read<LeaderBoardMonthlyCubit>().fetchLeaderBoard('20');
 
-  void fetchDailyLeaderBoard() =>
-      context.read<LeaderBoardDailyCubit>().fetchLeaderBoard('20');
+  void fetchWeeklyLeaderBoard() =>
+      context.read<LeaderBoardWeeklyCubit>().fetchLeaderBoard('20');
 
   void fetchAllTimeLeaderBoard() =>
       context.read<LeaderBoardAllTimeCubit>().fetchLeaderBoard('20');
@@ -298,11 +298,11 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
     ),
   );
 
-  Widget dailyLeaderBoard() {
-    return BlocConsumer<LeaderBoardDailyCubit, LeaderBoardDailyState>(
-      bloc: context.read<LeaderBoardDailyCubit>(),
+  Widget weeklyLeaderBoard() {
+    return BlocConsumer<LeaderBoardWeeklyCubit, LeaderBoardWeeklyState>(
+      bloc: context.read<LeaderBoardWeeklyCubit>(),
       listener: (context, state) {
-        if (state is LeaderBoardDailyFailure) {
+        if (state is LeaderBoardWeeklyFailure) {
           if (state.errorMessage == errorCodeUnauthorizedAccess) {
             showAlreadyLoggedInDialog(context);
             return;
@@ -310,36 +310,36 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
         }
       },
       builder: (context, state) {
-        if (state is LeaderBoardDailyFailure) {
+        if (state is LeaderBoardWeeklyFailure) {
           return ErrorContainer(
             showBackButton: false,
             errorMessage: convertErrorCodeToLanguageKey(state.errorMessage),
-            onTapRetry: fetchDailyLeaderBoard,
+            onTapRetry: fetchWeeklyLeaderBoard,
             showErrorImage: true,
             errorMessageColor: Colors.white,
           );
         }
 
-        if (state is LeaderBoardDailySuccess) {
-          final dailyList = state.leaderBoardDetails;
+        if (state is LeaderBoardWeeklySuccess) {
+          final weeklyList = state.leaderBoardDetails;
           final hasMore = state.hasMore;
 
-          if (dailyList.isEmpty) {
-            return noLeaderboard(fetchDailyLeaderBoard);
+          if (weeklyList.isEmpty) {
+            return noLeaderboard(fetchWeeklyLeaderBoard);
           }
 
           return _buildLeaderboardContent(
-            leaderboardList: dailyList,
-            controller: controllerD,
+            leaderboardList: weeklyList,
+            controller: controllerW,
             hasMore: hasMore,
-            rank: LeaderBoardDailyCubit.rankD,
-            profile: LeaderBoardDailyCubit.profileD,
-            score: LeaderBoardDailyCubit.scoreD,
+            rank: LeaderBoardWeeklyCubit.rankW,
+            profile: LeaderBoardWeeklyCubit.profileW,
+            score: LeaderBoardWeeklyCubit.scoreW,
             onRefresh: () async {
               await Future.delayed(const Duration(seconds: 1));
-                context.read<LeaderBoardDailyCubit>().fetchLeaderBoard('20');
+                context.read<LeaderBoardWeeklyCubit>().fetchLeaderBoard('20');
             },
-            refreshKey: _dailyRefreshKey,
+            refreshKey: _weeklyRefreshKey,
           );
         }
 
@@ -513,7 +513,7 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                         
                         return _buildLeaderboardItem(
                           remainingUsers[index],
-                          allUsers: remainingUsers,
+                          allUsers: leaderboardList, // Use full list to detect ties including podium users
                         );
                       },
                       ),
@@ -771,8 +771,8 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                 color: avatarBgColors[position],
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isExAequo ? Colors.amber.shade400 : avatarBorderColors[position]!,
-                  width: isExAequo ? 4 : 3,
+                  color: avatarBorderColors[position]!,
+                  width: 3,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -780,12 +780,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
-                  if (isExAequo)
-                    BoxShadow(
-                      color: Colors.amber.withOpacity(0.4),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
                 ],
               ),
               child: ClipRRect(
@@ -799,34 +793,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
                       ),
               ),
             ),
-            // Ex aequo badge
-            if (isExAequo)
-              Positioned(
-                top: -6,
-                right: -6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade500,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '=$tieCount',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeights.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
         
@@ -988,9 +954,6 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: isExAequo 
-            ? Border.all(color: Colors.amber.shade400, width: 2)
-            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -1001,47 +964,33 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
       ),
       child: Row(
         children: [
-          // Rank with superscript and ex aequo indicator
+          // Rank with superscript
           SizedBox(
             width: 52,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isExAequo)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 2),
-                    child: Icon(
-                      Icons.drag_handle,
-                      size: 14,
-                      color: Colors.amber.shade700,
-                    ),
-                  ),
-                RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeights.bold,
-                      color: isExAequo ? Colors.amber.shade700 : context.primaryTextColor,
-                    ),
-                    children: [
-                      TextSpan(text: rank),
-                      WidgetSpan(
-                        child: Transform.translate(
-                          offset: const Offset(0, -5),
-                          child: Text(
-                            _getOrdinalSuffix(rankInt),
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeights.bold,
-                              color: isExAequo ? Colors.amber.shade700 : context.primaryTextColor,
-                            ),
-                          ),
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeights.bold,
+                  color: context.primaryTextColor,
+                ),
+                children: [
+                  TextSpan(text: rank),
+                  WidgetSpan(
+                    child: Transform.translate(
+                      offset: const Offset(0, -5),
+                      child: Text(
+                        _getOrdinalSuffix(rankInt),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeights.bold,
+                          color: context.primaryTextColor,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           

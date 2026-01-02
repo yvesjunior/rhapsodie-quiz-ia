@@ -143,16 +143,47 @@ final class SetCoinScoreCubit extends Cubit<SetCoinScoreState> {
         joinedUsersCount: joinedUsersCount,
       );
 
+      // For 1v1 battles, correctAnswer and earnCoin are inside user data, not at top level
+      int correctAnswer = int.parse(result['correctAnswer']?.toString() ?? '0');
+      int earnCoin = int.parse(result['earnCoin']?.toString() ?? '0');
+      final currentUserId = result['user_id']?.toString();
+      final user1Id = result['user1_id']?.toString();
+      
+      // If top-level values are 0 and we have battle user data, extract from user data
+      if (result['user1_data'] != null) {
+        final user1Data = result['user1_data'] as Map<String, dynamic>;
+        final user2Data = result['user2_data'] as Map<String, dynamic>?;
+        
+        if (currentUserId == user1Id) {
+          if (correctAnswer == 0) {
+            correctAnswer = int.parse(user1Data['correctAnswer']?.toString() ?? '0');
+          }
+          if (earnCoin == 0) {
+            earnCoin = int.parse(user1Data['earnCoin']?.toString() ?? '0');
+          }
+        } else if (user2Data != null) {
+          if (correctAnswer == 0) {
+            correctAnswer = int.parse(user2Data['correctAnswer']?.toString() ?? '0');
+          }
+          if (earnCoin == 0) {
+            earnCoin = int.parse(user2Data['earnCoin']?.toString() ?? '0');
+          }
+        }
+      }
+      
+      // Calculate percentage from correctAnswer if winningPer is 0 for battles
+      final totalQuestions = int.parse(result['total_questions']?.toString() ?? '0');
+      int percentage = double.parse(result['winningPer']?.toString() ?? '0').toInt();
+      if (percentage == 0 && totalQuestions > 0 && correctAnswer > 0) {
+        percentage = ((correctAnswer * 100) / totalQuestions).round();
+      }
+
       emit(
         SetCoinScoreSuccess(
-          totalQuestions: int.parse(
-            result['total_questions']?.toString() ?? '0',
-          ),
-          correctAnswer: int.parse(result['correctAnswer']?.toString() ?? '0'),
-          percentage: double.parse(
-            result['winningPer']?.toString() ?? '0',
-          ).toInt(),
-          earnCoin: int.parse(result['earnCoin']?.toString() ?? '0'),
+          totalQuestions: totalQuestions,
+          correctAnswer: correctAnswer,
+          percentage: percentage,
+          earnCoin: earnCoin,
           earnScore: int.parse(result['userScore']?.toString() ?? '0'),
           currentLevel: int.parse(result['currentLevel']?.toString() ?? '0'),
           totalLevels: int.parse(result['totalLevel']?.toString() ?? '0'),

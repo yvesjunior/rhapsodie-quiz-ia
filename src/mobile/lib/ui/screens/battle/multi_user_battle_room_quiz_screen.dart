@@ -326,6 +326,11 @@ class _MultiUserBattleRoomQuizScreenState
 
     if (!questions[currentQuestionIndex].attempted) {
       //updated answer locally
+      final correctAnswer = AnswerEncryption.decryptCorrectAnswer(
+        rawKey: context.read<UserDetailsCubit>().getUserFirebaseId(),
+        correctAnswer: questions[currentQuestionIndex].correctAnswer!,
+      ).trim().toLowerCase();
+      
       battleRoomCubit
         ..updateQuestionAnswer(
           questions[currentQuestionIndex].id!,
@@ -334,12 +339,7 @@ class _MultiUserBattleRoomQuizScreenState
         ..submitAnswer(
           context.read<UserDetailsCubit>().userId(),
           submittedAnswer,
-          isCorrectAnswer:
-              submittedAnswer ==
-              AnswerEncryption.decryptCorrectAnswer(
-                rawKey: context.read<UserDetailsCubit>().getUserFirebaseId(),
-                correctAnswer: questions[currentQuestionIndex].correctAnswer!,
-              ),
+          isCorrectAnswer: submittedAnswer.trim().toLowerCase() == correctAnswer,
           questionId: questions[currentQuestionIndex].id!,
         );
 
@@ -570,17 +570,11 @@ class _MultiUserBattleRoomQuizScreenState
     if (navigateToResult) {
       //giving delay
       await Future.delayed(const Duration(seconds: 1), () {
+        // Check if widget is still mounted before using context
+        if (!mounted) return;
+        
         try {
           deleteMessages(context.read<MultiUserBattleRoomCubit>());
-
-          //
-          //navigating result screen twice...
-          //Find optimize solution of navigating to result screen
-          //https://stackoverflow.com/questions/56519093/bloc-listen-callback-called-multiple-times try this solution
-          //https: //stackoverflow.com/questions/52249578/how-to-deal-with-unwanted-widget-build
-          //tried with mounted is true but not working as expected
-          //so executing this code in try catch
-          //
 
           if (isExitDialogOpen) {
             context.shouldPop();
@@ -595,7 +589,8 @@ class _MultiUserBattleRoomQuizScreenState
             );
           }
         } catch (e) {
-          rethrow;
+          // Silently ignore if widget was disposed during navigation
+          debugPrint('navigateToResultScreen: $e');
         }
       });
     }

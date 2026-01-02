@@ -39,15 +39,16 @@ class RandomBattleScreen extends StatefulWidget {
 class _RandomBattleScreenState extends State<RandomBattleScreen> {
   String selectedCategory = selectCategoryKey;
   String selectedCategoryId = '0';
+  
+  // Topic selection: 'rhapsody' or 'foundation'
+  String? selectedTopic;
 
   @override
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
       context.read<RewardedAdCubit>().createRewardedAd(context);
-      if (context.read<SystemConfigCubit>().isCategoryEnabledForRandomBattle) {
-        _getCategories();
-      }
+      // Don't load categories initially - wait for topic selection
     });
   }
 
@@ -57,6 +58,15 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
       type: UiUtils.getCategoryTypeNumberFromQuizType(QuizTypes.oneVsOneBattle),
       subType: UiUtils.subTypeFromQuizType(QuizTypes.oneVsOneBattle),
     );
+  }
+  
+  void _onTopicSelected(String topic) {
+    setState(() {
+      selectedTopic = topic;
+      // Reset category selection when topic changes
+      selectedCategory = selectCategoryKey;
+      selectedCategoryId = topic; // Use topic slug as category ID for Rhapsody/Foundation
+    });
   }
 
   void _addCoinsAfterRewardAd() {
@@ -149,6 +159,101 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTopicSelector() {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    final topics = [
+      {'title': 'Rhapsody', 'icon': Icons.auto_stories_rounded, 'topic': 'rhapsody'},
+      {'title': 'Foundation', 'icon': Icons.school_rounded, 'topic': 'foundation'},
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.tr(selectTopicKey) ?? 'Select Topic',
+          style: TextStyle(
+            fontWeight: FontWeights.regular,
+            fontSize: 18,
+            color: colorScheme.onTertiary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 60,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: topics.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final topic = topics[index];
+              return _buildTopicCard(
+                title: topic['title'] as String,
+                icon: topic['icon'] as IconData,
+                topic: topic['topic'] as String,
+                isSelected: selectedTopic == topic['topic'],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildTopicCard({
+    required String title,
+    required IconData icon,
+    required String topic,
+    required bool isSelected,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return GestureDetector(
+      onTap: () => _onTopicSelected(topic),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        constraints: const BoxConstraints(minWidth: 140),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.15)
+              : colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+                ? Theme.of(context).primaryColor 
+                : colorScheme.onTertiary.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected 
+                  ? Theme.of(context).primaryColor 
+                  : colorScheme.onTertiary.withValues(alpha: 0.6),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeights.bold : FontWeights.regular,
+                color: isSelected 
+                    ? Theme.of(context).primaryColor 
+                    : colorScheme.onTertiary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -315,48 +420,29 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: context.height * .07),
+                          SizedBox(height: context.height * .05),
 
-                          /// Select Category
-                          if (context
-                              .read<SystemConfigCubit>()
-                              .isCategoryEnabledForRandomBattle)
-                            Text(
-                              context.tr(selectCategoryKey)!,
-                              style: TextStyle(
-                                fontWeight: FontWeights.regular,
-                                fontSize: 18,
-                                color: Theme.of(context).colorScheme.onTertiary,
-                              ),
-                            ),
-
-                          /// dropDown
-                          if (context
-                              .read<SystemConfigCubit>()
-                              .isCategoryEnabledForRandomBattle)
-                            SizedBox(height: context.height * .01),
-                          if (context
-                              .read<SystemConfigCubit>()
-                              .isCategoryEnabledForRandomBattle)
-                            selectCategoryDropDown(),
+                          /// Select Topic (Rhapsody / Foundation)
+                          _buildTopicSelector(),
+                          
+                          SizedBox(height: context.height * .02),
 
                           /// Entry fees & Current user coins
-                          SizedBox(height: context.height * .02),
                           _buildEntryFeesAndCoinsCard(context),
 
                           /// Let's Play
-                          SizedBox(height: context.height * .04),
+                          SizedBox(height: context.height * .03),
                           letsPlayButton(context),
 
                           if (context
                               .read<SystemConfigCubit>()
                               .isOneVsOneBattleEnabled) ...[
                             /// OR
-                            SizedBox(height: context.height * .02),
+                            SizedBox(height: context.height * .015),
                             _buildOrDivider(context),
 
-                            /// Let's Play
-                            SizedBox(height: context.height * .02),
+                            /// Play with Friends
+                            SizedBox(height: context.height * .015),
                             playWithFrndsButton(context),
                           ],
                         ],
@@ -399,9 +485,13 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
   }
 
   CustomRoundedButton letsPlayButton(BuildContext context) {
+    final isEnabled = selectedTopic != null;
+    
     return CustomRoundedButton(
       widthPercentage: context.width,
-      backgroundColor: Theme.of(context).primaryColor,
+      backgroundColor: isEnabled 
+          ? Theme.of(context).primaryColor 
+          : Theme.of(context).primaryColor.withValues(alpha: 0.5),
       buttonTitle: context.tr('letsPlay'),
       radius: 8,
       showBorder: false,
@@ -409,6 +499,14 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
       fontWeight: FontWeights.semiBold,
       textSize: 18,
       onTap: () {
+        // Validate topic selection
+        if (selectedTopic == null) {
+          context.showErrorDialog(
+            context.tr(pleaseSelectTopicKey) ?? 'Please select a topic',
+          );
+          return;
+        }
+        
         final userProfile = context.read<UserDetailsCubit>().getUserProfile();
 
         if (int.parse(userProfile.coins!) <
@@ -434,21 +532,13 @@ class _RandomBattleScreenState extends State<RandomBattleScreen> {
           );
           return;
         }
-        if (selectedCategory == selectCategoryKey &&
-            context
-                .read<SystemConfigCubit>()
-                .isCategoryEnabledForRandomBattle) {
-          context.showErrorDialog(
-            context.tr(pleaseSelectCategoryKey)!,
-          );
-          return;
-        }
 
         context.read<BattleRoomCubit>().updateState(const BattleRoomInitial());
 
+        // Pass the topic as category ID (rhapsody or foundation)
         Navigator.of(context).pushReplacementNamed(
           Routes.battleRoomFindOpponent,
-          arguments: selectedCategoryId,
+          arguments: selectedTopic,
         );
       },
     );

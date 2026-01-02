@@ -51,10 +51,115 @@ class _NotificationScreen extends State<NotificationScreen> {
     }
   }
 
+  void _showClearConfirmation() {
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.delete_sweep_outlined, color: Colors.red.shade400, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Clear Notifications',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to clear all notifications? This action cannot be undone.',
+          style: TextStyle(fontSize: 15, height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    side: BorderSide(color: colorScheme.outline),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade500,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Clear All',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true) {
+        context.read<NotificationCubit>().clearAllNotifications().catchError((e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Something went wrong. Please try again.')),
+          );
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: QAppBar(title: Text(context.tr('notificationLbl')!)),
+      appBar: QAppBar(
+        title: Text(context.tr('notificationLbl')!),
+        actions: [
+          BlocBuilder<NotificationCubit, NotificationState>(
+            builder: (context, state) {
+              final hasNotifications = state is NotificationSuccess && 
+                  state.notifications.isNotEmpty;
+              
+              if (!hasNotifications) return const SizedBox.shrink();
+              
+              return IconButton(
+                onPressed: _showClearConfirmation,
+                icon: const Icon(Icons.delete_sweep_outlined),
+                tooltip: context.tr('clearAllLbl') ?? 'Clear All',
+              );
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           vertical: context.height * UiUtils.vtMarginPct,
@@ -90,6 +195,29 @@ class _NotificationScreen extends State<NotificationScreen> {
               }
 
               if (state is NotificationSuccess) {
+                if (state.notifications.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_off_outlined,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notifications',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
                 return ListView.separated(
                   controller: controller,
                   itemCount: state.notifications.length,

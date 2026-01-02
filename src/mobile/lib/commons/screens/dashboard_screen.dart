@@ -10,8 +10,8 @@ import 'package:flutterquiz/features/auth/auth_repository.dart';
 import 'package:flutterquiz/features/auth/cubits/auth_cubit.dart';
 import 'package:flutterquiz/features/auth/cubits/refer_and_earn_cubit.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_all_time_cubit.dart';
-import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_daily_cubit.dart';
 import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_monthly_cubit.dart';
+import 'package:flutterquiz/features/leaderboard/cubit/leaderboard_weekly_cubit.dart';
 import 'package:flutterquiz/features/play_zone_tab/screens/play_zone_tab_screen.dart';
 import 'package:flutterquiz/features/profile_management/cubits/update_score_and_coins_cubit.dart';
 import 'package:flutterquiz/features/profile_management/cubits/update_user_details_cubit.dart';
@@ -117,8 +117,8 @@ class DashboardScreenState extends State<DashboardScreen> {
           BlocProvider<LeaderBoardMonthlyCubit>(
             create: (_) => LeaderBoardMonthlyCubit(),
           ),
-          BlocProvider<LeaderBoardDailyCubit>(
-            create: (_) => LeaderBoardDailyCubit(),
+          BlocProvider<LeaderBoardWeeklyCubit>(
+            create: (_) => LeaderBoardWeeklyCubit(),
           ),
           BlocProvider<LeaderBoardAllTimeCubit>(
             create: (_) => LeaderBoardAllTimeCubit(),
@@ -247,8 +247,8 @@ class DashboardScreenState extends State<DashboardScreen> {
               BlocProvider<LeaderBoardMonthlyCubit>(
                 create: (_) => LeaderBoardMonthlyCubit(),
               ),
-              BlocProvider<LeaderBoardDailyCubit>(
-                create: (_) => LeaderBoardDailyCubit(),
+              BlocProvider<LeaderBoardWeeklyCubit>(
+                create: (_) => LeaderBoardWeeklyCubit(),
               ),
               BlocProvider<LeaderBoardAllTimeCubit>(
                 create: (_) => LeaderBoardAllTimeCubit(),
