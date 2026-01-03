@@ -73,6 +73,13 @@ services:
         max-size: "50m"
         max-file: "5"
 
+  # ============================================
+  # PHPMYADMIN - Disabled in Production
+  # ============================================
+  rhapsody-phpmyadmin:
+    profiles:
+      - admin-tools  # Only enable with: --profile admin-tools
+
 # Named volumes for persistent data
 volumes:
   web_logs:
@@ -81,10 +88,3 @@ volumes:
     driver: local
   web_uploads:
     driver: local
-
-  # ============================================
-  # PHPMYADMIN - Disabled in Production
-  # ============================================
-  rhapsody-phpmyadmin:
-    profiles:
-      - admin-tools  # Only enable with: --profile admin-tools
