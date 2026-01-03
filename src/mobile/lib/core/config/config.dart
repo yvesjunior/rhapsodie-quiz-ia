@@ -11,10 +11,12 @@ const packageName = 'com.wrteam.flutterquiz';
 /// Add your panel url here
 // NOTE: make sure to not add '/' at the end of url
 // NOTE: make sure to check if admin panel is http or https
-// const panelUrl = 'https://elitequiz.wrteam.me';  // Production
 
-// For local development, use your Mac's IP address:
-const panelUrl = 'http://192.168.2.15:8080';  // Local dev - your Mac's IP
+// Production server
+const panelUrl = 'https://kiwanoinc.ca';
+
+// For local development, uncomment below and comment out production:
+// const panelUrl = 'http://192.168.2.15:8080';  // Local dev - your Mac's IP
 
 /// === Branding ===
 ///
