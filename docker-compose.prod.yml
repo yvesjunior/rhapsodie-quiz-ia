@@ -29,8 +29,6 @@ services:
   # ============================================
   rhapsody-redis:
     restart: always
-    # Remove external port - only accessible within Docker network
-    ports: []
     logging:
       driver: json-file
       options:

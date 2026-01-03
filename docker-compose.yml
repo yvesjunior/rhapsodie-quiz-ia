@@ -35,8 +35,7 @@ services:
     image: redis:7-alpine
     container_name: rhapsody-redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # No external port - only accessible via Docker network (rhapsody-redis:6379)
     volumes:
       - redis_data:/data
     networks:
