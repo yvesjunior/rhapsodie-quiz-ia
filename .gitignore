@@ -56,11 +56,12 @@ firestore.rules
 **/client-key.pem
 
 # Secret files and scripts
-*secret*
-*private*
-*password*
-*credential*
-*api_key*
+# Sensitive files (be specific to avoid excluding code files)
+# *secret*
+# *private*
+# *password*
+# *credential*
+# *api_key*
 *apikey*
 **/secrets/
 **/credentials/

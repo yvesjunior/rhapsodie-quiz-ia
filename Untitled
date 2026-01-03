@@ -1,0 +1,2 @@
+# On VM - check if file exists in container
+docker exec rhapsody-web ls -la /var/www/html/system/core/compat/
