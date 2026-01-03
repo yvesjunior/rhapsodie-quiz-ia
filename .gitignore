@@ -33,6 +33,9 @@ database-migrations/
 **/ios/firebase_app_id_file.json
 **/firebase-service-account.json
 **/*-service-account*.json
+
+# Production config files (contain secrets)
+config/
 src/mobile/firebase.json
 
 # Firebase deploy config and rules (project-specific)

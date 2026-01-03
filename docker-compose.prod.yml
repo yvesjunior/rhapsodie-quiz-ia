@@ -52,12 +52,14 @@ services:
   rhapsody-web:
     image: kiwanoinc/rhapsody-web:latest
     restart: always
-    # Override volumes - use code from image, only mount persistent data
+    # Override volumes - use code from image, only mount persistent data + config files
     volumes:
       - web_logs:/var/www/html/application/logs
       - web_cache:/var/www/html/application/cache
       - web_uploads:/var/www/html/upload
       - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
+      - ./config/config.php:/var/www/html/application/config/config.php:ro
+      - ./config/database.php:/var/www/html/application/config/database.php:ro
     environment:
       - CI_ENV=production
     logging:
