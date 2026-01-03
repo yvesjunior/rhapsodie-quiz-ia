@@ -64,7 +64,7 @@ firestore.rules
 # *api_key*
 *apikey*
 **/secrets/
-**/credentials/
+# Removed **/credentials/ - it was excluding vendor/google/auth/src/Credentials/
 
 # Configuration files with sensitive data
 **/config/local.php

@@ -37,9 +37,9 @@ RUN chown -R www-data:www-data /var/www/html \
 # Copy application files
 COPY src/admin/public /var/www/html
 
-# Install PHP dependencies
+# Install PHP dependencies using existing composer.lock
 WORKDIR /var/www/html
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader || true; fi
+RUN rm -rf vendor && composer install --no-dev --optimize-autoloader
 
 # Set permissions for writable directories
 RUN chown -R www-data:www-data /var/www/html/application/logs \
