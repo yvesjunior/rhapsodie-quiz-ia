@@ -17,16 +17,15 @@ services:
   rhapsody-db:
     image: mariadb:10.6
     restart: always
-    # Use named volume instead of bind mount for production
     volumes:
       - mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-elite_quiz_237}
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --max_connections=100
+      MARIADB_AUTO_UPGRADE: "1"
+    # Clear MySQL-specific command - let MariaDB use its defaults
+    entrypoint: ["docker-entrypoint.sh"]
+    command: ["mariadbd"]
     logging:
       driver: json-file
       options:
