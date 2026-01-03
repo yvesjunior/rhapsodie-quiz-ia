@@ -133,7 +133,7 @@ echo -e "${BLUE}📊 Container status:${NC}"
 $DOCKER_COMPOSE ps
 echo ""
 echo -e "${BLUE}📍 Access points:${NC}"
-echo -e "   ${GREEN}Admin Panel:${NC}  http://localhost:4040"
+echo -e "   ${GREEN}Admin Panel:${NC}  http://localhost:${APP_PORT:-8080}"
 echo -e "   ${GREEN}phpMyAdmin:${NC}   http://localhost:8090"
 if [ "$START_TOOLS" = true ]; then
     echo -e "   ${GREEN}Redis Commander:${NC} http://localhost:8081"

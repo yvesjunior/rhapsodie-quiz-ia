@@ -4,7 +4,8 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # NOTE: Uses your external Nginx (kiwanoinc.ca) for SSL termination.
-#       App runs on port 8080, proxied by your existing Nginx.
+#       App runs on port 4040, proxied by your existing Nginx.
+#       Database is NOT exposed externally (internal Docker network only).
 
 services:
   # ============================================

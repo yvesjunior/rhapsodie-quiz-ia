@@ -6,8 +6,10 @@ services:
     image: mysql:8.0
     container_name: rhapsody-db
     restart: unless-stopped
-    ports:
-      - "${DB_PORT:-3310}:3306"
+    # Port 3306 only accessible within Docker network (rhapsody-db:3306)
+    # Uncomment below to expose externally for debugging:
+    # ports:
+    #   - "${DB_PORT:-3310}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${DB_NAME:-elite_quiz_237}
