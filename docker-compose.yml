@@ -120,6 +120,9 @@ services:
       # Set to 'true' for production (auto-create daily contests at midnight)
       # Set to 'false' for development (manual creation via script)
       - DAILY_CONTEST_AUTO_CREATE=${DAILY_CONTEST_AUTO_CREATE:-false}
+      # Hour to create daily contest (24h format, default: 0 = midnight)
+      # Examples: 0 = midnight, 17 = 5 PM, 6 = 6 AM
+      - DAILY_CONTEST_HOUR=${DAILY_CONTEST_HOUR:-0}
       # Timezone for cron jobs (default: Montreal/Eastern Time)
       # Examples: America/Montreal, Africa/Nairobi, Europe/Paris
       - TZ=${TZ:-America/Montreal}

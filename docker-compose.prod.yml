@@ -86,6 +86,7 @@ services:
     environment:
       - CI_ENV=production
       - DAILY_CONTEST_AUTO_CREATE=true
+      - DAILY_CONTEST_HOUR=${DAILY_CONTEST_HOUR:-0}
     logging:
       driver: json-file
       options:
