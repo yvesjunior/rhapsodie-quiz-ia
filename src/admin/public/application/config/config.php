@@ -25,7 +25,10 @@ defined('BASEPATH') or exit('No direct script access allowed');
   |
  */
 //$config['base_url'] = '';
-$base = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://";
+// Check for HTTPS directly or via proxy (X-Forwarded-Proto header from Nginx)
+$isHttps = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') 
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+$base = ($isHttps ? "https" : "http") . "://";
 $base .= $_SERVER['HTTP_HOST'];
 $base .= str_replace(basename($_SERVER['SCRIPT_NAME']), "", $_SERVER['SCRIPT_NAME']);
 $config['base_url'] = $base;
