@@ -9,7 +9,7 @@ fi
 
 # Export environment variables for cron
 # Cron doesn't inherit environment variables, so we need to write them to a file
-printenv | grep -E '^(DAILY_CONTEST_AUTO_CREATE|DB_|CI_ENV|REDIS_|TZ|NOTIFICATION_)' > /etc/environment
+printenv | grep -E '^(DAILY_CONTEST_AUTO_CREATE|DAILY_CONTEST_HOUR|DB_|CI_ENV|REDIS_|TZ|NOTIFICATION_)' > /etc/environment
 
 # Default notification hours if not set (24h format, comma-separated)
 # Examples: "8,13,22" = 8AM, 1PM, 10PM
@@ -17,14 +17,9 @@ printenv | grep -E '^(DAILY_CONTEST_AUTO_CREATE|DB_|CI_ENV|REDIS_|TZ|NOTIFICATIO
 #           "9,14,19,21" = 9AM, 2PM, 7PM, 9PM
 NOTIFICATION_HOURS="${NOTIFICATION_HOURS:-8,13,22}"
 
-echo "==================================="
-echo "Rhapsody Quiz Cron Service"
-echo "==================================="
-echo "Timezone: ${TZ:-America/Montreal} ($(date +%Z))"
-echo "Current time: $(date)"
-echo "DAILY_CONTEST_AUTO_CREATE: ${DAILY_CONTEST_AUTO_CREATE:-false}"
-echo "NOTIFICATION_HOURS: ${NOTIFICATION_HOURS}"
-echo ""
+# Daily contest creation hour (24h format, default: 0 = midnight)
+# Examples: "0" = midnight, "17" = 5PM, "6" = 6AM
+DAILY_CONTEST_HOUR="${DAILY_CONTEST_HOUR:-0}"
 
 # Convert 24h hours to readable format
 format_hours() {
@@ -46,9 +41,19 @@ format_hours() {
     echo "${formatted%, }"  # Remove trailing comma
 }
 
+echo "==================================="
+echo "Rhapsody Quiz Cron Service"
+echo "==================================="
+echo "Timezone: ${TZ:-America/Montreal} ($(date +%Z))"
+echo "Current time: $(date)"
+echo "DAILY_CONTEST_AUTO_CREATE: ${DAILY_CONTEST_AUTO_CREATE:-false}"
+echo "DAILY_CONTEST_HOUR: ${DAILY_CONTEST_HOUR} ($(format_hours "$DAILY_CONTEST_HOUR"))"
+echo "NOTIFICATION_HOURS: ${NOTIFICATION_HOURS}"
+echo ""
+
 if [ "${DAILY_CONTEST_AUTO_CREATE}" = "true" ]; then
     echo "✓ Automatic daily contest creation ENABLED"
-    echo "  - Daily contest: 12:00 AM (midnight)"
+    echo "  - Daily contest: $(format_hours "$DAILY_CONTEST_HOUR")"
     echo "  - Notifications: $(format_hours "$NOTIFICATION_HOURS")"
 else
     echo "✗ Automatic daily contest creation DISABLED"
@@ -67,8 +72,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 BASH_ENV=/etc/environment
 
 # Rhapsody Quiz Cron Jobs
-# Daily contest creation at midnight
-0 0 * * * root . /etc/environment && [ "\$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job >> /var/log/cron.log 2>&1
+# Daily contest creation (configurable via DAILY_CONTEST_HOUR env var)
+0 ${DAILY_CONTEST_HOUR} * * * root . /etc/environment && [ "\$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job >> /var/log/cron.log 2>&1
 
 # Weekly rewards distribution - Every Sunday at 11:59 PM (end of week)
 59 23 * * 0 root . /etc/environment && [ "\$DAILY_CONTEST_AUTO_CREATE" = "true" ] && curl -s http://rhapsody-web/index.php/Elite_Cron_Job/distribute_weekly_rewards >> /var/log/cron.log 2>&1
