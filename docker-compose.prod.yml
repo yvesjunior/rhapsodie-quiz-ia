@@ -17,15 +17,18 @@ services:
   rhapsody-db:
     image: mariadb:10.6
     restart: always
+    security_opt:
+      - seccomp:unconfined
     volumes:
       - mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME:-elite_quiz_237}
-      MARIADB_AUTO_UPGRADE: "1"
-    # Clear MySQL-specific command - let MariaDB use its defaults
-    entrypoint: ["docker-entrypoint.sh"]
-    command: ["mariadbd"]
+    healthcheck:
+      test: ["CMD", "mariadb", "-u", "root", "-p${DB_PASSWORD}", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     logging:
       driver: json-file
       options:
