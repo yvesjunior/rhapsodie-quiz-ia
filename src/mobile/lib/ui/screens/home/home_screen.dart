@@ -1697,7 +1697,6 @@ class HomeScreenState extends State<HomeScreen>
     _checkDailyContestStatus(forceRefresh: true);
   }
 
-  bool profileComplete = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1734,20 +1733,8 @@ class HomeScreenState extends State<HomeScreen>
                     context: context,
                     userId: state.userProfile.userId!,
                   );
-                  if (state.userProfile.profileUrl!.isEmpty ||
-                      state.userProfile.name!.isEmpty) {
-                    if (!profileComplete) {
-                      profileComplete = true;
-
-                      globalCtx.pushNamed(
-                        Routes.selectProfile,
-                        arguments: const CreateOrEditProfileScreenArgs(
-                          isNewUser: false,
-                        ),
-                      );
-                    }
-                    return;
-                  }
+                  // Note: Profile completion is handled in signup flow
+                  // Removed redundant check that was causing double navigation
                 } else if (state is UserDetailsFetchFailure) {
                   if (state.errorMessage == errorCodeUnauthorizedAccess) {
                     showAlreadyLoggedInDialog(context);

@@ -43,7 +43,27 @@ class QImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const errorImg = Assets.placeholder;
-    final image = imageUrl.isEmpty ? errorImg : imageUrl;
+    var image = imageUrl.isEmpty ? errorImg : imageUrl;
+
+    // Handle avatar filenames stored in DB (e.g., "1.svg", "2.svg", "1", "2")
+    // or any local file that doesn't have a proper path
+    // These need to be converted to full asset path
+    final isLocalFile = !image.startsWith('http') && 
+                        !image.startsWith('assets/') &&
+                        !image.startsWith('/');
+    
+    if (isLocalFile) {
+      // Check if it's a numeric avatar filename
+      final isAvatarFile = RegExp(r'^\d+\.svg$').hasMatch(image) || 
+                           RegExp(r'^\d+$').hasMatch(image);
+      if (isAvatarFile) {
+        final fileName = image.endsWith('.svg') ? image : '$image.svg';
+        image = Assets.profile(fileName);
+      } else if (image.endsWith('.svg') || image.endsWith('.png') || image.endsWith('.jpg')) {
+        // For other local filenames, try profile path
+        image = Assets.profile(image);
+      }
+    }
 
     final isNetworked = image.startsWith('http');
     final isSvg = image.endsWith('.svg');

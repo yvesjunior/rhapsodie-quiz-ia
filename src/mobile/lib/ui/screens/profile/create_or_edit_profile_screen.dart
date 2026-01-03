@@ -587,23 +587,22 @@ class _SelectProfilePictureScreen extends State<CreateOrEditProfileScreen> {
                         );
                       }
 
-                      /// ----
-                      if (emailController!.text.isNotEmpty ||
-                          phoneController!.text.isNotEmpty) {
-                        context.read<UserDetailsCubit>().updateUserProfile(
-                          email: emailController!.text.trim(),
-                          name: nameController!.text.trim(),
-                          mobile: phoneController!.text.trim(),
-                        );
+                      // Always update local user profile state for new users
+                      // Note: profileUrl is updated via UploadProfileSuccess listener
+                      context.read<UserDetailsCubit>().updateUserProfile(
+                        email: emailController!.text.trim(),
+                        name: nameController!.text.trim(),
+                        mobile: phoneController!.text.trim(),
+                      );
 
-                        await context
-                            .read<UpdateUserDetailCubit>()
-                            .updateProfile(
-                              email: emailController!.text,
-                              name: nameController!.text,
-                              mobile: phoneController!.text,
-                            );
-                      }
+                      // Update remote profile
+                      await context
+                          .read<UpdateUserDetailCubit>()
+                          .updateProfile(
+                            email: emailController!.text,
+                            name: nameController!.text,
+                            mobile: phoneController!.text,
+                          );
 
                       await context.pushNamedAndRemoveUntil(
                         Routes.home,
@@ -644,17 +643,15 @@ class _SelectProfilePictureScreen extends State<CreateOrEditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!widget.args.isNewUser) ...[
-          Text(
-            context.tr('profileName')!,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onTertiary,
-            ),
+        Text(
+          context.tr('profileName') ?? 'Username',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onTertiary,
           ),
-          const SizedBox(height: 10),
-        ],
+        ),
+        const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
@@ -663,7 +660,12 @@ class _SelectProfilePictureScreen extends State<CreateOrEditProfileScreen> {
           width: context.width,
           height: 50,
           child: TextFormField(
-            validator: (_) => null,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return context.tr('nameCantBeEmpty') ?? 'Username is required';
+              }
+              return null;
+            },
             cursorColor: colorScheme.onTertiary,
             controller: nameController,
             style: TextStyle(
@@ -672,7 +674,7 @@ class _SelectProfilePictureScreen extends State<CreateOrEditProfileScreen> {
               fontSize: 18,
             ),
             decoration: InputDecoration(
-              hintText: context.tr('enterNameLbl'),
+              hintText: context.tr('enterNameLbl') ?? 'Enter your username',
               border: InputBorder.none,
               hintStyle: TextStyle(
                 color: colorScheme.onTertiary.withValues(alpha: .4),
@@ -948,14 +950,26 @@ class _SelectProfilePictureScreen extends State<CreateOrEditProfileScreen> {
                     children: [
                       SizedBox(height: size.height * .025),
                       Center(
-                        child: _buildCurrentProfilePictureContainer(
-                          image: selectedAvatar != null
-                              ? selectedAvatar!
-                              : selectedImage != null
-                              ? selectedImage!.path
-                              : userProfile.profileUrl ?? '',
-                          isFile: selectedImage != null,
-                          isAsset: selectedAvatar != null,
+                        child: Builder(
+                          builder: (context) {
+                            final profileUrl = userProfile.profileUrl ?? '';
+                            // Check if profileUrl is an avatar filename (e.g., "1.svg", "1")
+                            final isProfileUrlAvatar = !profileUrl.startsWith('http') &&
+                                !profileUrl.startsWith('assets/') &&
+                                (RegExp(r'^\d+\.svg$').hasMatch(profileUrl) ||
+                                 RegExp(r'^\d+$').hasMatch(profileUrl));
+                            
+                            return _buildCurrentProfilePictureContainer(
+                              image: selectedAvatar != null
+                                  ? selectedAvatar!
+                                  : selectedImage != null
+                                  ? selectedImage!.path
+                                  : profileUrl,
+                              isFile: selectedImage != null,
+                              isAsset: selectedAvatar != null || 
+                                       (selectedImage == null && isProfileUrlAvatar),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 15),

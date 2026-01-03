@@ -27,7 +27,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.322915959213-dh9pngcbov233e8hok2b4i142nem7vs4</string>
+				<string>com.googleusercontent.apps.765201305590-0b12e5pmkjsvsl3p7hpkckoijqe1t4c5</string>
 			</array>
 		</dict>
 	</array>
@@ -35,6 +35,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>GIDClientID</key>
+	<string>765201305590-0b12e5pmkjsvsl3p7hpkckoijqe1t4c5.apps.googleusercontent.com</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>

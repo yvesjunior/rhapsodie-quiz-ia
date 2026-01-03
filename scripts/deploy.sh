@@ -247,7 +247,48 @@ if [ "$QUICK" = false ]; then
 fi
 
 # ============================================
-# POST-DEPLOYMENT
+# POST-DEPLOYMENT SETUP
+# ============================================
+echo ""
+echo -e "${BLUE}📁 Setting up required directories...${NC}"
+
+# Create all image upload directories with correct permissions
+IMAGE_DIRS=(
+    "images/profile"
+    "images/badges"
+    "images/category"
+    "images/subcategory"
+    "images/questions"
+    "images/notifications"
+    "images/contest"
+    "images/contest-question"
+    "images/guess-word"
+    "images/fun-n-learn"
+    "images/fun-n-learn-question"
+    "images/exam-question"
+    "images/maths-questions"
+    "images/slider"
+    "images/web-settings"
+    "images/coin-store"
+    "images/multimatch-questions"
+    "images/instruction"
+    "upload/languages"
+)
+
+for dir in "${IMAGE_DIRS[@]}"; do
+    $DOCKER_COMPOSE exec -T rhapsody-web mkdir -p "/var/www/html/$dir" 2>/dev/null || true
+done
+
+# Set correct ownership and permissions
+$DOCKER_COMPOSE exec -T rhapsody-web chown -R www-data:www-data /var/www/html/images 2>/dev/null || true
+$DOCKER_COMPOSE exec -T rhapsody-web chown -R www-data:www-data /var/www/html/upload 2>/dev/null || true
+$DOCKER_COMPOSE exec -T rhapsody-web chmod -R 775 /var/www/html/images 2>/dev/null || true
+$DOCKER_COMPOSE exec -T rhapsody-web chmod -R 775 /var/www/html/upload 2>/dev/null || true
+
+echo -e "${GREEN}✓ Directories created and permissions set${NC}"
+
+# ============================================
+# DEPLOYMENT COMPLETE
 # ============================================
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"

@@ -35,7 +35,7 @@ final class UserDetailsCubit extends Cubit<UserDetailsState> {
   final ProfileManagementRepository _profileManagementRepository;
 
   //to fetch user details form remote
-  Future<void> fetchUserDetails() async {
+  Future<void> fetchUserDetails({int retryCount = 0}) async {
     if (state is! UserDetailsFetchSuccess) {
       emit(const UserDetailsFetchInProgress());
     }
@@ -45,6 +45,11 @@ final class UserDetailsCubit extends Cubit<UserDetailsState> {
           .getUserDetailsById();
       emit(UserDetailsFetchSuccess(userProfile));
     } on Exception catch (e) {
+      // Auto-retry up to 3 times with delay (handles race condition after signup)
+      if (retryCount < 3) {
+        await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+        return fetchUserDetails(retryCount: retryCount + 1);
+      }
       if (state is! UserDetailsFetchSuccess) {
         emit(UserDetailsFetchFailure(e.toString()));
       }
