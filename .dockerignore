@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Mobile app (not needed for backend)
+src/mobile
+
+# Documentation
+docs
+*.md
+README*
+
+# Development files
+.env
+.env.*
+*.log
+
+# Backups
+backups
+
+# IDE
+.idea
+.vscode
+.cursor
+*.swp
+*.swo
+
+# Node modules (if any)
+node_modules
+
+# Database data (mounted as volume)
+src/database/data
+
+# Test files
+test
+tests
+*.test.*
+
+# Firebase config (mounted separately)
+firebase-service-account.json
+firebase.json
+firestore.*
+
+# Build artifacts
+*.sql
+*.gz
+*.tar
+
+# AI/QCM (not used yet)
+ai-qcm
+
