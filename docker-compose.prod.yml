@@ -52,6 +52,14 @@ services:
   rhapsody-web:
     image: kiwanoinc/rhapsody-web:latest
     restart: always
+    # Fix glibc threading issue for curl/DNS resolution
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
     # Override volumes - use code from image (config files now baked in)
     volumes:
       - web_logs:/var/www/html/application/logs
