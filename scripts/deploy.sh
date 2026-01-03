@@ -42,16 +42,20 @@ show_help() {
     echo "Usage: ./deploy.sh [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --build       Rebuild Docker images before deploying"
+    echo "  --build       Build images locally (dev only, not for production)"
     echo "  --backup      Backup database before deploying"
     echo "  --migrate     Run database migrations after deploy"
     echo "  --quick       Skip health checks for faster deploy"
     echo "  --help, -h    Show this help message"
     echo ""
     echo "Examples:"
-    echo "  ./deploy.sh                    # Standard deploy"
-    echo "  ./deploy.sh --build            # Rebuild and deploy"
-    echo "  ./deploy.sh --build --backup   # Rebuild with backup"
+    echo "  ./deploy.sh                    # Pull from Docker Hub and deploy"
+    echo "  ./deploy.sh --backup           # Deploy with database backup"
+    echo "  ./deploy.sh --build            # Build locally (dev machine only)"
+    echo ""
+    echo "Production Images (Docker Hub):"
+    echo "  - kiwanoinc/rhapsody-web:latest"
+    echo "  - kiwanoinc/rhapsody-cron:latest"
     echo ""
     echo "Note: SSL is handled by your external Nginx (kiwanoinc.ca)"
     echo ""
@@ -184,13 +188,13 @@ echo -e "${BLUE}🚀 Deploying to production...${NC}"
 # Build compose command (uses external Nginx for SSL)
 COMPOSE_CMD="-f docker-compose.yml -f docker-compose.prod.yml"
 
-# Pull latest images (for non-built images)
-echo -e "${CYAN}   Pulling latest images...${NC}"
-$DOCKER_COMPOSE $COMPOSE_CMD pull --ignore-pull-failures 2>/dev/null || true
+# Pull latest images from Docker Hub
+echo -e "${CYAN}   Pulling images from Docker Hub...${NC}"
+$DOCKER_COMPOSE $COMPOSE_CMD pull
 
 # Start services
 echo -e "${CYAN}   Starting services...${NC}"
-$DOCKER_COMPOSE $COMPOSE_CMD up -d
+$DOCKER_COMPOSE $COMPOSE_CMD up -d --remove-orphans
 
 # ============================================
 # HEALTH CHECKS

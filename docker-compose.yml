@@ -296,3 +296,4 @@ volumes:
   #   driver: local
   #   name: rhapsody-ai-api-storage
   # Commented out - AI services disabled until Phase 6
+

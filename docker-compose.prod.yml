@@ -6,6 +6,9 @@
 # NOTE: Uses your external Nginx (kiwanoinc.ca) for SSL termination.
 #       App runs on port 4040, proxied by your existing Nginx.
 #       Database is NOT exposed externally (internal Docker network only).
+#
+# Images are pulled from Docker Hub (kiwanoinc/rhapsody-*)
+# To update: docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 
 services:
   # ============================================
@@ -36,7 +39,14 @@ services:
   # WEB SERVER - Production Settings
   # ============================================
   rhapsody-web:
+    image: kiwanoinc/rhapsody-web:latest
     restart: always
+    # Override volumes - use code from image, only mount persistent data
+    volumes:
+      - web_logs:/var/www/html/application/logs
+      - web_cache:/var/www/html/application/cache
+      - web_uploads:/var/www/html/upload
+      - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=production
     logging:
@@ -49,7 +59,11 @@ services:
   # CRON - Production Settings
   # ============================================
   rhapsody-cron:
+    image: kiwanoinc/rhapsody-cron:latest
     restart: always
+    # Override volumes - use code from image, only mount Firebase credentials
+    volumes:
+      - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=production
       - DAILY_CONTEST_AUTO_CREATE=true
@@ -58,6 +72,15 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+
+# Named volumes for persistent data
+volumes:
+  web_logs:
+    driver: local
+  web_cache:
+    driver: local
+  web_uploads:
+    driver: local
 
   # ============================================
   # PHPMYADMIN - Disabled in Production
