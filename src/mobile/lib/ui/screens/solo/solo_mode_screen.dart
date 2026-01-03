@@ -958,6 +958,250 @@ class _ResultsView extends StatelessWidget {
   final SoloQuizResult result;
   
   const _ResultsView({required this.result});
+  
+  void _showReviewAnswers(BuildContext context, SoloQuizResult result) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.rate_review_outlined),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Review Answers',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // List of results
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: result.detailedResults.length,
+                itemBuilder: (context, index) {
+                  final detail = result.detailedResults[index];
+                  return _buildQuestionReviewCard(context, detail, index);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildQuestionReviewCard(BuildContext context, SoloDetailedResult detail, int index) {
+    final isCorrect = detail.isCorrect;
+    final primaryColor = Theme.of(context).primaryColor;
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isCorrect ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Question number and source
+            Row(
+              children: [
+                // Question number badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Q${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Correct/Wrong indicator
+                Icon(
+                  isCorrect ? Icons.check_circle : Icons.cancel,
+                  color: isCorrect ? Colors.green : Colors.red,
+                  size: 20,
+                ),
+                const Spacer(),
+                // Source label
+                if (detail.hasSource)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: detail.sourceType == 'rhapsody'
+                          ? Colors.deepPurple.withOpacity(0.1)
+                          : Colors.teal.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          detail.sourceType == 'rhapsody'
+                              ? Icons.calendar_today_rounded
+                              : Icons.school_rounded,
+                          size: 12,
+                          color: detail.sourceType == 'rhapsody'
+                              ? Colors.deepPurple
+                              : Colors.teal,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          detail.sourceLabel!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: detail.sourceType == 'rhapsody'
+                                ? Colors.deepPurple
+                                : Colors.teal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Question text
+            Text(
+              detail.question,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Your answer
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your answer: ',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    detail.selectedAnswer.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isCorrect ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!isCorrect) ...[
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Correct answer: ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      detail.correctAnswer.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            // Note/explanation if available
+            if (detail.note != null && detail.note!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lightbulb_outline, size: 16, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        detail.note!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1209,7 +1453,33 @@ class _ResultsView extends StatelessWidget {
                               ),
                             ),
                           
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 20),
+                          
+                          // Review Answers button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showReviewAnswers(context, result),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primaryColor,
+                                side: BorderSide(color: primaryColor),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.rate_review_outlined),
+                              label: const Text(
+                                'Review Answers',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 16),
                           
                           // Play Again button (full width)
                           SizedBox(

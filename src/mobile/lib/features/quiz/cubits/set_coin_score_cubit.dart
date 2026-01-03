@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterquiz/features/quiz/quiz_repository.dart';
 
@@ -129,6 +131,8 @@ final class SetCoinScoreCubit extends Cubit<SetCoinScoreState> {
     int? joinedUsersCount,
   }) async {
     emit(const SetCoinScoreInProgress());
+    log('setCoinScore: type=$quizType, category=$categoryId, subcategory=$subcategoryId', name: 'SetCoinScoreCubit');
+    log('setCoinScore: playedQuestions=$playedQuestions', name: 'SetCoinScoreCubit');
     try {
       final result = await _repo.setQuizCoinScore(
         categoryId: categoryId,
@@ -142,6 +146,8 @@ final class SetCoinScoreCubit extends Cubit<SetCoinScoreState> {
         matchId: matchId,
         joinedUsersCount: joinedUsersCount,
       );
+      
+      log('setCoinScore: result=$result', name: 'SetCoinScoreCubit');
 
       // For 1v1 battles, correctAnswer and earnCoin are inside user data, not at top level
       int correctAnswer = int.parse(result['correctAnswer']?.toString() ?? '0');
@@ -216,7 +222,13 @@ final class SetCoinScoreCubit extends Cubit<SetCoinScoreState> {
                 ..sort((a, b) => a.rank.compareTo(b.rank)),
         ),
       );
-    } on Exception catch (e) {
+    } on Exception catch (e, stackTrace) {
+      log('SetCoinScore error: $e', name: 'SetCoinScoreCubit');
+      log('Stack trace: $stackTrace', name: 'SetCoinScoreCubit');
+      // ignore: avoid_print
+      print('🔴 SetCoinScore ERROR: $e');
+      // ignore: avoid_print
+      print('🔴 Stack: $stackTrace');
       emit(SetCoinScoreFailure(e.toString()));
     }
   }

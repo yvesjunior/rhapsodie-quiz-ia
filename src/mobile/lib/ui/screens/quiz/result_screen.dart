@@ -671,13 +671,30 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
     return BlocBuilder<SetCoinScoreCubit, SetCoinScoreState>(
       builder: (context, state) {
         if (state is SetCoinScoreFailure) {
+          // DEBUG: Show raw error for debugging
+          // ignore: avoid_print
+          print('🔴 Result screen error: ${state.error}');
           return Center(
-            child: ErrorContainer(
-              showBackButton: true,
-              errorMessageColor: Colors.white,
-              errorMessage: convertErrorCodeToLanguageKey(state.error),
-              onTapRetry: _updateResult,
-              showErrorImage: true,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ErrorContainer(
+                  showBackButton: true,
+                  errorMessageColor: Colors.white,
+                  errorMessage: convertErrorCodeToLanguageKey(state.error),
+                  onTapRetry: _updateResult,
+                  showErrorImage: true,
+                ),
+                // DEBUG: Show raw error code
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Debug: ${state.error}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
             ),
           );
         }

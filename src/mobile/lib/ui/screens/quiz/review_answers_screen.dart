@@ -488,6 +488,9 @@ class _ReviewAnswersScreenState extends State<ReviewAnswersScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Source label (if available)
+          if (question.hasSource) _buildSourceLabel(question),
+          
           QuestionContainer(
             isMathQuestion: false,
             question: question,
@@ -510,6 +513,44 @@ class _ReviewAnswersScreenState extends State<ReviewAnswersScreen>
           _buildOptions(),
           _buildNotes(question.note!),
           const SizedBox(height: 50),
+        ],
+      ),
+    );
+  }
+  
+  /// Build source label showing where the question came from
+  Widget _buildSourceLabel(Question question) {
+    final icon = question.sourceType == 'rhapsody' 
+        ? Icons.calendar_today_rounded 
+        : Icons.school_rounded;
+    final color = question.sourceType == 'rhapsody'
+        ? Colors.deepPurple
+        : Colors.teal;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              question.sourceLabel!,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

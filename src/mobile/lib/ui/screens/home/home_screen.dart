@@ -444,11 +444,12 @@ class HomeScreenState extends State<HomeScreen>
 
   /// Check if user has a pending daily contest
   /// Also manages local reminder notifications
-  Future<void> _checkDailyContestStatus() async {
+  /// Set [forceRefresh] to true to bypass cache (e.g., after contest submission)
+  Future<void> _checkDailyContestStatus({bool forceRefresh = false}) async {
     if (_isGuest) return;
     
     try {
-      await _dailyContestCubit.checkDailyContestStatus();
+      await _dailyContestCubit.checkDailyContestStatus(forceRefresh: forceRefresh);
       if (mounted) {
         final hasPending = _dailyContestCubit.hasPendingContest;
         setState(() {
@@ -794,7 +795,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_sysConfigCubit.isContestEnabled) {
             Navigator.of(context).pushNamed(Routes.contest).then((_) {
               // Refresh daily contest status when returning from contest screen
-              _checkDailyContestStatus();
+              _checkDailyContestStatus(forceRefresh: true);
             });
           } else {
             context.showSnack(context.tr(currentlyNotAvailableKey)!);
@@ -1240,8 +1241,8 @@ class HomeScreenState extends State<HomeScreen>
                             languageId: _currLangId,
                           );
               
-              // Refresh daily contest status for notification badge
-              await _checkDailyContestStatus();
+              // Refresh daily contest status for notification badge (force refresh on pull-to-refresh)
+              await _checkDailyContestStatus(forceRefresh: true);
                         }
                         setState(() {});
                       },
@@ -1692,8 +1693,8 @@ class HomeScreenState extends State<HomeScreen>
   /// Called when returning from other screens (Contest, Daily Contest, etc.)
   void refreshHomeData() {
     fetchUserDetails();
-    // Refresh daily contest status to update notification badge
-    _checkDailyContestStatus();
+    // Refresh daily contest status with forceRefresh to bypass cache
+    _checkDailyContestStatus(forceRefresh: true);
   }
 
   bool profileComplete = false;

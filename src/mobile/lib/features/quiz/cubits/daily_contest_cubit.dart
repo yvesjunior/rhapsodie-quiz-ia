@@ -44,11 +44,12 @@ class DailyContestCubit extends Cubit<DailyContestState> {
   final QuizRepository _quizRepository;
 
   /// Check if user has a pending daily contest
-  Future<void> checkDailyContestStatus() async {
+  /// Set [forceRefresh] to true to bypass cache (e.g., after contest submission)
+  Future<void> checkDailyContestStatus({bool forceRefresh = false}) async {
     emit(const DailyContestLoading());
 
     try {
-      final result = await _quizRepository.getDailyContestStatus();
+      final result = await _quizRepository.getDailyContestStatus(forceRefresh: forceRefresh);
       
       emit(DailyContestStatusLoaded(
         hasPendingContest: (result['has_pending_contest'] as bool?) ?? false,

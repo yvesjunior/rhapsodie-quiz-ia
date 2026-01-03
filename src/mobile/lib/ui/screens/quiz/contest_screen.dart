@@ -66,9 +66,9 @@ class _ContestScreen extends State<ContestScreen>
     context.read<ContestCubit>().getContest(
       languageId: UiUtils.getCurrentQuizLanguageId(context),
     );
-    // Force refresh of daily contest cards
-    _dailyCardKey.currentState?._checkDailyContestStatus();
-    _completedCardKey.currentState?._checkDailyContestStatus();
+    // Force refresh of daily contest cards (bypass cache)
+    _dailyCardKey.currentState?._checkDailyContestStatus(forceRefresh: true);
+    _completedCardKey.currentState?._checkDailyContestStatus(forceRefresh: true);
   }
 
   @override
@@ -549,6 +549,7 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
   bool _isLoading = true;
   bool _hasPendingContest = false;
   bool _hasCompleted = false;
+  bool _isOffline = false;
   String? _contestName;
   int? _userScore;
 
@@ -558,9 +559,9 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
     _checkDailyContestStatus();
   }
 
-  Future<void> _checkDailyContestStatus() async {
+  Future<void> _checkDailyContestStatus({bool forceRefresh = false}) async {
     try {
-      final result = await QuizRepository().getDailyContestStatus();
+      final result = await QuizRepository().getDailyContestStatus(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _hasPendingContest = result['has_pending_contest'] ?? false;
@@ -568,12 +569,18 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
           _contestName = result['contest_name'];
           _userScore = result['user_score'];
           _isLoading = false;
+          _isOffline = false;
         });
       }
     } catch (e) {
       if (mounted) {
+        // Check if it's an offline error
+        final isOfflineError = e.toString().contains('online') || 
+                               e.toString().contains('internet') ||
+                               e.toString().contains('network');
         setState(() {
           _isLoading = false;
+          _isOffline = isOfflineError;
         });
       }
     }
@@ -588,6 +595,35 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
     if (_isLoading) {
       return const SizedBox.shrink();
     }
+    
+    // Show offline message if no internet
+    if (_isOffline) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.wifi_off, color: Colors.grey.shade600, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Connect to the internet to access the daily contest',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => _checkDailyContestStatus(forceRefresh: true),
+            ),
+          ],
+        ),
+      );
+    }
+    
     if (_hasCompleted || !_hasPendingContest) {
       return const SizedBox.shrink();
     }
@@ -787,8 +823,8 @@ class _DailyRhapsodyCardState extends State<_DailyRhapsodyCard> {
     } else if (_hasPendingContest) {
       // Start daily contest
       Navigator.of(context).pushNamed(Routes.dailyContest).then((_) {
-        // Refresh status when returning
-        _checkDailyContestStatus();
+        // Refresh status when returning (force refresh to bypass cache)
+        _checkDailyContestStatus(forceRefresh: true);
         // Notify parent to refresh all data
         widget.onContestCompleted?.call();
       });
@@ -852,9 +888,9 @@ class _CompletedDailyContestsCardState
     _checkDailyContestStatus();
   }
 
-  Future<void> _checkDailyContestStatus() async {
+  Future<void> _checkDailyContestStatus({bool forceRefresh = false}) async {
     try {
-      final result = await QuizRepository().getDailyContestStatus();
+      final result = await QuizRepository().getDailyContestStatus(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _hasCompleted = result['has_completed'] ?? false;

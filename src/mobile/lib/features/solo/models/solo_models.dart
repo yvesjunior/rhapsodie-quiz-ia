@@ -74,6 +74,11 @@ class SoloQuestion {
   final String? plainAnswer; // Plain text answer (for non-encrypted fallback)
   final String? note; // Explanation
   final String? image;
+  
+  // Source tracking - where this question came from
+  final String? sourceType; // 'rhapsody' or 'foundation'
+  final String? sourceId; // Category ID
+  final String? sourceLabel; // Human-readable e.g. "Rhapsody - December 25, 2025"
 
   SoloQuestion({
     required this.id,
@@ -87,6 +92,9 @@ class SoloQuestion {
     this.plainAnswer,
     this.note,
     this.image,
+    this.sourceType,
+    this.sourceId,
+    this.sourceLabel,
   });
 
   factory SoloQuestion.fromJson(Map<String, dynamic> json) {
@@ -117,6 +125,9 @@ class SoloQuestion {
       plainAnswer: plainAnswer,
       note: json['note']?.toString(),
       image: json['image']?.toString(),
+      sourceType: json['source_type']?.toString(),
+      sourceId: json['source_id']?.toString(),
+      sourceLabel: json['source_label']?.toString(),
     );
   }
 
@@ -124,6 +135,9 @@ class SoloQuestion {
   
   /// Check if answer is encrypted
   bool get isEncrypted => cipherText.isNotEmpty && iv.isNotEmpty;
+  
+  /// Check if source info is available
+  bool get hasSource => sourceLabel != null && sourceLabel!.isNotEmpty;
 }
 
 /// User's answer for a question
@@ -232,6 +246,10 @@ class SoloDetailedResult {
   final bool isCorrect;
   final String question;
   final String? note;
+  
+  // Source info - where this question came from
+  final String? sourceType;
+  final String? sourceLabel;
 
   SoloDetailedResult({
     required this.questionId,
@@ -240,6 +258,8 @@ class SoloDetailedResult {
     required this.isCorrect,
     required this.question,
     this.note,
+    this.sourceType,
+    this.sourceLabel,
   });
 
   factory SoloDetailedResult.fromJson(Map<String, dynamic> json) {
@@ -257,7 +277,12 @@ class SoloDetailedResult {
       isCorrect: isCorrect,
       question: json['question']?.toString() ?? '',
       note: json['note']?.toString(),
+      sourceType: json['source_type']?.toString(),
+      sourceLabel: json['source_label']?.toString(),
     );
   }
+  
+  /// Check if source info is available
+  bool get hasSource => sourceLabel != null && sourceLabel!.isNotEmpty;
 }
 

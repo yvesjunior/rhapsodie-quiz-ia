@@ -71,13 +71,14 @@ class Elite_Cron_Job extends CI_Controller
             
         if (!empty($existing)) {
             if ($force) {
-                // Delete existing contest and related data
+                // Delete existing contest and questions, but KEEP leaderboard entries (user scores)
                 $contest_id = $existing['id'];
-                log_message('info', "Daily Contest Cron: Force mode - deleting contest ID: $contest_id");
+                log_message('info', "Daily Contest Cron: Force mode - deleting contest ID: $contest_id (keeping scores)");
                 $this->db->where('contest_id', $contest_id)->delete('tbl_contest_question');
-                $this->db->where('contest_id', $contest_id)->delete('tbl_contest_leaderboard');
+                // NOTE: Leaderboard entries are preserved so users keep their earned points
+                // $this->db->where('contest_id', $contest_id)->delete('tbl_contest_leaderboard');
                 $this->db->where('id', $contest_id)->delete('tbl_contest');
-                echo "Deleted existing contest (ID: $contest_id)\n";
+                echo "Deleted existing contest (ID: $contest_id) - user scores preserved\n";
             } else {
                 log_message('info', "Daily Contest Cron: Contest already exists for today (ID: {$existing['id']})");
                 echo "Daily contest already exists for today\n";

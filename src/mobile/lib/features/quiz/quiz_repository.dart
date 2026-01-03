@@ -231,7 +231,19 @@ final class QuizRepository {
       funAndLearnId: funAndLearnId,
     );
     
-    // Check cache first
+    // Quiz types that require server-side session tracking
+    // These must NOT use cache as fallback when online - the server needs the session
+    final requiresServerSession = [
+      QuizTypes.quizZone,
+      QuizTypes.dailyQuiz,
+      QuizTypes.contest,
+      QuizTypes.trueAndFalse,
+      QuizTypes.funAndLearn,
+      QuizTypes.audioQuestions,
+      QuizTypes.mathMania,
+    ].contains(quizType);
+    
+    // Check cache (only used as fallback when network fails for non-session types)
     final cached = await _quizLocalDataSource.getCachedQuestions(cacheKey);
     
     try {
@@ -306,18 +318,19 @@ final class QuizRepository {
       
       return questions;
     } on SocketException {
-      // Network error - return cache if available
-      if (cached != null && cached.isNotEmpty) {
+      // Network error - return cache if available (only for non-session types)
+      // For session-required types, we CANNOT use cache because the server needs the session
+      if (!requiresServerSession && cached != null && cached.isNotEmpty) {
         log('Questions: returning ${cached.length} cached due to network error');
         return cached;
       }
       throw const ApiException(errorCodeNoInternet);
     } on ApiException {
-      if (cached != null && cached.isNotEmpty) return cached;
+      if (!requiresServerSession && cached != null && cached.isNotEmpty) return cached;
       rethrow;
     } catch (e) {
       log('Error fetching questions: $e');
-      if (cached != null && cached.isNotEmpty) return cached;
+      if (!requiresServerSession && cached != null && cached.isNotEmpty) return cached;
       throw const ApiException(errorCodeNoInternet);
     }
   }
@@ -483,129 +496,66 @@ final class QuizRepository {
   // DAILY CONTEST METHODS (Offline-First)
   // ============================================
 
-  /// Check if user has a pending daily contest (offline-first)
+  // ============================================
+  // DAILY CONTEST METHODS (NO CACHING - requires online)
+  // ============================================
+  // Contests require server-side validation and real-time state.
+  // Users must be online to play contests.
+
+  /// Check if user has a pending daily contest
+  /// ALWAYS fetches from server - no caching for contest status
   Future<Map<String, dynamic>> getDailyContestStatus({bool forceRefresh = false}) async {
-    // Try cache first
-    if (!forceRefresh) {
-      final cached = await _dailyContestLocalDataSource.getCachedContestStatus();
-      if (cached != null) {
-        log('Daily contest status: returning cached');
-        
-        if (_isOnline) {
-          _refreshContestStatusInBackground();
-        }
-        
-        return cached;
-      }
+    // Contest status must always be fresh - no caching
+    if (!_isOnline) {
+      throw const ApiException('You must be online to check contest status');
     }
-
-    // Fetch from remote
-    if (_isOnline) {
-      try {
-        final status = await _quizRemoteDataSource.getDailyContestStatus();
-        await _dailyContestLocalDataSource.cacheContestStatus(status);
-        return status;
-      } catch (e) {
-        log('Error fetching contest status: $e');
-        final cached = await _dailyContestLocalDataSource.getCachedContestStatus();
-        if (cached != null) return cached;
-        rethrow;
-      }
-    }
-
-    // Offline
-    final cached = await _dailyContestLocalDataSource.getCachedContestStatus();
-    if (cached != null) return cached;
-    throw Exception('No cached contest status available offline');
-  }
-
-  Future<void> _refreshContestStatusInBackground() async {
+    
     try {
       final status = await _quizRemoteDataSource.getDailyContestStatus();
-      await _dailyContestLocalDataSource.cacheContestStatus(status);
+      log('Contest status: has_completed=${status['has_completed']}, has_pending=${status['has_pending_contest']}');
+      return status;
     } catch (e) {
-      log('Background refresh contest status error: $e');
+      log('Error fetching contest status: $e');
+      rethrow;
     }
   }
 
-  /// Get today's daily contest details (offline-first)
+  /// Get today's daily contest details
+  /// ALWAYS fetches from server - contests require online
   Future<Map<String, dynamic>> getTodayDailyContest({bool forceRefresh = false}) async {
-    // Try cache first
-    if (!forceRefresh) {
-      final cached = await _dailyContestLocalDataSource.getCachedTodayContest();
-      if (cached != null) {
-        log('Today\'s contest: returning cached');
-        
-        if (_isOnline) {
-          _refreshTodayContestInBackground();
-        }
-        
-        return cached;
-      }
+    if (!_isOnline) {
+      throw const ApiException('You must be online to play the daily contest');
     }
-
-    // Fetch from remote
-    if (_isOnline) {
-      try {
-        final contest = await _quizRemoteDataSource.getTodayDailyContest();
-        await _dailyContestLocalDataSource.cacheTodayContest(contest);
-        return contest;
-      } catch (e) {
-        log('Error fetching today\'s contest: $e');
-        final cached = await _dailyContestLocalDataSource.getCachedTodayContest();
-        if (cached != null) return cached;
-        rethrow;
-      }
-    }
-
-    // Offline
-    final cached = await _dailyContestLocalDataSource.getCachedTodayContest();
-    if (cached != null) return cached;
-    throw Exception('No cached daily contest available offline');
-  }
-
-  Future<void> _refreshTodayContestInBackground() async {
+    
     try {
-      final contest = await _quizRemoteDataSource.getTodayDailyContest();
-      await _dailyContestLocalDataSource.cacheTodayContest(contest);
+      return await _quizRemoteDataSource.getTodayDailyContest();
     } catch (e) {
-      log('Background refresh today\'s contest error: $e');
+      log('Error fetching today\'s contest: $e');
+      rethrow;
     }
   }
 
-  /// Submit daily contest answers (with offline queue support)
+  /// Submit daily contest answers
+  /// Requires online - no offline queue for contests
   Future<Map<String, dynamic>> submitDailyContest({
     required String contestId,
     required List<Map<String, dynamic>> answers,
     required bool readText,
   }) async {
-    if (_isOnline) {
-      // Submit immediately if online
-      final result = await _quizRemoteDataSource.submitDailyContest(
-        contestId: contestId,
-        answers: answers,
-        readText: readText,
-      );
-      
-      // Clear any saved progress
-      await _dailyContestLocalDataSource.clearProgress(contestId);
-      
-      return result;
-    } else {
-      // Queue for later if offline
-      await _dailyContestLocalDataSource.queueSubmission(
-        contestId: contestId,
-        answers: answers,
-        readText: readText,
-      );
-      
-      // Return a pending response
-      return {
-        'error': false,
-        'message': 'Submission queued for when online',
-        'pending': true,
-      };
+    if (!_isOnline) {
+      throw const ApiException('You must be online to submit contest answers');
     }
+    
+    log('submitDailyContest: contest=$contestId, answers=${answers.length}, readText=$readText');
+    
+    final result = await _quizRemoteDataSource.submitDailyContest(
+      contestId: contestId,
+      answers: answers,
+      readText: readText,
+    );
+    
+    log('Contest submitted successfully: $result');
+    return result;
   }
 
   /// Create daily contest (for testing/admin)

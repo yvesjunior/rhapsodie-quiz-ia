@@ -19,6 +19,9 @@ final class Question {
     this.attempted = false,
     this.submittedAnswerId = '',
     this.marks,
+    this.sourceType,
+    this.sourceId,
+    this.sourceLabel,
   });
 
   factory Question.fromJson(Map<String, dynamic> questionJson) {
@@ -47,6 +50,16 @@ final class Question {
         }
       }
     }
+    
+    // Safely parse correct answer - handle both Map and other formats
+    CorrectAnswer? correctAnswer;
+    final rawAnswer = questionJson['answer'];
+    if (rawAnswer is Map<String, dynamic>) {
+      correctAnswer = CorrectAnswer.fromJson(rawAnswer);
+    } else if (rawAnswer != null) {
+      // Fallback for unexpected format - create empty answer
+      correctAnswer = const CorrectAnswer(cipherText: '', iv: '');
+    }
 
     return Question(
       id: questionJson['id'] as String?,
@@ -54,9 +67,7 @@ final class Question {
       imageUrl: questionJson['image'] as String?,
       languageId: questionJson['language_id'] as String?,
       subcategoryId: questionJson['subcategory'] as String? ?? '',
-      correctAnswer: CorrectAnswer.fromJson(
-        questionJson['answer'] as Map<String, dynamic>,
-      ),
+      correctAnswer: correctAnswer,
       level: questionJson['level'] as String? ?? '',
       question: questionJson['question'] as String?,
       note: questionJson['note'] as String? ?? '',
@@ -65,6 +76,9 @@ final class Question {
       audioType: questionJson['audio_type'] as String? ?? '',
       marks: questionJson['marks'] as String? ?? '',
       answerOptions: options,
+      sourceType: questionJson['source_type']?.toString(),
+      sourceId: questionJson['source_id']?.toString(),
+      sourceLabel: questionJson['source_label']?.toString(),
     );
   }
 
@@ -81,6 +95,16 @@ final class Question {
         options.add(AnswerOption(id: optionId, title: optionTitle));
       }
     }
+    
+    // Safely parse correct answer - handle both Map and other formats
+    CorrectAnswer? correctAnswer;
+    final rawAnswer = questionJson['answer'];
+    if (rawAnswer is Map<String, dynamic>) {
+      correctAnswer = CorrectAnswer.fromJson(rawAnswer);
+    } else if (rawAnswer != null) {
+      // Fallback for unexpected format - create empty answer
+      correctAnswer = const CorrectAnswer(cipherText: '', iv: '');
+    }
 
     return Question(
       id: questionJson['question_id'] as String?,
@@ -88,9 +112,7 @@ final class Question {
       imageUrl: questionJson['image'] as String?,
       languageId: questionJson['language_id'] as String?,
       subcategoryId: questionJson['subcategory'] as String? ?? '',
-      correctAnswer: CorrectAnswer.fromJson(
-        questionJson['answer'] as Map<String, dynamic>,
-      ),
+      correctAnswer: correctAnswer,
       level: questionJson['level'] as String? ?? '',
       question: questionJson['question'] as String?,
       note: questionJson['note'] as String? ?? '',
@@ -99,6 +121,9 @@ final class Question {
       audioType: questionJson['audio_type'] as String? ?? '',
       marks: questionJson['marks'] as String? ?? '',
       answerOptions: options,
+      sourceType: questionJson['source_type']?.toString(),
+      sourceId: questionJson['source_id']?.toString(),
+      sourceLabel: questionJson['source_label']?.toString(),
     );
   }
 
@@ -118,6 +143,14 @@ final class Question {
   final String? audio;
   final String? audioType;
   final String? marks;
+  
+  // Source tracking - where this question came from
+  final String? sourceType; // 'rhapsody' or 'foundation'
+  final String? sourceId; // Category ID
+  final String? sourceLabel; // Human-readable e.g. "Rhapsody - December 25, 2025"
+  
+  /// Check if source info is available
+  bool get hasSource => sourceLabel != null && sourceLabel!.isNotEmpty;
 
   Question updateQuestionWithAnswer({required String submittedAnswerId}) {
     return Question(
@@ -137,6 +170,9 @@ final class Question {
       question: question,
       questionType: questionType,
       subcategoryId: subcategoryId,
+      sourceType: sourceType,
+      sourceId: sourceId,
+      sourceLabel: sourceLabel,
     );
   }
 
@@ -158,6 +194,9 @@ final class Question {
       question: question,
       questionType: questionType,
       subcategoryId: subcategoryId,
+      sourceType: sourceType,
+      sourceId: sourceId,
+      sourceLabel: sourceLabel,
     );
   }
 }

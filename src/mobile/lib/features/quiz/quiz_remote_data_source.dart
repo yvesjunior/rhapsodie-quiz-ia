@@ -674,8 +674,15 @@ final class QuizRemoteDataSource {
       final responseJson = jsonDecode(response.body) as Map<String, dynamic>;
 
       log('Response $responseJson', name: 'setQuizCoinScore API');
+      // ignore: avoid_print
+      print('🟡 setQuizCoinScore Response: $responseJson');
       if (responseJson['error'] as bool) {
-        throw ApiException(responseJson['message'].toString());
+        final errorMsg = responseJson['error_msg']?.toString() ?? '';
+        final message = responseJson['message']?.toString() ?? '';
+        log('setQuizCoinScore ERROR: $message ($errorMsg)', name: 'setQuizCoinScore API');
+        // ignore: avoid_print
+        print('🔴 setQuizCoinScore ERROR: message=$message, error_msg=$errorMsg');
+        throw ApiException(message);
       }
 
       return responseJson['data'] as Map<String, dynamic>;

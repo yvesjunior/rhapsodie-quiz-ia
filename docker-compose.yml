@@ -64,7 +64,7 @@ services:
       - ./src/admin/public/application/cache:/var/www/html/application/cache
       - ./src/admin/public/upload:/var/www/html/upload
       # Mount Firebase service account for FCM v1 API
-      - ./firebase.json:/var/www/credentials/firebase-service-account.json:ro
+      - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=${CI_ENV:-development}
       - DB_HOST=${DB_HOST:-rhapsody-db}
@@ -107,7 +107,7 @@ services:
       # Crontab is generated dynamically by cron-entrypoint.sh based on NOTIFICATION_HOURS
       # - ./infra/crontab:/etc/cron.d/rhapsody-cron  # Removed - using dynamic generation
       # Mount Firebase service account for FCM v1 API
-      - ./firebase.json:/var/www/credentials/firebase-service-account.json:ro
+      - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
     environment:
       - CI_ENV=${CI_ENV:-development}
       - DB_HOST=${DB_HOST:-rhapsody-db}

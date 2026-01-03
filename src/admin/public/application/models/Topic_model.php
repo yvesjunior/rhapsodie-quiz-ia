@@ -359,7 +359,8 @@ class Topic_model extends CI_Model
         }
 
         // Build query to get random questions from all categories in this topic
-        $this->db->select('q.*');
+        // Include category/source information for each question
+        $this->db->select('q.*, c.id as source_id, c.category_name as source_name, c.year as source_year, c.month as source_month, c.day as source_day, c.topic_id as source_topic_id');
         $this->db->from('tbl_question q');
         $this->db->join('tbl_category c', 'q.category = c.id');
         $this->db->where('c.topic_id', $topic['id']);
@@ -373,7 +374,45 @@ class Topic_model extends CI_Model
         $this->db->order_by('RAND()');
         $this->db->limit($count);
         
-        return $this->db->get()->result_array();
+        $questions = $this->db->get()->result_array();
+        
+        // Add human-readable source label to each question
+        foreach ($questions as &$q) {
+            $q['source_type'] = $topic_slug;
+            $q['source_label'] = $this->_build_source_label($topic_slug, $q);
+        }
+        
+        return $questions;
+    }
+    
+    /**
+     * Build human-readable source label for a question
+     * @param string $topic_slug Topic slug (rhapsody or foundation_school)
+     * @param array $question Question with source fields
+     * @return string Source label e.g. "Rhapsody - December 25, 2025" or "Foundation - Module 1: Title"
+     */
+    private function _build_source_label($topic_slug, $question)
+    {
+        if ($topic_slug === 'rhapsody') {
+            // Format: "Rhapsody - December 25, 2025"
+            $year = $question['source_year'] ?? '';
+            $month = $question['source_month'] ?? '';
+            $day = $question['source_day'] ?? '';
+            
+            if ($year && $month && $day) {
+                $month_name = date('F', mktime(0, 0, 0, intval($month), 1));
+                return "Rhapsody - $month_name $day, $year";
+            } elseif ($year && $month) {
+                $month_name = date('F', mktime(0, 0, 0, intval($month), 1));
+                return "Rhapsody - $month_name $year";
+            }
+            return "Rhapsody - " . ($question['source_name'] ?? 'Unknown');
+        } else if ($topic_slug === 'foundation_school' || $topic_slug === 'foundation') {
+            // Format: "Foundation - Module: Title"
+            return "Foundation - " . ($question['source_name'] ?? 'Unknown Module');
+        }
+        
+        return ($question['source_name'] ?? 'Quiz');
     }
 
     /**

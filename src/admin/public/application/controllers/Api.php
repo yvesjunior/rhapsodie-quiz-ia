@@ -2671,6 +2671,11 @@ class Api extends REST_Controller
             $contest_id = $this->post('contest_id');
             $answers = $this->post('answers'); // Array of {question_id, answer}
             $read_text = $this->post('read_text'); // Boolean - did user read the text
+            
+            // Decode JSON string if answers is sent as JSON
+            if (is_string($answers)) {
+                $answers = json_decode($answers, true);
+            }
 
             if (!$contest_id) {
                 $response['error'] = true;
@@ -2729,6 +2734,10 @@ class Api extends REST_Controller
             $quiz_points = 0;
             $correct_answers = 0;
 
+            // Debug logging
+            log_message('debug', "Contest Submit: read_text='$read_text', reading_points=$reading_points");
+            log_message('debug', "Contest Submit: answers received: " . json_encode($answers));
+
             if (!empty($answers) && is_array($answers)) {
                 foreach ($answers as $answer) {
                     $question_id = $answer['question_id'];
@@ -2740,7 +2749,12 @@ class Api extends REST_Controller
                         ->get('tbl_contest_question')
                         ->row_array();
 
-                    if ($question && strtolower(trim($question['answer'])) == strtolower(trim($user_answer))) {
+                    $correct_answer = $question ? $question['answer'] : 'N/A';
+                    $is_correct = $question && strtolower(trim($correct_answer)) == strtolower(trim($user_answer));
+                    
+                    log_message('debug', "Contest Q$question_id: user='$user_answer', correct='$correct_answer', match=" . ($is_correct ? 'YES' : 'NO'));
+
+                    if ($is_correct) {
                         $quiz_points += 1;
                         $correct_answers++;
                     }
@@ -2748,6 +2762,7 @@ class Api extends REST_Controller
             }
 
             $total_score = $reading_points + $quiz_points;
+            log_message('debug', "Contest Submit: total_score=$total_score (reading=$reading_points + quiz=$quiz_points)");
 
             // Save to leaderboard
             $leaderboard_data = [
@@ -2945,13 +2960,49 @@ class Api extends REST_Controller
 
         $category_ids = array_column($categories, 'id');
 
-        // Get random questions from these categories
-        $this->db->where_in('category', $category_ids);
+        // Get random questions with source info
+        $this->db->select('q.*, c.id as source_id, c.category_name as source_name, c.year as source_year, c.month as source_month, c.day as source_day');
+        $this->db->from('tbl_question q');
+        $this->db->join('tbl_category c', 'q.category = c.id');
+        $this->db->where_in('q.category', $category_ids);
         if (!empty($language_id)) {
-            $this->db->where('language_id', $language_id);
+            $this->db->where('q.language_id', $language_id);
         }
         $this->db->order_by('RAND()')->limit($limit);
-        return $this->db->get('tbl_question')->result_array();
+        $questions = $this->db->get()->result_array();
+        
+        // Add source labels
+        foreach ($questions as &$q) {
+            $q['source_type'] = 'rhapsody';
+            $q['source_label'] = $this->_build_question_source_label('rhapsody', $q);
+        }
+        
+        return $questions;
+    }
+    
+    /**
+     * Build human-readable source label for a question
+     */
+    private function _build_question_source_label($topic_slug, $question)
+    {
+        if ($topic_slug === 'rhapsody') {
+            $year = $question['source_year'] ?? '';
+            $month = $question['source_month'] ?? '';
+            $day = $question['source_day'] ?? '';
+            
+            if ($year && $month && $day) {
+                $month_name = date('F', mktime(0, 0, 0, intval($month), 1));
+                return "Rhapsody - $month_name $day, $year";
+            } elseif ($year && $month) {
+                $month_name = date('F', mktime(0, 0, 0, intval($month), 1));
+                return "Rhapsody - $month_name $year";
+            }
+            return "Rhapsody - " . ($question['source_name'] ?? 'Unknown');
+        } else if ($topic_slug === 'foundation_school' || $topic_slug === 'foundation') {
+            return "Foundation - " . ($question['source_name'] ?? 'Unknown Module');
+        }
+        
+        return ($question['source_name'] ?? 'Quiz');
     }
 
     /**
@@ -2966,7 +3017,6 @@ class Api extends REST_Controller
         
         // Get Foundation School topic ID
         $topic = $this->db->where('slug', 'foundation_school')->get('tbl_topic')->row_array();
-        log_message('debug', "_get_foundation_questions_for_battle: topic=" . json_encode($topic));
         
         if (empty($topic)) {
             log_message('error', "_get_foundation_questions_for_battle: No foundation_school topic found");
@@ -2979,32 +3029,36 @@ class Api extends REST_Controller
             ->get('tbl_category')
             ->result_array();
         
-        log_message('debug', "_get_foundation_questions_for_battle: categories count=" . count($categories));
-        
         if (empty($categories)) {
-            log_message('error', "_get_foundation_questions_for_battle: No categories found for topic_id=" . $topic['id']);
+            log_message('error', "_get_foundation_questions_for_battle: No categories found");
             return [];
         }
 
         $category_ids = array_column($categories, 'id');
-        log_message('debug', "_get_foundation_questions_for_battle: category_ids=" . json_encode($category_ids));
 
-        // Get random questions from these categories
-        // Foundation questions may have language_id = 0, so also include those
-        $this->db->where_in('category', $category_ids);
+        // Get random questions with source info
+        $this->db->select('q.*, c.id as source_id, c.category_name as source_name');
+        $this->db->from('tbl_question q');
+        $this->db->join('tbl_category c', 'q.category = c.id');
+        $this->db->where_in('q.category', $category_ids);
         if (!empty($language_id)) {
-            // Include questions with the specified language OR language_id = 0 (universal)
             $this->db->group_start();
-            $this->db->where('language_id', $language_id);
-            $this->db->or_where('language_id', 0);
+            $this->db->where('q.language_id', $language_id);
+            $this->db->or_where('q.language_id', 0);
             $this->db->group_end();
         }
         $this->db->order_by('RAND()')->limit($limit);
-        $result = $this->db->get('tbl_question')->result_array();
+        $questions = $this->db->get()->result_array();
         
-        log_message('debug', "_get_foundation_questions_for_battle: found " . count($result) . " questions");
+        // Add source labels
+        foreach ($questions as &$q) {
+            $q['source_type'] = 'foundation';
+            $q['source_label'] = $this->_build_question_source_label('foundation', $q);
+        }
         
-        return $result;
+        log_message('debug', "_get_foundation_questions_for_battle: found " . count($questions) . " questions");
+        
+        return $questions;
     }
 
     /**
@@ -4052,8 +4106,8 @@ class Api extends REST_Controller
                     'tbl_contest_leaderboard',
                     'tbl_daily_quiz_user',
                     'tbl_exam_module_result',
-                    'tbl_leaderboard_daily',
-                    'tbl_leaderboard_monthly',
+                    // 'tbl_leaderboard_daily', // REMOVED - table dropped
+                    // 'tbl_leaderboard_monthly', // REMOVED - table dropped
                     'tbl_level',
                     'tbl_multi_match_level',
                     'tbl_multi_match_question_reports',
@@ -7515,25 +7569,25 @@ class Api extends REST_Controller
     function myGlobalRank($user_id)
     {
         // Base query - include ALL active users with 0 points if no entry
+        // Uses tbl_contest_leaderboard for scores
         $base_sql = "
             SELECT u.id as user_id, u.email, u.name, u.status, u.profile, 
-                   COALESCE(SUM(m.score), 0) AS score, 
-                   COALESCE(MAX(m.last_updated), NOW()) as last_updated 
+                   COALESCE(SUM(cl.score), 0) AS score, 
+                   COALESCE(MAX(cl.last_updated), NOW()) as last_updated 
             FROM tbl_users u 
-            LEFT JOIN tbl_leaderboard_monthly m ON u.id = m.user_id
+            LEFT JOIN tbl_contest_leaderboard cl ON u.id = cl.user_id
             WHERE u.status = 1 
             GROUP BY u.id, u.email, u.name, u.status, u.profile
             ORDER BY score DESC, last_updated ASC
         ";
         
-        // Tied ranking query (same score = same rank)
+        // Dense ranking query (same score = same rank, no gaps)
         $ranked_sql = "
             SELECT r.*, 
-                   @rank := IF(@prev_score = r.score, @rank, @row_num) as user_rank,
-                   @row_num := @row_num + 1,
+                   @rank := IF(@prev_score = r.score, @rank, @rank + 1) as user_rank,
                    @prev_score := r.score
             FROM ($base_sql) r, 
-                 (SELECT @rank := 0, @row_num := 1, @prev_score := NULL) init
+                 (SELECT @rank := 0, @prev_score := NULL) init
         ";
         
         $sql = "SELECT * FROM ($ranked_sql) ranked WHERE ranked.user_id = ? LIMIT 1";
@@ -9212,8 +9266,12 @@ class Api extends REST_Controller
                 $selected_letter = strtolower(trim($answer['selected_answer'] ?? ''));
                 $selected_option_text = trim($answer['selected_option_text'] ?? '');
 
-                // Get question from database
-                $question = $this->db->where('id', $question_id)->get('tbl_question')->row_array();
+                // Get question from database with source info
+                $this->db->select('q.*, c.id as source_id, c.category_name as source_name, c.year as source_year, c.month as source_month, c.day as source_day');
+                $this->db->from('tbl_question q');
+                $this->db->join('tbl_category c', 'q.category = c.id', 'left');
+                $this->db->where('q.id', $question_id);
+                $question = $this->db->get()->row_array();
                 
                 if ($question) {
                     // The original correct answer letter (before any shuffle)
@@ -9233,6 +9291,9 @@ class Api extends REST_Controller
                     if ($is_correct) {
                         $correct_answers++;
                     }
+                    
+                    // Build source label
+                    $source_label = $this->_build_question_source_label($topic_slug, $question);
 
                     $detailed_results[] = [
                         'question_id' => $question_id,
@@ -9240,7 +9301,10 @@ class Api extends REST_Controller
                         'correct_answer' => $correct_letter,
                         'is_correct' => $is_correct,
                         'question' => $question['question'],
-                        'note' => $question['note'] ?? '' // Explanation
+                        'note' => $question['note'] ?? '', // Explanation
+                        'source_type' => $topic_slug,
+                        'source_id' => $question['source_id'] ?? null,
+                        'source_label' => $source_label
                     ];
                 }
             }

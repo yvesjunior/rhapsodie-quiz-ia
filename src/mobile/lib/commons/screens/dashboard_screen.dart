@@ -69,6 +69,16 @@ class DashboardScreenState extends State<DashboardScreen> {
     if (homeKey?.currentState != null) {
       (homeKey!.currentState as dynamic).refreshHomeData();
     }
+    // Also refresh leaderboard data
+    refreshLeaderboardData();
+  }
+
+  /// Refresh leaderboard data (called after completing quizzes/contests)
+  void refreshLeaderboardData() {
+    final leaderboardKey = navTabsKeys[NavTabType.leaderboard];
+    if (leaderboardKey?.currentState != null) {
+      (leaderboardKey!.currentState as dynamic).refreshAllLeaderboards();
+    }
   }
 
   final Map<NavTabType, GlobalKey<dynamic>> navTabsKeys = {

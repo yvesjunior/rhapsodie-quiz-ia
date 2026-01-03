@@ -143,6 +143,17 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
     }
   }
 
+  /// Get option letter from option text (reverse lookup)
+  String _getOptionLetter(Map<String, dynamic> question, String text) {
+    final trimmedText = text.toLowerCase().trim();
+    if ((question['optiona']?.toString() ?? '').toLowerCase().trim() == trimmedText) return 'a';
+    if ((question['optionb']?.toString() ?? '').toLowerCase().trim() == trimmedText) return 'b';
+    if ((question['optionc']?.toString() ?? '').toLowerCase().trim() == trimmedText) return 'c';
+    if ((question['optiond']?.toString() ?? '').toLowerCase().trim() == trimmedText) return 'd';
+    if ((question['optione']?.toString() ?? '').toLowerCase().trim() == trimmedText) return 'e';
+    return ''; // Not found
+  }
+
   Future<void> _submitAndLeave() async {
     if (_contestData == null) {
       Navigator.of(context).pop();
@@ -151,14 +162,15 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
 
     // Submit partial results to server (marks contest as completed)
     try {
-      // Prepare answers
+      // Prepare answers - convert text to letter for backend
       final answers = <Map<String, dynamic>>[];
       for (var i = 0; i < _questions.length; i++) {
         final question = _questions[i];
-        final userAnswer = _userAnswers[i] ?? '';
+        final userAnswerText = _userAnswers[i] ?? '';
+        final userAnswerLetter = _getOptionLetter(question, userAnswerText);
         answers.add({
           'question_id': question['id'],
-          'answer': userAnswer,
+          'answer': userAnswerLetter, // Send letter, not text
         });
       }
 
@@ -193,8 +205,13 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
       });
     } catch (e) {
       log('Error loading daily contest: $e', name: 'DailyContest');
+      String errorMsg = e.toString();
+      // Make error messages more user-friendly
+      if (errorMsg.contains('online') || errorMsg.contains('internet') || errorMsg.contains('network')) {
+        errorMsg = 'You need an internet connection to play the daily contest.';
+      }
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = errorMsg;
         _isLoading = false;
       });
     }
@@ -511,20 +528,21 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
       
       for (var i = 0; i < _questions.length; i++) {
         final question = _questions[i];
-        final userAnswer = _userAnswers[i] ?? '';
+        final userAnswerText = _userAnswers[i] ?? '';
         
-        // Get the correct answer text based on the answer letter
-        final answerLetter = question['answer']?.toString().toLowerCase() ?? '';
-        final correctAnswerText = _getOptionText(question, answerLetter);
+        // Convert user answer text to letter (a, b, c, d) for backend
+        final userAnswerLetter = _getOptionLetter(question, userAnswerText);
+        
+        // Get the correct answer letter from question
+        final correctAnswerLetter = question['answer']?.toString().toLowerCase() ?? '';
         
         answers.add({
           'question_id': question['id'],
-          'answer': userAnswer,
+          'answer': userAnswerLetter, // Send letter, not text
         });
 
         // Check if correct locally (fallback)
-        if (userAnswer.isNotEmpty && 
-            userAnswer.toLowerCase().trim() == correctAnswerText.toLowerCase().trim()) {
+        if (userAnswerLetter.isNotEmpty && userAnswerLetter == correctAnswerLetter) {
           localCorrectCount++;
         }
       }
@@ -562,11 +580,10 @@ class _DailyContestScreenState extends State<DailyContestScreen> {
       int localCorrectCount = 0;
       for (var i = 0; i < _questions.length; i++) {
         final question = _questions[i];
-        final userAnswer = _userAnswers[i] ?? '';
-        final answerLetter = question['answer']?.toString().toLowerCase() ?? '';
-        final correctAnswerText = _getOptionText(question, answerLetter);
-        if (userAnswer.isNotEmpty && 
-            userAnswer.toLowerCase().trim() == correctAnswerText.toLowerCase().trim()) {
+        final userAnswerText = _userAnswers[i] ?? '';
+        final userAnswerLetter = _getOptionLetter(question, userAnswerText);
+        final correctAnswerLetter = question['answer']?.toString().toLowerCase() ?? '';
+        if (userAnswerLetter.isNotEmpty && userAnswerLetter == correctAnswerLetter) {
           localCorrectCount++;
         }
       }

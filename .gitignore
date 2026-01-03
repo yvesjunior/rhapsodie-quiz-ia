@@ -10,6 +10,7 @@ src/database/data/
 *.dump
 database-backups/
 **/database-backups/
+database-migrations/
 
 # Secrets and sensitive files
 .env
@@ -34,9 +35,10 @@ database-backups/
 **/*-service-account*.json
 src/mobile/firebase.json
 
-# Firebase rules and deploy config (keep in repo)
-# firebase.json - root level config for firebase deploy
-# firestore.rules - security rules for Firestore
+# Firebase deploy config and rules (project-specific)
+firebase.json
+firestore.indexes.json
+firestore.rules
 
 # SSL/TLS certificates and keys
 *.pem

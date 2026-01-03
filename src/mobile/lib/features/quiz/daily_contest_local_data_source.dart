@@ -48,6 +48,11 @@ class DailyContestLocalDataSource {
     );
   }
 
+  /// Clear contest status cache (call after submission)
+  Future<void> clearContestStatusCache() async {
+    await _cache.clear('daily_contest_status');
+  }
+
   // ============================================
   // Pending Submissions
   // ============================================

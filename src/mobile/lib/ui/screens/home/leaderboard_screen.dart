@@ -289,6 +289,13 @@ class LeaderBoardScreenState extends State<LeaderBoardScreen>
   void fetchAllTimeLeaderBoard() =>
       context.read<LeaderBoardAllTimeCubit>().fetchLeaderBoard('20');
 
+  /// Public method to refresh all leaderboards (called from dashboard after contest completion)
+  void refreshAllLeaderboards() {
+    fetchWeeklyLeaderBoard();
+    fetchMonthlyLeaderBoard();
+    fetchAllTimeLeaderBoard();
+  }
+
   Widget noLeaderboard(VoidCallback onTapRetry) => Center(
     child: ErrorContainer(
       topMargin: 0,
