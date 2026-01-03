@@ -80,6 +80,14 @@ services:
   rhapsody-cron:
     image: kiwanoinc/rhapsody-cron:latest
     restart: always
+    # Fix glibc threading issue with curl (same as web container)
+    security_opt:
+      - seccomp:unconfined
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
     # Override volumes - use code from image, only mount Firebase credentials
     volumes:
       - ./firebase-service-account.json:/var/www/credentials/firebase-service-account.json:ro
