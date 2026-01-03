@@ -24,8 +24,10 @@ import 'package:flutterquiz/features/quiz/cubits/subcategory_cubit.dart';
 import 'package:flutterquiz/features/quiz/cubits/unlocked_level_cubit.dart';
 import 'package:flutterquiz/features/quiz/models/comprehension.dart';
 import 'package:flutterquiz/features/quiz/models/guess_the_word_question.dart';
+import 'package:flutterquiz/features/quiz/models/answer_option.dart';
 import 'package:flutterquiz/features/quiz/models/question.dart';
 import 'package:flutterquiz/features/quiz/models/quiz_type.dart';
+import 'package:flutterquiz/utils/answer_encryption.dart';
 import 'package:flutterquiz/features/quiz/models/user_battle_room_details.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/features/rhapsody/rhapsody_remote_data_source.dart';
@@ -1511,96 +1513,31 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           }
   }
 
-  bool _unlockedReviewAnswersOnce = false;
-
   Future<void> _reviewAnswers() async {
     if (_isReviewInProgress) return;
-
-    if (_unlockedReviewAnswersOnce) {
-      await context.pushNamed(
-        Routes.reviewAnswers,
-        arguments: ReviewAnswersScreenArgs(
-          quizType: widget.quizType!,
-          questions: widget.quizType == QuizTypes.guessTheWord
-              ? []
-              : widget.questions!,
-          guessTheWordQuestions: widget.quizType == QuizTypes.guessTheWord
-              ? widget.guessTheWordQuestions!
-              : [],
+    if (widget.questions == null || widget.questions!.isEmpty) return;
+    
+    setState(() => _isReviewInProgress = true);
+    
+    try {
+      // Show bottom sheet like Solo Mode
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => _ReviewAnswersBottomSheet(
+          questions: widget.questions!,
+          firebaseId: context.read<UserDetailsCubit>().getUserFirebaseId(),
         ),
       );
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isReviewInProgress = false);
+      }
     }
-
-    setState(() => _isReviewInProgress = true);
-
-    try {
-      await context.showDialog<void>(
-        title: context.tr('reviewAnswers'),
-        image: Assets.coinsDialogIcon,
-        message:
-            '${context.tr('spend')} ${context.read<SystemConfigCubit>().reviewAnswersDeductCoins} ${context.tr('reviewAnsMessage')}',
-        onConfirm: () async {
-      final reviewAnswersDeductCoins = context
-          .read<SystemConfigCubit>()
-          .reviewAnswersDeductCoins;
-          
-      if ((int.tryParse(context.read<UserDetailsCubit>().getCoins() ?? '') ?? 0) <
-          reviewAnswersDeductCoins) {
-        await showNotEnoughCoinsDialog(context);
-        return;
-      }
-
-      await context
-          .read<UpdateCoinsCubit>()
-          .updateCoins(
-            coins: reviewAnswersDeductCoins,
-            addCoin: false,
-            title: reviewAnswerLbl,
-          )
-          .then((_) async {
-            final state = context.read<UpdateCoinsCubit>().state;
-            if (state is UpdateCoinsFailure) {
-              context
-                ..shouldPop()
-                ..showSnack(
-                  context.tr(
-                        convertErrorCodeToLanguageKey(state.errorMessage),
-                      ) ??
-                      context.tr(errorCodeDefaultMessage)!,
-                );
-              return;
-            } else if (state is UpdateCoinsSuccess) {
-              context.read<UserDetailsCubit>().updateCoins(
-                addCoin: false,
-                coins: reviewAnswersDeductCoins,
-              );
-
-              _unlockedReviewAnswersOnce = true;
-              await context.pushNamed(
-                Routes.reviewAnswers,
-                arguments: ReviewAnswersScreenArgs(
-                  quizType: widget.quizType!,
-                  questions: widget.quizType == QuizTypes.guessTheWord
-                      ? []
-                      : widget.questions!,
-                  guessTheWordQuestions:
-                      widget.quizType == QuizTypes.guessTheWord
-                      ? widget.guessTheWordQuestions!
-                      : [],
-                ),
-              );
-            }
-          });
-        },
-          confirmButtonText: context.tr('reviewAndImprove'),
-          cancelButtonText: context.tr('notNow'),
-        );
-      } finally {
-        if (mounted) {
-          setState(() => _isReviewInProgress = false);
-        }
-      }
   }
 
   String _getOrdinal(int number) {
@@ -1623,5 +1560,314 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       default:
         return '${number}th';
     }
+  }
+}
+
+/// Bottom sheet for reviewing answers (like Solo Mode)
+class _ReviewAnswersBottomSheet extends StatelessWidget {
+  const _ReviewAnswersBottomSheet({
+    required this.questions,
+    required this.firebaseId,
+  });
+
+  final List<Question> questions;
+  final String firebaseId;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) => Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.rate_review_outlined),
+                const SizedBox(width: 12),
+                Text(
+                  'Review Answers',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // List of questions
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: questions.length,
+              itemBuilder: (context, index) {
+                final question = questions[index];
+                return _buildQuestionCard(context, question, index);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionCard(BuildContext context, Question question, int index) {
+    // Decrypt the correct answer
+    String correctAnswerText = '';
+    if (question.correctAnswer != null) {
+      correctAnswerText = AnswerEncryption.decryptCorrectAnswer(
+        rawKey: firebaseId,
+        correctAnswer: question.correctAnswer!,
+      );
+    }
+    
+    final userAnswer = question.submittedAnswerId ?? '';
+    final isCorrect = userAnswer.trim().toLowerCase() == correctAnswerText.trim().toLowerCase();
+    final primaryColor = Theme.of(context).primaryColor;
+
+    // Find the correct option text
+    String correctOptionText = correctAnswerText;
+    String userOptionText = userAnswer;
+    
+    for (final option in question.answerOptions ?? <AnswerOption>[]) {
+      if (option.id?.trim().toLowerCase() == correctAnswerText.trim().toLowerCase()) {
+        correctOptionText = option.title ?? correctAnswerText;
+      }
+      if (option.id?.trim().toLowerCase() == userAnswer.trim().toLowerCase()) {
+        userOptionText = option.title ?? userAnswer;
+      }
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isCorrect ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Question number and status
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Q${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  isCorrect ? Icons.check_circle : Icons.cancel,
+                  color: isCorrect ? Colors.green : Colors.red,
+                  size: 20,
+                ),
+                const Spacer(),
+                // Source label
+                if (question.hasSource)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.source, size: 12, color: Colors.blue.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          question.sourceLabel ?? '',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Question text
+            Text(
+              question.question ?? '',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Your Answer
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isCorrect ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isCorrect ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isCorrect ? Icons.check : Icons.close,
+                    color: isCorrect ? Colors.green : Colors.red,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Answer',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          userOptionText.isNotEmpty ? userOptionText : '(No answer)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Correct Answer (if wrong)
+            if (!isCorrect) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check, color: Colors.green, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Correct Answer',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          Text(
+                            correctOptionText,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            // Explanation/Note
+            if (question.note != null && question.note!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.lightbulb_outline, color: Colors.amber.shade700, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Explanation',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.amber.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      question.note!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
