@@ -57,7 +57,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-4040}:80"
     volumes:
       - ./src/admin/public:/var/www/html
       - ./src/admin/public/application/logs:/var/www/html/application/logs

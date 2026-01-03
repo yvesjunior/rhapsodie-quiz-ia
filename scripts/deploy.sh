@@ -258,7 +258,7 @@ echo ""
 echo -e "${BLUE}📍 Access Points:${NC}"
 echo -e "   ${GREEN}Admin Panel:${NC}  https://kiwanoinc.ca"
 echo -e "   ${GREEN}API Base:${NC}     https://kiwanoinc.ca/api/"
-echo -e "   ${GREEN}Local (dev):${NC}  http://localhost:${APP_PORT:-8080}"
+echo -e "   ${GREEN}Local (dev):${NC}  http://localhost:${APP_PORT:-4040}"
 echo ""
 
 echo -e "${BLUE}📝 Useful Commands:${NC}"
