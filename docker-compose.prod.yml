@@ -1,0 +1,66 @@
+# ============================================
+# Rhapsodie Quiz IA - Production Overrides
+# ============================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# NOTE: Uses your external Nginx (kiwanoinc.ca) for SSL termination.
+#       App runs on port 8080, proxied by your existing Nginx.
+
+services:
+  # ============================================
+  # DATABASE - Production Settings
+  # ============================================
+  rhapsody-db:
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # REDIS - Production Settings
+  # ============================================
+  rhapsody-redis:
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # WEB SERVER - Production Settings
+  # ============================================
+  rhapsody-web:
+    restart: always
+    environment:
+      - CI_ENV=production
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  # ============================================
+  # CRON - Production Settings
+  # ============================================
+  rhapsody-cron:
+    restart: always
+    environment:
+      - CI_ENV=production
+      - DAILY_CONTEST_AUTO_CREATE=true
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # PHPMYADMIN - Disabled in Production
+  # ============================================
+  rhapsody-phpmyadmin:
+    profiles:
+      - admin-tools  # Only enable with: --profile admin-tools

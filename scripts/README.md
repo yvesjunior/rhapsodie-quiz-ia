@@ -1,76 +1,150 @@
-# Scripts - Rhapsodie Quiz IA
+# Rhapsodie Quiz IA - Scripts
 
-Ce dossier contient tous les scripts shell (`.sh`) du projet.
+## 🚀 Deployment Scripts
 
-## Scripts Disponibles
-
-### 🚀 Gestion de la Plateforme
-
-#### `start.sh`
-Démarre tous les services Docker Compose.
+### `deploy.sh` - Production Deployment
+Deploy the backend to production.
 
 ```bash
-./scripts/start.sh                    # Démarre les services de base
-./scripts/start.sh --ai               # Démarre avec les services AI
-./scripts/start.sh --tools           # Démarre avec les outils de développement
-./scripts/start.sh --ai --tools      # Démarre tout
+# Standard deploy
+./scripts/deploy.sh
+
+# Rebuild images and deploy
+./scripts/deploy.sh --build
+
+# Deploy with SSL enabled
+./scripts/deploy.sh --ssl
+
+# Full deploy with backup
+./scripts/deploy.sh --build --backup --ssl
 ```
 
-#### `stop.sh`
-Arrête tous les services Docker Compose.
+Options:
+- `--build` - Rebuild Docker images
+- `--ssl` - Enable HTTPS with Nginx reverse proxy
+- `--backup` - Backup database before deploying
+- `--migrate` - Run migrations after deploy
+- `--quick` - Skip health checks
+
+### `build-mobile.sh` - Mobile App Build
+Build the Flutter mobile app for release.
 
 ```bash
-./scripts/stop.sh                     # Arrête les conteneurs (conserve volumes/images)
-./scripts/stop.sh --volumes           # Arrête et supprime les volumes
-./scripts/stop.sh --images            # Arrête et supprime les images
-./scripts/stop.sh --all               # Arrête et supprime tout
+# Build Android APK
+./scripts/build-mobile.sh android
+
+# Build Android App Bundle (for Play Store)
+./scripts/build-mobile.sh android --aab
+
+# Build iOS (requires macOS)
+./scripts/build-mobile.sh ios
+
+# Build both platforms
+./scripts/build-mobile.sh all
+
+# Clean build
+./scripts/build-mobile.sh android --clean
 ```
 
-### 💾 Gestion de la Base de Données
+---
 
-#### `export-database.sh`
-Exporte la base de données depuis le conteneur Docker.
+## 🔧 Development Scripts
 
+### `start.sh` - Start Development Environment
 ```bash
-./scripts/export-database.sh
+# Start core services
+./scripts/start.sh
+
+# Start with development tools
+./scripts/start.sh --tools
+
+# Start with AI services
+./scripts/start.sh --ai
 ```
 
-Le fichier de sauvegarde sera créé dans `database-backups/` avec un timestamp.
-
-#### `import-db.sh`
-Importe une base de données depuis un fichier SQL.
-
+### `stop.sh` - Stop Services
 ```bash
-./scripts/import-db.sh                                    # Utilise la sauvegarde par défaut
-./scripts/import-db.sh database-backups/backup.sql       # Spécifie un fichier
+# Stop containers
+./scripts/stop.sh
+
+# Stop and remove volumes
+./scripts/stop.sh --volumes
+
+# Stop and remove everything
+./scripts/stop.sh --all
 ```
 
-#### `export-db.sh`
-Ancien script d'export (utiliser `export-database.sh` à la place).
+---
 
-#### `generate-secrets.sh`
-Génère des secrets pour l'application (JWT, API keys, etc.).
+## 📊 Database Scripts
 
+### `export-db.sh` - Export Database
+```bash
+./scripts/export-db.sh
+```
+
+### `import-db.sh` - Import Database
+```bash
+./scripts/import-db.sh backup_file.sql
+```
+
+---
+
+## 🏆 Contest Scripts
+
+### `create_daily_contest.sh` - Create Daily Contest
+```bash
+# Create today's contest
+./scripts/create_daily_contest.sh
+
+# Force create (even if exists)
+./scripts/create_daily_contest.sh --force
+```
+
+### `check_daily_contest.sh` - Check Contest Status
+```bash
+./scripts/check_daily_contest.sh
+```
+
+---
+
+## 🔔 Notification Scripts
+
+### `test_fcm.sh` - Test Push Notifications
+```bash
+./scripts/test_fcm.sh
+```
+
+### `test_weekly_rewards.sh` - Test Weekly Rewards
+```bash
+./scripts/test_weekly_rewards.sh
+```
+
+---
+
+## 🔐 Security Scripts
+
+### `generate-secrets.sh` - Generate Secure Credentials
 ```bash
 ./scripts/generate-secrets.sh
 ```
 
-## Structure
+---
 
-Tous les scripts sont conçus pour être exécutés depuis n'importe où dans le projet. Ils :
-- Détectent automatiquement le répertoire racine du projet
-- Chargent les variables d'environnement depuis `.env` à la racine
-- S'exécutent depuis le répertoire racine pour accéder à `docker-compose.yml`
+## 📁 File Structure
 
-## Prérequis
-
-- Docker et Docker Compose installés
-- Fichier `.env` configuré à la racine du projet
-- Conteneurs Docker démarrés (pour les scripts de base de données)
-
-## Notes
-
-- Les scripts utilisent le conteneur `rhapsody-db` pour les opérations de base de données
-- Les sauvegardes sont stockées dans `database-backups/`
-- Les scripts vérifient automatiquement que les conteneurs sont en cours d'exécution avant d'effectuer des opérations
-
+```
+scripts/
+├── deploy.sh              # Production deployment
+├── build-mobile.sh        # Mobile app build
+├── start.sh               # Start development
+├── stop.sh                # Stop services
+├── export-db.sh           # Database export
+├── import-db.sh           # Database import
+├── create_daily_contest.sh # Create contest
+├── check_daily_contest.sh  # Check contest
+├── test_fcm.sh            # Test notifications
+├── test_weekly_rewards.sh  # Test rewards
+├── generate-secrets.sh     # Generate secrets
+└── README.md              # This file
+```
