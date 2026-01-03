@@ -16,6 +16,9 @@ services:
   # ============================================
   rhapsody-db:
     restart: always
+    # Use named volume instead of bind mount for production
+    volumes:
+      - mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     logging:
@@ -82,6 +85,8 @@ services:
 
 # Named volumes for persistent data
 volumes:
+  mysql_data:
+    driver: local
   web_logs:
     driver: local
   web_cache:
