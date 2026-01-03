@@ -134,3 +134,6 @@ src/admin/public/images/
 
 # APNs keys
 *.p8
+
+# Database backups
+backups/
