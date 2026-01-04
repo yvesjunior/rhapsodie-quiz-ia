@@ -157,6 +157,7 @@ $route['instructions'] = 'Settings/instructions';
 $route['upload_img'] = 'Settings/upload_img';
 $route['privacy-policy'] = 'Settings/privacy_policy';
 $route['play-store-privacy-policy'] = 'Settings/play_store_privacy_policy';
+$route['user-privacy-choices'] = 'Settings/user_privacy_choices';
 $route['terms-conditions'] = 'Settings/terms_conditions';
 $route['play-store-terms-conditions'] = 'Settings/play_store_terms_conditions';
 $route['contact-us'] = 'Settings/contact_us';

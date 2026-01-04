@@ -18,7 +18,6 @@ import 'package:flutterquiz/features/settings/settings_cubit.dart';
 import 'package:flutterquiz/features/system_config/cubits/system_config_cubit.dart';
 import 'package:flutterquiz/features/system_config/model/ad_type.dart';
 import 'package:flutterquiz/ui/widgets/error_container.dart';
-import 'package:flutterquiz/utils/app_tracking_transparency_helper.dart';
 import 'package:flutterquiz/utils/gdpr_helper.dart';
 import 'package:ironsource_mediation/ironsource_mediation.dart';
 import 'package:unity_ads_plugin/unity_ads_plugin.dart';
@@ -131,11 +130,8 @@ class _SplashScreenState extends State<SplashScreen>
         unawaited(LevelPlay.validateIntegration());
       } else {
         // Connect your real device, it doesn't work on Simulator, so not possible to test.
-        // also Allow App Tracking Permission to get the app id, otherwise it won't show.
-        log(
-          'GAID is: ${await AppTrackingTransparencyHelper.getAdvertisingIdentifier()}',
-          name: 'LevelPlay',
-        );
+        // App Tracking removed - GAID not available
+        log('LevelPlay iOS: Running without GAID (tracking disabled)', name: 'LevelPlay');
       }
     }
 

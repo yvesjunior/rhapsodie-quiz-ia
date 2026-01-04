@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutterquiz/commons/screens/dashboard_screen.dart';
 import 'package:flutterquiz/commons/bottom_nav/bottom_nav.dart';
+import 'package:flutterquiz/ui/widgets/shared/shared_bottom_nav.dart';
 import 'package:flutterquiz/commons/widgets/show_login_required_dialog.dart';
 import 'package:flutterquiz/core/constants/assets_constants.dart';
 import 'package:flutterquiz/core/core.dart';
@@ -187,7 +188,7 @@ class _RhapsodyScreenState extends State<RhapsodyScreen> with SingleTickerProvid
           return const SizedBox();
         },
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const SharedBottomNav(),
     );
   }
 
@@ -656,7 +657,7 @@ class RhapsodyMonthScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const SharedBottomNav(),
     );
   }
 
@@ -1020,7 +1021,7 @@ class _RhapsodyDayScreen extends StatelessWidget {
           return const SizedBox();
         },
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: const SharedBottomNav(),
     );
   }
 

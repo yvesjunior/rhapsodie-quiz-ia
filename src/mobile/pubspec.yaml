@@ -1,14 +1,13 @@
 name: flutterquiz
 description: A new Flutter application.
 publish_to: "none"
-version: 2.3.7+61
+version: 1.0.0+1
 
-# Release Version: 2.3.7 (do not remove or edit this)
+# Release Version: 1.0.0 (App Store initial release)
 environment:
   sdk: ^3.10.0
 
 dependencies:
-  app_tracking_transparency: ^2.0.6+1
   cached_network_image: ^3.4.1
   cloud_firestore: ^6.0.2
   country_code_picker: ^3.4.0

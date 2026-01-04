@@ -407,6 +407,11 @@ class Settings extends CI_Controller
         $this->load->view('play_store_privacy_policy', $result);
     }
 
+    public function user_privacy_choices()
+    {
+        $this->load->view('user_privacy_choices');
+    }
+
     public function privacy_policy()
     {
         if (!$this->session->userdata('isLoggedIn')) {
