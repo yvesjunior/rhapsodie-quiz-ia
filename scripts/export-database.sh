@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================
-# Export Database - Elite Quiz Admin DB
+# Export Database - Rhapsody Quiz Admin DB
 # ============================================
 # This script exports the database from the Docker container
 # before refactoring the application
@@ -49,7 +49,7 @@ OUTPUT_FILE="${BACKUP_DIR}/backup_${DB_NAME}_${TIMESTAMP}.sql"
 OUTPUT_FILE_COMPRESSED="${OUTPUT_FILE}.gz"
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Database Export - Elite Quiz Admin DB              ║${NC}"
+echo -e "${BLUE}║   Database Export - Rhapsody Quiz Admin DB              ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════╝${NC}"
 echo ""
 

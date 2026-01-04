@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Generate Secure Secrets for Elite Quiz Admin Panel
+# Generate Secure Secrets for Rhapsody Quiz Admin Panel
 # This script generates secure random secrets for use in .env file
 # Usage: ./scripts/generate-secrets.sh
 
@@ -12,7 +12,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "============================================"
-echo "Elite Quiz Admin Panel - Secret Generator"
+echo "Rhapsody Quiz Admin Panel - Secret Generator"
 echo "============================================"
 echo ""
 

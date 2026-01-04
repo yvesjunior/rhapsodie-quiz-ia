@@ -71,7 +71,66 @@ class Battle_model extends CI_Model
             ->get('tbl_question')
             ->result_array();
         
+        // Check if option shuffle is enabled
+        $shuffle_setting = $this->db->where('type', 'option_shuffle_mode')->get('tbl_settings')->row_array();
+        $shuffle_enabled = isset($shuffle_setting['message']) && $shuffle_setting['message'] == '1';
+        
+        // Shuffle options for each question
+        foreach ($questions as &$q) {
+            $q = $this->shuffle_question_options($q, $shuffle_enabled);
+        }
+        
         return $questions;
+    }
+    
+    /**
+     * Shuffle question options and update answer key
+     */
+    private function shuffle_question_options($question, $shuffle_enabled = true)
+    {
+        // Build options array
+        $options = [];
+        $option_keys = ['a', 'b', 'c', 'd'];
+        
+        foreach ($option_keys as $key) {
+            $opt_value = trim($question['option' . $key] ?? '');
+            if (!empty($opt_value)) {
+                $options[$key] = $opt_value;
+            }
+        }
+        
+        if (empty($options) || !$shuffle_enabled) {
+            return $question;
+        }
+        
+        // Find correct answer value before shuffling
+        $correct_key = strtolower(trim($question['answer']));
+        $correct_value = $options[$correct_key] ?? '';
+        
+        // Shuffle options
+        $option_values = array_values($options);
+        shuffle($option_values);
+        
+        // Assign shuffled values back and find new answer key
+        $new_answer = $correct_key; // fallback
+        $i = 0;
+        foreach ($option_keys as $key) {
+            if ($i < count($option_values)) {
+                $question['option' . $key] = $option_values[$i];
+                // Track new position of correct answer
+                if ($option_values[$i] === $correct_value) {
+                    $new_answer = $key;
+                }
+                $i++;
+            } else {
+                $question['option' . $key] = '';
+            }
+        }
+        
+        // Update answer to new position
+        $question['answer'] = $new_answer;
+        
+        return $question;
     }
 
     /**
