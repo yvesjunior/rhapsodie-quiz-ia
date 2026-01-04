@@ -1,6 +1,6 @@
-# Elite Quiz Admin Panel
+# Rhapsody Quiz Admin Panel
 
-A comprehensive admin panel for managing the Elite Quiz application, built with CodeIgniter and Docker.
+A comprehensive admin panel for managing the Rhapsody Quiz application, built with CodeIgniter and Docker.
 
 ## 📋 Table of Contents
 
@@ -57,7 +57,7 @@ This script will:
 
 ```bash
 git clone <repository-url>
-cd "Elite Quiz - Admin Panel - v2.3.7"
+cd "Rhapsody Quiz - Admin Panel - v2.3.7"
 ```
 
 ### 2. Create Environment File

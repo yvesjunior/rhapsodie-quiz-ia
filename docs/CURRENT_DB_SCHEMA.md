@@ -1,4 +1,4 @@
-# Current Database Schema - Elite Quiz 237
+# Current Database Schema - Rhapsody Quiz 237
 
 **Generated:** 2025-12-27  
 **Database:** elite_quiz_237  
@@ -844,5 +844,5 @@ User withdrawal/payment requests.
 
 ---
 
-*This document serves as a reference for the database migration from the current Elite Quiz schema to the new Rhapsody platform.*
+*This document serves as a reference for the database migration from the current Rhapsody Quiz schema to the new Rhapsody platform.*
 

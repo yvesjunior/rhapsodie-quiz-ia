@@ -30,7 +30,7 @@ The login flow:
 
 2. **Check Firebase Config File:**
    ```bash
-   cd "Elite Quiz - Admin Panel - v2.3.7"
+   cd "Rhapsody Quiz - Admin Panel - v2.3.7"
    ls -la Admin\ Panel/src/web/public/assets/firebase_config.json
    ```
    - File should exist and be readable
@@ -66,7 +66,7 @@ Modify the `verify_user()` function to add timeout handling.
    ```
 
 2. **Check Mobile App API URL:**
-   - Open: `Elite Quiz - Mobile - v2.3.7/lib/core/config/config.dart`
+   - Open: `Rhapsody Quiz - Mobile - v2.3.7/lib/core/config/config.dart`
    - Verify `panelUrl` is correct:
      - iOS Simulator: `http://localhost:8080`
      - Physical device: Your Mac's IP (e.g., `http://10.0.0.39:8080`)
@@ -80,7 +80,7 @@ Modify the `verify_user()` function to add timeout handling.
 
 2. **Check API Logs:**
    ```bash
-   cd "Elite Quiz - Admin Panel - v2.3.7"
+   cd "Rhapsody Quiz - Admin Panel - v2.3.7"
    docker logs elite-quiz-admin-web --tail 50
    ```
 
@@ -101,7 +101,7 @@ Add logging to see where it's getting stuck:
 
 For local development, temporarily disable Firebase verification:
 
-1. Edit: `Elite Quiz - Admin Panel - v2.3.7/Admin Panel/src/web/public/application/controllers/Api.php`
+1. Edit: `Rhapsody Quiz - Admin Panel - v2.3.7/Admin Panel/src/web/public/application/controllers/Api.php`
 2. Find line 76: `$is_verify = $this->verify_user($firebase_id);`
 3. Replace with: `$is_verify = true;` (temporarily)
 4. Rebuild admin panel: `docker-compose down && docker-compose up -d`
