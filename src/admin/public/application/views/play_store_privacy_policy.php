@@ -4,7 +4,7 @@
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>Privacy Policy | <?php echo (is_settings('app_name')) ? is_settings('app_name') : "Rhapsody Quiz" ?></title>
+    <title>Privacy Policy | Rhapsody Quiz</title>
     <style>
         * {
             box-sizing: border-box;
@@ -50,6 +50,9 @@
             border-bottom: 2px solid #667eea;
             padding-bottom: 0.5rem;
         }
+        h2:first-of-type {
+            margin-top: 0;
+        }
         h3 {
             color: #444;
             margin: 1.5rem 0 0.5rem;
@@ -69,6 +72,11 @@
         a {
             color: #667eea;
         }
+        .update-date {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
         .footer {
             text-align: center;
             padding: 1.5rem;
@@ -87,98 +95,112 @@
     <div class="container">
         <div class="header">
             <h1>🔒 Privacy Policy</h1>
-            <p><?php echo (is_settings('app_name')) ? is_settings('app_name') : "Rhapsody Quiz" ?></p>
+            <p>Rhapsody Quiz</p>
         </div>
         
         <div class="content">
-            <?php if (!empty($setting['message'])): ?>
-                <?php echo $setting['message']; ?>
-            <?php else: ?>
-                <p><strong>Last Updated:</strong> January 2026</p>
+            <p class="update-date"><strong>Last Updated:</strong> January 2026</p>
 
-                <p>Rhapsody Quiz ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.</p>
+            <p>Rhapsody Quiz ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.</p>
 
-                <h2>1. Information We Collect</h2>
+            <h2>1. Information We Collect</h2>
 
-                <h3>Account Information</h3>
-                <ul>
-                    <li>Email address (when signing up with email)</li>
-                    <li>Username and profile picture</li>
-                    <li>Phone number (if using phone authentication)</li>
-                    <li>Authentication data from Google, Apple, or Firebase</li>
-                </ul>
+            <h3>Account Information</h3>
+            <p>When you create an account, we may collect:</p>
+            <ul>
+                <li>Email address (when signing up with email)</li>
+                <li>Username and profile picture you choose</li>
+                <li>Phone number (if using phone authentication)</li>
+                <li>Basic profile information from Google or Apple Sign-In</li>
+            </ul>
 
-                <h3>Usage Data</h3>
-                <ul>
-                    <li>Quiz scores and progress</li>
-                    <li>Leaderboard rankings</li>
-                    <li>Daily contest participation</li>
-                    <li>In-app coins and rewards</li>
-                </ul>
+            <h3>Usage Data</h3>
+            <p>As you use the app, we collect:</p>
+            <ul>
+                <li>Quiz scores, answers, and progress</li>
+                <li>Leaderboard rankings and contest participation</li>
+                <li>In-app coins earned and spent</li>
+                <li>Daily Rhapsody reading progress</li>
+            </ul>
 
-                <h3>Device Information</h3>
-                <ul>
-                    <li>Device type and operating system</li>
-                    <li>Push notification tokens (if notifications enabled)</li>
-                    <li>App version</li>
-                </ul>
+            <h3>Device Information</h3>
+            <ul>
+                <li>Device type and operating system version</li>
+                <li>Push notification tokens (only if you enable notifications)</li>
+                <li>App version and crash reports</li>
+            </ul>
 
-                <h2>2. How We Use Your Information</h2>
-                <ul>
-                    <li>To provide and maintain the app functionality</li>
-                    <li>To track your quiz progress and display leaderboards</li>
-                    <li>To send push notifications about daily contests (if enabled)</li>
-                    <li>To improve our services and user experience</li>
-                    <li>To respond to your support requests</li>
-                </ul>
+            <h2>2. How We Use Your Information</h2>
+            <p>We use your information to:</p>
+            <ul>
+                <li>Provide quiz functionality and track your learning progress</li>
+                <li>Display leaderboards and enable competition with other users</li>
+                <li>Send push notifications about daily contests and new content (if enabled)</li>
+                <li>Improve our app and fix technical issues</li>
+                <li>Respond to your support requests</li>
+                <li>Prevent fraud and enforce our terms</li>
+            </ul>
 
-                <h2>3. Data Sharing</h2>
-                <p>We do not sell your personal information. We may share data with:</p>
-                <ul>
-                    <li><strong>Firebase (Google)</strong> - For authentication and data storage</li>
-                    <li><strong>Service providers</strong> - Who help us operate the app</li>
-                    <li><strong>Legal authorities</strong> - When required by law</li>
-                </ul>
+            <h2>3. Data Sharing</h2>
+            <p><strong>We do not sell your personal information.</strong> We may share data with:</p>
+            <ul>
+                <li><strong>Firebase (Google)</strong> - For secure authentication and cloud data storage</li>
+                <li><strong>Service providers</strong> - Who help us operate the app under strict confidentiality agreements</li>
+                <li><strong>Legal authorities</strong> - Only when required by law or to protect our users</li>
+            </ul>
+            <p>Your quiz scores may be visible to other users on public leaderboards. You can choose your display name.</p>
 
-                <h2>4. Data Security</h2>
-                <p>We implement industry-standard security measures to protect your data, including:</p>
-                <ul>
-                    <li>Encrypted data transmission (HTTPS/SSL)</li>
-                    <li>Secure authentication via Firebase</li>
-                    <li>Regular security updates</li>
-                </ul>
+            <h2>4. Data Security</h2>
+            <p>We implement industry-standard security measures:</p>
+            <ul>
+                <li>All data transmission is encrypted using HTTPS/SSL</li>
+                <li>Passwords are never stored - we use secure Firebase authentication</li>
+                <li>Regular security audits and updates</li>
+                <li>Access controls to limit who can view user data</li>
+            </ul>
 
-                <h2>5. Your Rights</h2>
-                <p>You have the right to:</p>
-                <ul>
-                    <li><strong>Access</strong> - Request a copy of your data</li>
-                    <li><strong>Correction</strong> - Update inaccurate information</li>
-                    <li><strong>Deletion</strong> - Request account deletion</li>
-                    <li><strong>Opt-out</strong> - Disable push notifications</li>
-                </ul>
+            <h2>5. Your Privacy Rights</h2>
+            <p>You have the right to:</p>
+            <ul>
+                <li><strong>Access</strong> - Request a copy of your personal data</li>
+                <li><strong>Correction</strong> - Update or correct inaccurate information in your profile</li>
+                <li><strong>Deletion</strong> - Request complete deletion of your account and data</li>
+                <li><strong>Opt-out</strong> - Disable push notifications at any time in settings</li>
+                <li><strong>Portability</strong> - Receive your data in a common format</li>
+            </ul>
 
-                <h2>6. Account Deletion</h2>
-                <p>To delete your account:</p>
-                <ul>
-                    <li>Go to Settings → Delete Account in the app, or</li>
-                    <li>Email us at <a href="mailto:kiwanoinc@gmail.com">kiwanoinc@gmail.com</a></li>
-                </ul>
-                <p>Account deletion is processed within 30 days.</p>
+            <h2>6. Account Deletion</h2>
+            <p>To delete your account and all associated data:</p>
+            <ul>
+                <li>Open the app → Go to Settings → Select "Delete Account", or</li>
+                <li>Email us at <a href="mailto:kiwanoinc@gmail.com">kiwanoinc@gmail.com</a> with your account email</li>
+            </ul>
+            <p>Account deletion is processed within 30 days. Some anonymized data may be retained for legal compliance and fraud prevention.</p>
 
-                <h2>7. Children's Privacy</h2>
-                <p>Our app is designed for users of all ages. We do not knowingly collect personal information from children under 13 without parental consent.</p>
+            <h2>7. Children's Privacy</h2>
+            <p>Rhapsody Quiz is designed to be family-friendly and suitable for users of all ages. We do not knowingly collect personal information from children under 13 without verifiable parental consent. If you believe a child has provided us with personal information, please contact us immediately.</p>
 
-                <h2>8. Changes to This Policy</h2>
-                <p>We may update this Privacy Policy from time to time. We will notify you of any significant changes through the app.</p>
+            <h2>8. Push Notifications</h2>
+            <p>We may send push notifications for:</p>
+            <ul>
+                <li>Daily contest reminders</li>
+                <li>New Rhapsody content availability</li>
+                <li>Weekly ranking updates</li>
+            </ul>
+            <p>You can disable notifications at any time in your device settings or within the app.</p>
 
-                <h2>9. Contact Us</h2>
-                <p>For privacy-related questions or requests, contact us at:</p>
-                <p>📧 Email: <a href="mailto:kiwanoinc@gmail.com">kiwanoinc@gmail.com</a></p>
-            <?php endif; ?>
+            <h2>9. Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. When we make significant changes, we will notify you through the app or via email. Your continued use of the app after changes constitutes acceptance of the updated policy.</p>
+
+            <h2>10. Contact Us</h2>
+            <p>For any privacy-related questions, concerns, or to exercise your rights, please contact us:</p>
+            <p>📧 Email: <a href="mailto:kiwanoinc@gmail.com">kiwanoinc@gmail.com</a></p>
+            <p>We aim to respond to all privacy inquiries within 72 hours.</p>
         </div>
 
         <div class="footer">
-            <p>© <?php echo date('Y'); ?> <?php echo (is_settings('app_name')) ? is_settings('app_name') : "Rhapsody Quiz" ?>. All rights reserved.</p>
+            <p>© 2026 Rhapsody Quiz. All rights reserved.</p>
+            <p><a href="play-store-terms-conditions">Terms & Conditions</a> | <a href="user-privacy-choices">Privacy Choices</a></p>
         </div>
     </div>
 </body>

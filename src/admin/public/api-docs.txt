@@ -1,5 +1,5 @@
 /*
-	Elite Quiz - WRTeam.in 
+	Rhapsody Quiz - WRTeam.in 
 	WRTeam Developers
 */
 
